@@ -5,13 +5,17 @@ d:
   # this way the overall test time gets cut down (GDC/LDC are a lot
   # slower tham DMD, so they should be started early), while still
   # catching most DMD version related build failures early
-  - dmd-2.073.0
+  - dmd-2.073.2
   - dmd-2.070.2
-  - ldc-1.1.0
+  - ldc-1.2.0
   - ldc-1.0.0
   - dmd-2.072.2
   - dmd-2.071.2
+  - dmd
   - dmd-beta
+  - dmd-nigthly
+  - ldc-beta
+  - ldc
 
 env:
     - CONFIG=select
@@ -21,8 +25,15 @@ env:
 matrix:
   allow_failures:
     - env: CONFIG=libasync
-    - d: dmd-beta
 
 script: ./travis-ci.sh
 
 sudo: false
+
+notifications:
+  slack:
+    rooms:
+      - dlang:3mRWPCAIEVg3barvUoCzgnN6
+    on_pull_requests: false
+    on_success: change
+    on_failure: always
