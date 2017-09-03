@@ -208,6 +208,11 @@ TCPConnection connectTCP(NetworkAddress addr, NetworkAddress bind_address = anyA
 /**
 	Creates a bound UDP socket suitable for sending and receiving packets.
 */
+UDPConnection listenUDP(NetworkAddress addr)
+{
+	return UDPConnection(addr);
+}
+/// ditto
 UDPConnection listenUDP(ushort port, string bind_address = "0.0.0.0")
 {
 	auto addr = resolveHost(bind_address, AddressFamily.UNSPEC, false);
