@@ -76,15 +76,12 @@ struct Task {
 			return this.taskFiber.m_running && this.taskFiber.m_taskCounter == m_taskCounter;
 		}
 
-		package @property ref ThreadInfo tidInfo() @system { return m_fiber ? taskFiber.tidInfo : s_tidInfo; } // FIXME: this is not thread safe!
-		package @property ref const(ThreadInfo) tidInfo() const @system { return m_fiber ? taskFiber.tidInfo : s_tidInfo; } // FIXME: this is not thread safe!
+		package @property ref inout(ThreadInfo) tidInfo() inout @system { return m_fiber ? taskFiber.tidInfo : s_tidInfo; } // FIXME: this is not thread safe!
 
 		/** Gets the `Tid` associated with this task for use with
 			`std.concurrency`.
 		*/
-		@property Tid tid() @trusted { return tidInfo.ident; }
-		/// ditto
-		@property const(Tid) tid() const @trusted { return tidInfo.ident; }
+		@property inout(Tid) tid() inout @trusted { return tidInfo.ident; }
 	}
 
 	T opCast(T)() const @safe nothrow if (is(T == bool)) { return m_fiber !is null; }
