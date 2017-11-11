@@ -195,18 +195,18 @@ TCPConnection connectTCP(NetworkAddress addr, NetworkAddress bind_address = anyA
 		scope uaddr = new RefAddress(addr.sockAddr, addr.sockAddrLen);
 		scope baddr = new RefAddress(bind_address.sockAddr, bind_address.sockAddrLen);
 
-		auto result = asyncAwaitUninterruptible!(ConnectCallback,
+		auto result = asyncAwait!(ConnectCallback,
 			cb => eventDriver.sockets.connectStream(uaddr, baddr, cb),
 			(ConnectCallback cb, StreamSocketFD sock_fd) {
 				eventDriver.sockets.cancelConnectStream(sock_fd);
 			}
 		)(timeout);
 
-		if (result[1] == ConnectStatus.cancelled)
-			result[1] = ConnectStatus.timeout;
-		enforce(result[1] == ConnectStatus.connected, "Failed to connect to "~addr.toString()~": "~result[1].to!string);
+		enforce(result.completed, "Failed to connect to " ~ addr.toString() ~
+			": timeout");
+		enforce(result.results[1] == ConnectStatus.connected, "Failed to connect to "~addr.toString()~": "~result.results[1].to!string);
 
-		return TCPConnection(result[0], uaddr);
+		return TCPConnection(result.results[0], uaddr);
 	} ();
 }
 
