@@ -156,7 +156,8 @@ TCPListener listenTCP_s(ushort port, TCPConnectionFunction connection_callback, 
 /**
 	Establishes a connection to the given host/port.
 */
-TCPConnection connectTCP(string host, ushort port, string bind_interface = null, ushort bind_port = 0)
+TCPConnection connectTCP(string host, ushort port, string bind_interface = null,
+	ushort bind_port = 0, Duration timeout = Duration.max)
 {
 	NetworkAddress addr = resolveHost(host);
 	addr.port = port;
@@ -173,10 +174,11 @@ TCPConnection connectTCP(string host, ushort port, string bind_interface = null,
 	if (addr.family != AddressFamily.UNIX)
 		bind_address.port = bind_port;
 
-	return connectTCP(addr, bind_address);
+	return connectTCP(addr, bind_address, timeout);
 }
 /// ditto
-TCPConnection connectTCP(NetworkAddress addr, NetworkAddress bind_address = anyAddress)
+TCPConnection connectTCP(NetworkAddress addr, NetworkAddress bind_address = anyAddress,
+	Duration timeout = Duration.max)
 {
 	import std.conv : to;
 
@@ -193,11 +195,15 @@ TCPConnection connectTCP(NetworkAddress addr, NetworkAddress bind_address = anyA
 		scope uaddr = new RefAddress(addr.sockAddr, addr.sockAddrLen);
 		scope baddr = new RefAddress(bind_address.sockAddr, bind_address.sockAddrLen);
 
-		// FIXME: make this interruptible
 		auto result = asyncAwaitUninterruptible!(ConnectCallback,
-			cb => eventDriver.sockets.connectStream(uaddr, baddr, cb)
-			//cb => eventDriver.sockets.cancelConnect(cb)
-		);
+			cb => eventDriver.sockets.connectStream(uaddr, baddr, cb),
+			(ConnectCallback cb, StreamSocketFD sock_fd) {
+				eventDriver.sockets.cancelConnectStream(sock_fd);
+			}
+		)(timeout);
+
+		if (result[1] == ConnectStatus.cancelled)
+			result[1] = ConnectStatus.timeout;
 		enforce(result[1] == ConnectStatus.connected, "Failed to connect to "~addr.toString()~": "~result[1].to!string);
 
 		return TCPConnection(result[0], uaddr);
