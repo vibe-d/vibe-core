@@ -1,6 +1,6 @@
 module vibe.internal.async;
 
-import std.traits : ParameterTypeTuple;
+import std.traits : ParameterTypeTuple, ReturnType;
 import std.typecons : tuple;
 import vibe.core.core : hibernate, switchToTask;
 import vibe.core.task : InterruptException, Task;
@@ -20,14 +20,23 @@ auto asyncAwait(Callback, alias action, alias cancel)(Duration timeout, string f
 {
 	static struct R {
 		bool completed = true;
-		typeof(waitable.results) results;
+		ParameterTypeTuple!Callback results;
 	}
 	R ret;
-	alias waitable = Waitable!(Callback,
-		action,
-		(cb) { ret.completed = false; cancel(cb); },
-		(ParameterTypeTuple!Callback r) { ret.results = r; }
-	);
+	static if (is(ReturnType!action == void)) {
+		alias waitable = Waitable!(Callback,
+			action,
+			(cb) { ret.completed = false; cancel(cb); },
+			(ParameterTypeTuple!Callback r) { ret.results = r; }
+		);
+	}
+	else {
+		alias waitable = Waitable!(Callback,
+			action,
+			(cb, waitres) { ret.completed = false; cancel(cb, waitres); },
+			(ParameterTypeTuple!Callback r) { ret.results = r; }
+		);
+	}
 	asyncAwaitAny!(true, waitable)(timeout, func);
 	return ret;
 }
@@ -60,7 +69,8 @@ template Waitable(CB, alias WAIT, alias CANCEL, alias DONE)
 			"CANCEL must be callable with a parameter of type "~CB.stringof);
 	else
 		static assert(is(typeof(CANCEL(CB.init, typeof(WAIT(CB.init)).init))),
-			"CANCEL must be callable with parameters ("~CB.stringof~", "~typeof(WAIT(CB.init)).stringof~")");
+			"CANCEL must be callable with parameters "~CB.stringof~
+			" and "~typeof(WAIT(CB.init)).stringof);
 	static assert(is(typeof(DONE(ParameterTypeTuple!CB.init))),
 		"DONE must be callable with types "~ParameterTypeTuple!CB.stringof);
 
