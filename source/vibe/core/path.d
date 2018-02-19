@@ -232,10 +232,12 @@ struct GenericPath(F) {
 		*/
 		this(string name, char separator = '\0')
 		{
-			import std.algorithm.searching : any;
+			import std.algorithm.searching : any, canFind;
 
 			enforce!PathValidationException(separator == '\0' || Format.isSeparator(separator),
 				"Invalid path separator.");
+			enforce!PathValidationException(!name.canFind!(ch => Format.isSeparator(ch)),
+				"Path segment contains path separator");
 			auto err = Format.validateDecodedSegment(name);
 			enforce!PathValidationException(err is null, err);
 
