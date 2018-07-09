@@ -384,7 +384,7 @@ struct GenericPath(F) {
 		single-element range.
 	*/
 	this(Segment segment)
-	nothrow {
+	{
 		import std.range : only;
 		this(only(segment));
 	}
