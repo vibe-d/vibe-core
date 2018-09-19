@@ -586,7 +586,7 @@ mixin(tracer);
 				break;
 			case IOStatus.ok: break;
 			case IOStatus.wouldBlock: assert(mode == IOMode.immediate); break;
-			case IOStatus.disconnected: break;
+			case IOStatus.disconnected: m_socket = StreamSocketFD.invalid; break;
 		}
 
 		return m_context.readBuffer.length > 0;
@@ -735,7 +735,7 @@ mixin(tracer);
 			default:
 				throw new Exception("Error writing data to socket.");
 			case IOStatus.ok: break;
-			case IOStatus.disconnected: break;
+			case IOStatus.disconnected: m_socket = StreamSocketFD.invalid; break;
 		}
 
 		return res[2];
