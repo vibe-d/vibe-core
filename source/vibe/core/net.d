@@ -39,8 +39,7 @@ NetworkAddress resolveHost(string host, ushort address_family, bool use_dns = tr
 	else import core.sys.posix.netinet.in_ : sockaddr_in, sockaddr_in6;
 
 	enforce(host.length > 0, "Host name must not be empty.");
-	// FIXME: this check needs to be more specific to not disallow valid DNS names
-	if (host[0] == ':' || host[0] >= '0' && host[0] <= '9') {
+	if (!use_dns) {
 		auto addr = parseAddress(host);
 		enforce(address_family == AddressFamily.UNSPEC || addr.addressFamily == address_family);
 		NetworkAddress ret;
@@ -52,7 +51,6 @@ NetworkAddress resolveHost(string host, ushort address_family, bool use_dns = tr
 		}
 		return ret;
 	} else {
-		enforce(use_dns, "Malformed IP address string.");
 		NetworkAddress res;
 		bool success = false;
 		alias waitable = Waitable!(DNSLookupCallback,
