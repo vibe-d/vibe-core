@@ -26,11 +26,7 @@ matrix:
     - d: dmd-beta
   include:
     - d: dmd
-      env: CONFIG='select' DFLAGS='-cov -version=VibedCoreSetCoverageMerge' DUB_BUILD_MODE='singleFile'
-    - d: dmd
-      env: CONFIG='select' DFLAGS='-cov -version=VibedCoreSetCoverageMerge' DUB_BUILD_MODE='singleFile'
-    - d: dmd
-      env: CONFIG='select' DFLAGS='-cov -version=VibedCoreSetCoverageMerge' DUB_BUILD_MODE='singleFile'
+      env: CONFIG='select' DFLAGS='-g -unittest -cov -version=VibedCoreSetCoverageMerge' DUB_BUILD_MODE='singleFile'
 
 script: ./travis-ci.sh
 
