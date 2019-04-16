@@ -304,7 +304,7 @@ private T fromValue(T)(in JSONValue val)
 	static if (is(T == bool)) return val.type == JSON_TYPE.TRUE;
 	else static if (is(T : long)) return val.integer.to!T;
 	else static if (is(T : double)) return val.floating.to!T;
-	else static if (is(T == string)) return val.str;
+	else static if (is(T == string)) return (val.type == JSONType.string) ? val.str : val.to!T;
 	else static assert(false);
 
 }
