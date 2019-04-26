@@ -553,7 +553,10 @@ struct TCPConnection {
 		return s >= ConnectionState.connected && s < ConnectionState.activeClose;
 	}
 	@property bool empty() { return leastSize == 0; }
-	@property ulong leastSize() { waitForData(); return m_context ? m_context.readBuffer.length : 0; }
+	@property ulong leastSize() {
+		if (m_context) waitForData(m_context.readTimeout);
+		return m_context ? m_context.readBuffer.length : 0;
+	}
 	@property bool dataAvailableForRead() { return waitForData(0.seconds); }
 
 	void close()
