@@ -593,7 +593,7 @@ mixin(tracer);
 			}
 		);
 
-		asyncAwaitAny!(true, waiter)(timeout);
+		enforce!ReadTimeoutException(asyncAwaitAny!(true, waiter)(timeout), "Read operation timed out");
 
 		if (cancelled || !m_context) return false;
 

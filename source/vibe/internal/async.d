@@ -80,8 +80,9 @@ template Waitable(CB, alias WAIT, alias CANCEL, alias DONE)
 	alias done = DONE;
 }
 
-void asyncAwaitAny(bool interruptible, Waitables...)(Duration timeout, string func = __FUNCTION__)
+bool asyncAwaitAny(bool interruptible, Waitables...)(Duration timeout, string func = __FUNCTION__)
 {
+	bool timedOut;
 	if (timeout == Duration.max) asyncAwaitAny!(interruptible, Waitables)(func);
 	else {
 		import eventcore.core;
@@ -92,10 +93,11 @@ void asyncAwaitAny(bool interruptible, Waitables...)(Duration timeout, string fu
 		alias timerwaitable = Waitable!(TimerCallback,
 			cb => eventDriver.timers.wait(tm, cb),
 			cb => eventDriver.timers.cancelWait(tm),
-			(tid) {}
+			(tid) { timedOut = true; }
 		);
 		asyncAwaitAny!(interruptible, timerwaitable, Waitables)(func);
 	}
+	return !timedOut;
 }
 
 void asyncAwaitAny(bool interruptible, Waitables...)(string func = __FUNCTION__)
