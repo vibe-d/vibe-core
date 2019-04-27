@@ -1434,8 +1434,18 @@ shared static this()
 
 	version (VibeNoDefaultArgs) {}
 	else {
-		readOption("uid|user", &s_privilegeLoweringUserName, "Sets the user name or id used for privilege lowering.");
-		readOption("gid|group", &s_privilegeLoweringGroupName, "Sets the group name or id used for privilege lowering.");
+		readOption("user", &s_privilegeLoweringUserName, "Sets the user name or id used for privilege lowering.");
+		readOption("group", &s_privilegeLoweringGroupName, "Sets the group name or id used for privilege lowering.");
+
+		if (s_privilegeLoweringUserName.empty || s_privilegeLoweringGroupName.empty)
+		{
+			int uid, gid;
+			readOption("uid", &uid, "Sets the user name or id used for privilege lowering.");
+			readOption("gid", &gid, "Sets the group name or id used for privilege lowering.");
+
+			s_privilegeLoweringUserName = uid.to!string;
+			s_privilegeLoweringGroupName = gid.to!string;
+		}
 	}
 
 	import std.concurrency;
