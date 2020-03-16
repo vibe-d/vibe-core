@@ -58,10 +58,14 @@ NetworkAddress resolveHost(string host, ushort address_family, bool use_dns = tr
 			cb => eventDriver.dns.lookupHost(host, cb),
 			(cb, id) => eventDriver.dns.cancelLookup(id),
 			(DNSLookupID, DNSStatus status, scope RefAddress[] addrs) {
-				if (status == DNSStatus.ok && addrs.length > 0) {
-					try res = NetworkAddress(addrs[0]);
-					catch (Exception e) { logDiagnostic("Failed to store address from DNS lookup: %s", e.msg); }
-					success = true;
+				if (status == DNSStatus.ok) {
+					foreach (addr; addrs) {
+						if (address_family != AddressFamily.UNSPEC && addr.addressFamily != address_family) continue;
+						try res = NetworkAddress(addr);
+						catch (Exception e) { logDiagnostic("Failed to store address from DNS lookup: %s", e.msg); }
+						success = true;
+						break;
+					}
 				}
 			}
 		);
