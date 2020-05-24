@@ -44,11 +44,7 @@ matrix:
         os: osx
   include:
     - d: dmd
-      env: CONFIG='select' DUB_FLAGS='--build unittest-cov --build-mode=singleFile'
-    - d: dmd
-      env: CONFIG='select' DUB_FLAGS='--build unittest-cov --build-mode=singleFile'
-    - d: dmd
-      env: CONFIG='select' DUB_FLAGS='--build unittest-cov --build-mode=singleFile'
+      env: CONFIG='select' DFLAGS='-g -unittest -cov -version=VibedCoreSetCoverageMerge' DUB_BUILD_MODE='singleFile'
 
 branches:
   only:
