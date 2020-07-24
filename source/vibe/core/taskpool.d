@@ -349,8 +349,7 @@ private final class WorkerThread : Thread {
 			handleWorkerTasks();
 			logDebug("Worker thread exit.");
 		} catch (Throwable th) {
-			logFatal("Worker thread terminated due to uncaught error: %s", th.msg);
-			logDebug("Full error: %s", th.toString().sanitize());
+			th.logException!(LogLevel.fatal)("Worker thread terminated due to uncaught error");
 			abort();
 		}
 	}

@@ -143,9 +143,8 @@ TCPListener listenTCP(ushort port, void delegate(TCPConnection) connection_callb
 	return listenTCP(port, (conn) @trusted nothrow {
 		try connection_callback(conn);
 		catch (Exception e) {
-			logError("Handling of connection failed: %s", e.msg);
+			e.logException("Handling of connection failed");
 			conn.close();
-			logDebug("Full error: %s", e);
 		}
 	}, address, options);
 }

@@ -211,9 +211,9 @@ void logException(LogLevel level = LogLevel.error)(Throwable exception,
     string file = __FILE__, int line = __LINE__)
 @safe nothrow {
 	doLog(level, mod, func, file, line, "%s: %s", error_description, exception.msg);
-	try doLog(LogLevel.debug_, mod, func, file, line,
+	try doLog(LogLevel.diagnostic, mod, func, file, line,
               "Full exception: %s", () @trusted { return exception.toString(); } ());
-	catch (Exception e) logDebug("Failed to print full exception: %s", e.msg);
+	catch (Exception e) logDiagnostic("Failed to print full exception: %s", e.msg);
 }
 
 ///

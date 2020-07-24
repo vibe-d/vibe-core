@@ -102,9 +102,8 @@ int runApplication(string[]* args_out = null)
 	version (VibeDebugCatchAll) {
 		try {
 			status = runEventLoop();
-		} catch( Throwable th ){
-			logError("Unhandled exception in event loop: %s", th.msg);
-			logDiagnostic("Full exception: %s", th.toString().sanitize());
+		} catch (Throwable th) {
+			th.logException("Unhandled exception in event loop");
 			return 1;
 		}
 	} else {
@@ -908,9 +907,7 @@ Timer setTimer(Duration timeout, void delegate() callback, bool periodic = false
 	return setTimer(timeout, () @trusted nothrow {
 		try callback();
 		catch (Exception e) {
-			logWarn("Timer callback failed: %s", e.msg);
-			scope (failure) assert(false);
-			logDebug("Full error: %s", e.toString().sanitize);
+			e.logException!(LogLevel.warn)("Timer callback failed");
 		}
 	}, periodic);
 }

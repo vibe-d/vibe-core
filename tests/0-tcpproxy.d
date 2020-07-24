@@ -112,8 +112,7 @@ int main()
 	runTask({
 		try runTest();
 		catch (Throwable th) {
-			logError("Test failed: %s", th.msg);
-			logDiagnostic("Full error: %s", th);
+			th.logException("Test failed");
 			ret = 1;
 		} finally exitEventLoop(true);
 	});
