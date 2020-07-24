@@ -114,29 +114,84 @@ nothrow {
 		fmt = See http://dlang.org/phobos/std_format.html#format-string
 		args = Any input values needed for formatting
 */
-void log(LogLevel level, /*string mod = __MODULE__, string func = __FUNCTION__,*/ string file = __FILE__, int line = __LINE__, S, T...)(S fmt, lazy T args)
+void log(LogLevel level, S, T...)(S fmt, lazy T args, string mod = __MODULE__,
+    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
 	nothrow if (isSomeString!S && level != LogLevel.none)
 {
-	doLog(level, null, null, file, line, fmt, args);
+	doLog(level, mod, func, file, line, fmt, args);
 }
+
 /// ditto
-void logTrace(/*string mod = __MODULE__, string func = __FUNCTION__,*/ string file = __FILE__, int line = __LINE__, S, T...)(S fmt, lazy T args) nothrow { doLog(LogLevel.trace, null, null/*, mod, func*/, file, line, fmt, args); }
+void logTrace(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
+    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+    nothrow
+{
+    doLog(LogLevel.trace, mod, func, file, line, fmt, args);
+}
+
 /// ditto
-void logDebugV(/*string mod = __MODULE__, string func = __FUNCTION__,*/ string file = __FILE__, int line = __LINE__, S, T...)(S fmt, lazy T args) nothrow { doLog(LogLevel.debugV, null, null/*, mod, func*/, file, line, fmt, args); }
+void logDebugV(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
+    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+    nothrow
+{
+    doLog(LogLevel.debugV, mod, func, file, line, fmt, args);
+}
+
 /// ditto
-void logDebug(/*string mod = __MODULE__, string func = __FUNCTION__,*/ string file = __FILE__, int line = __LINE__, S, T...)(S fmt, lazy T args) nothrow { doLog(LogLevel.debug_, null, null/*, mod, func*/, file, line, fmt, args); }
+void logDebug(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
+    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+    nothrow
+{
+    doLog(LogLevel.debug_, mod, func, file, line, fmt, args);
+}
+
 /// ditto
-void logDiagnostic(/*string mod = __MODULE__, string func = __FUNCTION__,*/ string file = __FILE__, int line = __LINE__, S, T...)(S fmt, lazy T args) nothrow { doLog(LogLevel.diagnostic, null, null/*, mod, func*/, file, line, fmt, args); }
+void logDiagnostic(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
+    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+    nothrow
+{
+    doLog(LogLevel.diagnostic, mod, func, file, line, fmt, args);
+}
+
 /// ditto
-void logInfo(/*string mod = __MODULE__, string func = __FUNCTION__,*/ string file = __FILE__, int line = __LINE__, S, T...)(S fmt, lazy T args) nothrow { doLog(LogLevel.info, null, null/*, mod, func*/, file, line, fmt, args); }
+void logInfo(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
+    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+    nothrow
+{
+    doLog(LogLevel.info, mod, func, file, line, fmt, args);
+}
+
 /// ditto
-void logWarn(/*string mod = __MODULE__, string func = __FUNCTION__,*/ string file = __FILE__, int line = __LINE__, S, T...)(S fmt, lazy T args) nothrow { doLog(LogLevel.warn, null, null/*, mod, func*/, file, line, fmt, args); }
+void logWarn(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
+    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+    nothrow
+{
+    doLog(LogLevel.warn, mod, func, file, line, fmt, args);
+}
+
 /// ditto
-void logError(/*string mod = __MODULE__, string func = __FUNCTION__,*/ string file = __FILE__, int line = __LINE__, S, T...)(S fmt, lazy T args) nothrow { doLog(LogLevel.error, null, null/*, mod, func*/, file, line, fmt, args); }
+void logError(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
+    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+    nothrow
+{
+    doLog(LogLevel.error, mod, func, file, line, fmt, args);
+}
+
 /// ditto
-void logCritical(/*string mod = __MODULE__, string func = __FUNCTION__,*/ string file = __FILE__, int line = __LINE__, S, T...)(S fmt, lazy T args) nothrow { doLog(LogLevel.critical, null, null/*, mod, func*/, file, line, fmt, args); }
+void logCritical(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
+    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+    nothrow
+{
+    doLog(LogLevel.critical, mod, func, file, line, fmt, args);
+}
+
 /// ditto
-void logFatal(string file = __FILE__, int line = __LINE__, S, T...)(S fmt, lazy T args) nothrow { doLog(LogLevel.fatal, null, null, file, line, fmt, args); }
+void logFatal(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
+    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+    nothrow
+{
+    doLog(LogLevel.fatal, mod, func, file, line, fmt, args);
+}
 
 ///
 @safe unittest {
@@ -151,11 +206,13 @@ void logFatal(string file = __FILE__, int line = __LINE__, S, T...)(S fmt, lazy 
 
 /** Logs an exception, including a debug stack trace.
 */
-void logException(LogLevel level = LogLevel.error, string file = __FILE__,
-	int line = __LINE__)(Throwable exception, string error_description)
+void logException(LogLevel level = LogLevel.error)(Throwable exception,
+    string error_description, string mod = __MODULE__, string func = __FUNCTION__,
+    string file = __FILE__, int line = __LINE__)
 @safe nothrow {
-	log!(level, file, line)("%s: %s", error_description, exception.msg);
-	try logDebug!(file, line)("Full exception: %s", () @trusted { return exception.toString(); } ());
+	doLog(level, mod, func, file, line, "%s: %s", error_description, exception.msg);
+	try doLog(LogLevel.debug_, mod, func, file, line,
+              "Full exception: %s", () @trusted { return exception.toString(); } ());
 	catch (Exception e) logDebug("Failed to print full exception: %s", e.msg);
 }
 
@@ -876,7 +933,9 @@ package void initializeLogModule()
 	}
 }
 
-private nothrow void doLog(S, T...)(LogLevel level, string mod, string func, string file, int line, S fmt, lazy T args)
+private void doLog(S, T...)(LogLevel level, string mod, string func, string file,
+                            int line, S fmt, lazy T args)
+    nothrow
 {
 	try {
 		static if(T.length != 0)
