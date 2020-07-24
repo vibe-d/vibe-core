@@ -9,13 +9,13 @@ d:
   # this way the overall test time gets cut down (GDC/LDC are a lot
   # slower tham DMD, so they should be started early), while still
   # catching most DMD version related build failures early
-  - dmd-2.092.0,dub
-  - dmd-2.078.3,dub
-  - ldc-1.21.0,dub
+  - dmd-2.093.1,dub
+  - dmd-2.079.1,dub
+  - ldc-1.22.0,dub
   - ldc-1.15.0,dub
   - ldc-1.20.1,dub
   - ldc-1.19.0,dub
-  - dmd-2.091.1,dub
+  - dmd-2.092.1,dub
   - dmd-2.089.1,dub
   - dmd-2.088.1,dub
   - dmd-nightly,dub
