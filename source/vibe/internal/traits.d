@@ -511,8 +511,16 @@ unittest {
 		void write(InputStream stream, ulong nbytes) {}
 	}
 
-	static assert(checkInterfaceConformance!(NonOSStruct2, OutputStream) ==
-		"NonOSStruct2 does not implement method \"write\" of type @safe void(const(ubyte[]) bytes)");
+    // `in` used to show up as `const` / `const scope`.
+    // With dlang/dmd#11474 it shows up as `in`.
+    // Remove when support for v2.093.0 is dropped
+    static if (checkInterfaceConformance!(NonOSStruct2, OutputStream) !=
+        "NonOSStruct2 does not implement method \"write\" of type @safe void(in ubyte[] bytes)")
+    {
+        // Fallback to pre-2.092+
+        static assert(checkInterfaceConformance!(NonOSStruct2, OutputStream) ==
+            "NonOSStruct2 does not implement method \"write\" of type @safe void(const(ubyte[]) bytes)");
+    }
 }
 
 string functionAttributeString(alias F)(bool restrictions_only)
