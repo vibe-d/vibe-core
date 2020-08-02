@@ -1,3 +1,16 @@
+1.9.3 - 2020-08-02
+==================
+
+- Removed dead import of deprecated symbol `enforceEx` - [pull #214][issue214]
+- Improved error messages for non-implemented interfaces - [pull #216][issue216]
+- Improved internal unittests to be forward-compatible - [pull #213][pull213] and [pull #215][pull215]
+
+[issue213]: https://github.com/vibe-d/vibe-core/issues/213
+[issue214]: https://github.com/vibe-d/vibe-core/issues/214
+[issue215]: https://github.com/vibe-d/vibe-core/issues/215
+[issue216]: https://github.com/vibe-d/vibe-core/issues/216
+
+
 1.9.2 - 2020-05-28
 ==================
 
