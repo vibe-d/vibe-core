@@ -1,3 +1,18 @@
+1.10.0 - 2020-08-24
+==================
+
+- The minimum supported compiler has been raised to v2.079.0
+- The `log` (`log`, `logTrace`, `logInfo`...) in `vibe.core.log` have been simplified
+  to take the module / file / line as default runtime argument as opposed to compile-time.
+  This could cause breakage if you were explicitly forwarding those arguments.
+- Some place were previously using `logDebug` for full exception error message,
+  and were using various method to ensure `nothrow`ness.
+  All full exception stacktrace are now printed only in diagnostic mode.
+- Full details are available in [pull #212][pull212].
+
+[pull212]: https://github.com/vibe-d/vibe-core/issues/212
+
+
 1.9.4 - 2020-08-21
 ==================
 
