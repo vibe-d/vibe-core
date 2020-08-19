@@ -39,9 +39,9 @@ matrix:
       - os: osx
         env: CONFIG=epoll
       # see https://github.com/ldc-developers/ldc/issues/2187
-      - d: ldc-1.18.0
+      - d: ldc-1.18.0,dub
         os: osx
-      - d: ldc-1.15.0
+      - d: ldc-1.15.0,dub
         os: osx
   include:
     - d: dmd
