@@ -1,3 +1,10 @@
+1.10.1 - 2020-08-31
+==================
+
+- Added support for upcoming DMD 2.094.0's `-preview=in` switch - [pull #225][pull225].
+
+[pull225]: https://github.com/vibe-d/vibe-core/issues/225
+
 1.10.0 - 2020-08-24
 ==================
 
