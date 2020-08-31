@@ -717,7 +717,20 @@ struct DirectoryWatcher { // TODO: avoid all those heap allocations!
 		LocalManualEvent changeEvent;
 		shared(NativeEventDriver) driver;
 
-		void onChange(WatcherID, in ref FileChange change)
+		// Support for `-preview=in`
+		static if (!is(typeof(mixin(q{(in ref int a) => a}))))
+		{
+			void onChange(WatcherID id, in FileChange change) nothrow {
+				this.onChangeImpl(id, change);
+			}
+		} else {
+			mixin(q{
+			void onChange(WatcherID id, in ref FileChange change) nothrow {
+				this.onChangeImpl(id, change);
+			}});
+		}
+
+		void onChangeImpl(WatcherID, const scope ref FileChange change)
 		nothrow {
 			DirectoryChangeType ct;
 			final switch (change.kind) {

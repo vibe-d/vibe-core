@@ -127,8 +127,15 @@ struct Task {
 		return app.data;
 	}
 
-	bool opEquals(in ref Task other) const @safe nothrow { return m_fiber is other.m_fiber && m_taskCounter == other.m_taskCounter; }
-	bool opEquals(in Task other) const @safe nothrow { return m_fiber is other.m_fiber && m_taskCounter == other.m_taskCounter; }
+	// Remove me when `-preview=in` becomes the default
+	static if (is(typeof(mixin(q{(in ref int a) => a}))))
+		mixin(q{
+			bool opEquals(in ref Task other) const @safe nothrow {
+				return m_fiber is other.m_fiber && m_taskCounter == other.m_taskCounter;
+			}});
+	bool opEquals(in Task other) const @safe nothrow {
+		return m_fiber is other.m_fiber && m_taskCounter == other.m_taskCounter;
+	}
 }
 
 
