@@ -163,7 +163,7 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 		import std.conv : emplace;
 		clear();
 		m_intf = ProxyImpl!O.get();
-		if (is(O == class))
+		static if (is(O == class))
 			(cast(O[])m_value[0 .. O.sizeof/m_value[0].sizeof])[0] = object;
 		else emplace!O(m_value[0 .. O.sizeof/m_value[0].sizeof]);
 		swap((cast(O[])m_value[0 .. O.sizeof/m_value[0].sizeof])[0], object);
