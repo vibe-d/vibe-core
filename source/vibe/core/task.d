@@ -97,7 +97,14 @@ struct Task {
 
 	void join() @trusted { if (m_fiber) m_fiber.join!true(m_taskCounter); }
 	void joinUninterruptible() @trusted nothrow { if (m_fiber) m_fiber.join!false(m_taskCounter); }
-	void interrupt() @trusted nothrow { if (m_fiber) m_fiber.interrupt(m_taskCounter); }
+	void interrupt() @trusted nothrow { if (m_fiber && this.running) m_fiber.interrupt(m_taskCounter); }
+
+	unittest { // regression test for bogus "task cannot interrupt itself"
+		import vibe.core.core : runTask;
+		auto t = runTask({});
+		t.join();
+		runTask({ t.interrupt(); }).join();
+	}
 
 	string toString() const @safe { import std.string; return format("%s:%s", () @trusted { return cast(void*)m_fiber; } (), m_taskCounter); }
 
@@ -137,7 +144,6 @@ struct Task {
 		return m_fiber is other.m_fiber && m_taskCounter == other.m_taskCounter;
 	}
 }
-
 
 /** Settings to control the behavior of newly started tasks.
 */
