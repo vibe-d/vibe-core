@@ -1,3 +1,13 @@
+1.11.0 - 2020-11-25
+===================
+
+- Fixed a bogus assertion failure ("A task cannot interrupt itself") - [pull #236][issue236]
+- Fixed a deprecation warning triggered in vibe:http - [pull #234][issue234]
+
+[issue234]: https://github.com/vibe-d/vibe-core/issues/234
+[issue236]: https://github.com/vibe-d/vibe-core/issues/236
+
+
 1.11.0 - 2020-10-24
 ===================
 
