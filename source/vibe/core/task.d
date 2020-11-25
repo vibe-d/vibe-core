@@ -943,7 +943,7 @@ package struct TaskScheduler {
 			assert(!tf.m_queue, "Task removed from queue, but still has one set!?");
 		}
 
-		if (thist == Task.init && priority == TaskSwitchPriority.immediate) {
+		if (thist == Task.init && (priority == TaskSwitchPriority.immediate || m_taskQueue.empty)) {
 			assert(TaskFiber.getThis().m_yieldLockCount == 0, "Cannot yield within an active yieldLock()!");
 			debug (VibeTaskLog) logTrace("switch to task from global context");
 			resumeTask(t);
