@@ -823,6 +823,7 @@ package struct TaskScheduler {
 
 		bool any_events = false;
 		while (true) {
+			debug (VibeTaskLog) logTrace("Scheduling before peeking new events...");
 			// process pending tasks
 			bool any_tasks_processed = schedule() != ScheduleStatus.idle;
 
@@ -952,7 +953,7 @@ package struct TaskScheduler {
 			auto thistf = () @trusted { return thist.taskFiber; } ();
 			assert(!thistf || !thistf.m_queue, "Calling task is running, but scheduled to be resumed!?");
 
-			debug (VibeTaskLog) logDebugV("Switching tasks (%s already in queue)", m_taskQueue.length);
+			debug (VibeTaskLog) logDebugV("Switching tasks (%s already in queue, prio=%s)", m_taskQueue.length, priority);
 			final switch (priority) {
 				case TaskSwitchPriority.normal:
 					reschedule(tf);

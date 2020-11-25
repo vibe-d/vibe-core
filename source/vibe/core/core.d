@@ -428,6 +428,7 @@ package Task runTask_internal(alias TFI_SETUP)()
 		() @trusted { TaskFiber.ms_taskEventCallback(TaskEvent.preStart, handle); } ();
 	}
 
+	debug (VibeTaskLog) logTrace("Switching to newly created task");
 	switchToTask(handle);
 
 	debug if (TaskFiber.ms_taskEventCallback) {
