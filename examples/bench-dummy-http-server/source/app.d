@@ -19,7 +19,7 @@ void main()
 					conn.readLine(r);
 					if (!r.count) break;
 				}
-				conn.write(cast(const(ubyte)[])"HTTP/1.1 200 OK\r\nContent-Length: 13\r\nContent-Type: text/plain\r\nConnection: keep-alive\r\n\r\nHello, World!");
+				conn.write(cast(const(ubyte)[])"HTTP/1.1 200 OK\r\nContent-Length: 13\r\nContent-Type: text/plain\r\nConnection: keep-alive\r\nKeep-Alive: timeout=10\r\n\r\nHello, World!");
 				conn.flush();
 			}
 		} catch (Exception e) {
@@ -30,6 +30,7 @@ void main()
 
 	auto listener = listenTCP(8080, &staticAnswer, "127.0.0.1");
 	logInfo("Listening to HTTP requests on http://127.0.0.1:8080/");
+	scope (exit) listener.stopListening();
 
 	runApplication();
 }

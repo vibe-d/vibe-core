@@ -5,10 +5,16 @@ import vibe.core.stream : pipe;
 
 void main()
 {
-	listenTCP(7000, (conn) @safe nothrow {
+	auto listeners = listenTCP(7000, (conn) @safe nothrow {
 			try pipe(conn, conn);
 			catch (Exception e)
 				logError("Error: %s", e.msg);
 	});
+
+	// closes the listening sockets
+	scope (exit)
+		foreach (l; listeners)
+			l.stopListening();
+
 	runApplication();
 }
