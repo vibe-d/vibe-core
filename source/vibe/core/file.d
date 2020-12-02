@@ -375,7 +375,7 @@ void listDirectory(string path, scope bool delegate(FileInfo info) @safe del)
 	auto ch = createChannel!S();
 	TaskSettings ts;
 	ts.priority = 10 * Task.basePriority;
-	runWorkerTaskH(ioTaskSettings, (string path, Channel!S ch) nothrow {
+	auto t = runWorkerTaskH(ioTaskSettings, (string path, Channel!S ch) nothrow {
 		scope (exit) ch.close();
 		try {
 			foreach (DirEntry ent; dirEntries(path, SpanMode.shallow)) {
@@ -388,6 +388,11 @@ void listDirectory(string path, scope bool delegate(FileInfo info) @safe del)
 			catch (Exception e) {} // channel got closed
 		}
 	}, path, ch);
+
+	scope (exit) {
+		t.interrupt();
+		t.joinUninterruptible();
+	}
 
 	S itm;
 	while (ch.tryConsumeOne(itm)) {
