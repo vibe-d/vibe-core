@@ -829,7 +829,7 @@ package struct TaskScheduler {
 
 			debug (VibeTaskLog) logTrace("Processing pending events...");
 			ExitReason er = eventDriver.core.processEvents(0.seconds);
-			debug (VibeTaskLog) logTrace("Done.");
+			debug (VibeTaskLog) logTrace("Done: %s", er);
 
 			final switch (er) {
 				case ExitReason.exited: return ExitReason.exited;
@@ -878,7 +878,7 @@ package struct TaskScheduler {
 		// process one chunk
 		debug (VibeTaskLog) logTrace("Wait for new events to process...");
 		er = eventDriver.core.processEvents(Duration.max);
-		debug (VibeTaskLog) logTrace("Done.");
+		debug (VibeTaskLog) logTrace("Done: %s", er);
 		final switch (er) {
 			case ExitReason.exited: return ExitReason.exited;
 			case ExitReason.outOfWaiters:

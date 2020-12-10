@@ -1369,6 +1369,8 @@ private void setupGcTimer()
 
 package(vibe) void performIdleProcessing(bool force_process_events = false)
 @safe nothrow {
+	debug (VibeTaskLog) logTrace("Performing idle processing...");
+
 	bool again = !getExitFlag();
 	while (again) {
 		again = performIdleProcessingOnce(force_process_events);
