@@ -132,21 +132,22 @@ struct ScopedMutexLock(M)
 	@property bool locked() const { return m_locked; }
 
 	void unlock()
-	{
+	in (this.locked)
+	do {
 		enforce(m_locked);
 		m_mutex.unlock();
 		m_locked = false;
 	}
 
 	bool tryLock()
-	{
-		enforce(!m_locked);
+	in (!this.locked)
+	do {
 		return m_locked = m_mutex.tryLock();
 	}
 
 	void lock()
-	{
-		enforce(!m_locked);
+	in (!this.locked)
+	do {
 		m_locked = true;
 		m_mutex.lock();
 	}
