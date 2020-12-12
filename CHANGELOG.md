@@ -1,4 +1,13 @@
-1.11.0 - 2020-11-25
+1.11.2 - 2020-12-12
+===================
+
+- `ScopedMutexLock` is now nothrow, using assertions instead of `Exception` in case of misuse
+- Fixes a possible "access denied" error for directories that have been iterated using `listDirectory` on Windows - [pull #239][issue239]
+
+[issue239]: https://github.com/vibe-d/vibe-core/issues/239
+
+
+1.11.1 - 2020-11-25
 ===================
 
 - Fixed a bogus assertion failure ("A task cannot interrupt itself") - [pull #236][issue236]
