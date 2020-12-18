@@ -1,3 +1,12 @@
+1.11.3 - 2020-12-18
+===================
+
+- Fixed a task schleduling issue for busy worker tasks that call `yield()` periodically - [pull #240][issue240]
+- Fixed a compilation error on DMD 2.079.0
+
+[issue240]: https://github.com/vibe-d/vibe-core/issues/240
+
+
 1.11.2 - 2020-12-12
 ===================
 
