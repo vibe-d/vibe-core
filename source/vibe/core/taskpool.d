@@ -346,7 +346,16 @@ private final class WorkerThread : Thread {
 		try {
 			if (m_pool.m_state.lock.term) return;
 			logDebug("entering worker thread");
-			handleWorkerTasks();
+
+			// There is an issue where a task that periodically calls yield()
+			// but otherwise only performs a CPU computation will cause a
+			// call to runEventLoopOnce() or yield() called from the global
+			// thread context to not return before the task is finished. For
+			// this reason we start a task here, which in turn is scheduled
+			// properly together with such a task, and also is schduled
+			// according to the task priorities.
+			runTask(&handleWorkerTasks).joinUninterruptible();
+
 			logDebug("Worker thread exit.");
 		} catch (Throwable th) {
 			th.logException!(LogLevel.fatal)("Worker thread terminated due to uncaught error");
