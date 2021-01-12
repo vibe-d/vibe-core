@@ -642,7 +642,7 @@ final class SyslogLogger(OutputStream) : Logger {
 		string m_hostName;
 		string m_appName;
 		OutputStream m_ostream;
-		Facility m_facility;
+		SyslogFacility m_facility;
 	}
 
 	deprecated("Use `SyslogFacility` instead.")
@@ -680,7 +680,7 @@ final class SyslogLogger(OutputStream) : Logger {
 		Logger uses the stream's write function when it logs and would hence
 		log forevermore.
 	*/
-	this(OutputStream stream, Facility facility, string appName = null, string hostName = hostName())
+	this(OutputStream stream, SyslogFacility facility, string appName = null, string hostName = hostName())
 	{
 		m_hostName = hostName != "" ? hostName : NILVALUE;
 		m_appName = appName != "" ? appName : NILVALUE;
@@ -839,6 +839,7 @@ unittest
 		logger.endLine();
 	}
 	auto path = fstream.path;
+	destroy(logger);
 	fstream.close();
 
 	import std.file;
