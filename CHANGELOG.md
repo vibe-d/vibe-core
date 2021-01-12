@@ -1,7 +1,20 @@
+1.11.4 - 2021-01-12
+===================
+
+- Added `ChannelConfig` and a channel mode to minimize synchronization overhead - [pull #241][issue241]
+- Added `DirectoryListMode` and optimized `listDirectory`/`iterateDirectory` - [pull #242][issue242], [pull #244][issue244]
+- Optimized `PipeMode.concurrent` for fast streams - [pull #243][issue243]
+
+[issue241]: https://github.com/vibe-d/vibe-core/issues/241
+[issue242]: https://github.com/vibe-d/vibe-core/issues/242
+[issue243]: https://github.com/vibe-d/vibe-core/issues/243
+[issue244]: https://github.com/vibe-d/vibe-core/issues/244
+
+
 1.11.3 - 2020-12-18
 ===================
 
-- Fixed a task schleduling issue for busy worker tasks that call `yield()` periodically - [pull #240][issue240]
+- Fixed a task scheduling issue for busy worker tasks that call `yield()` periodically - [pull #240][issue240]
 - Fixed a compilation error on DMD 2.079.0
 
 [issue240]: https://github.com/vibe-d/vibe-core/issues/240
@@ -10,7 +23,7 @@
 1.11.2 - 2020-12-12
 ===================
 
-- `ScopedMutexLock` is now nothrow, using assertions instead of `Exception` in case of misuse
+- `ScopedMutexLock` is now `nothrow`, using assertions instead of `Exception` in case of misuse
 - Fixes a possible "access denied" error for directories that have been iterated using `listDirectory` on Windows - [pull #239][issue239]
 
 [issue239]: https://github.com/vibe-d/vibe-core/issues/239
