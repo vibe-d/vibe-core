@@ -357,53 +357,59 @@ void createDirectory(string path, Flag!"recursive" recursive = No.recursive)
 /**
 	Enumerates all files in the specified directory.
 */
-void listDirectory(NativePath path, scope bool delegate(FileInfo info) @safe del)
+void listDirectory(NativePath path, DirectoryListMode mode,
+	scope bool delegate(FileInfo info) @safe del)
 {
-	listDirectory(path.toNativeString, del);
-}
-/// ditto
-void listDirectory(string path, scope bool delegate(FileInfo info) @safe del)
-{
-	import vibe.core.core : runWorkerTaskH;
-	import vibe.core.channel : Channel, createChannel;
+	import vibe.core.channel : ChannelConfig, ChannelPriority, createChannel;
+	import vibe.core.core : runWorkerTask;
 
-	struct S {
-		FileInfo info;
-		string error;
-	}
+	ChannelConfig cc;
+	cc.priority = ChannelPriority.overhead;
 
-	auto ch = createChannel!S();
-	TaskSettings ts;
-	ts.priority = 10 * Task.basePriority;
-	auto t = runWorkerTaskH(ioTaskSettings, (string path, Channel!S ch) nothrow {
-		scope (exit) ch.close();
-		try {
-			foreach (DirEntry ent; dirEntries(path, SpanMode.shallow)) {
-				auto nfo = makeFileInfo(ent);
-				try ch.put(S(nfo, null));
-				catch (Exception e) break; // channel got closed
-			}
-		} catch (Exception e) {
-			try ch.put(S(FileInfo.init, e.msg.length ? e.msg : "Failed to iterate directory"));
-			catch (Exception e) {} // channel got closed
-		}
-	}, path, ch);
+	ListDirectoryRequest req;
+	req.path = path;
+	req.channel = createChannel!ListDirectoryData(cc);
+	req.spanMode = mode;
 
-	scope (exit) {
-		t.interrupt();
-		t.joinUninterruptible();
-	}
+	runWorkerTask(ioTaskSettings, &performListDirectory, req);
 
-	S itm;
-	while (ch.tryConsumeOne(itm)) {
+	ListDirectoryData itm;
+	while (req.channel.tryConsumeOne(itm)) {
 		if (itm.error.length)
 			throw new Exception(itm.error);
 
 		if (!del(itm.info)) {
-			ch.close();
+			req.channel.close();
+			// makes sure that the directory handle is closed before returning
+			while (!req.channel.empty) req.channel.tryConsumeOne(itm);
 			break;
 		}
 	}
+}
+/// ditto
+void listDirectory(string path, DirectoryListMode mode,
+	scope bool delegate(FileInfo info) @safe del)
+{
+	listDirectory(NativePath(path), mode, del);
+}
+void listDirectory(NativePath path, scope bool delegate(FileInfo info) @safe del)
+{
+	listDirectory(path, DirectoryListMode.shallow, del);
+}
+/// ditto
+void listDirectory(string path, scope bool delegate(FileInfo info) @safe del)
+{
+	listDirectory(path, DirectoryListMode.shallow, del);
+}
+/// ditto
+void listDirectory(NativePath path, DirectoryListMode mode, scope bool delegate(FileInfo info) @system del)
+@system {
+	listDirectory(path, mode, (nfo) @trusted => del(nfo));
+}
+/// ditto
+void listDirectory(string path, DirectoryListMode mode, scope bool delegate(FileInfo info) @system del)
+@system {
+	listDirectory(path, mode, (nfo) @trusted => del(nfo));
 }
 /// ditto
 void listDirectory(NativePath path, scope bool delegate(FileInfo info) @system del)
@@ -416,11 +422,12 @@ void listDirectory(string path, scope bool delegate(FileInfo info) @system del)
 	listDirectory(path, (nfo) @trusted => del(nfo));
 }
 /// ditto
-int delegate(scope int delegate(ref FileInfo)) iterateDirectory(NativePath path)
+int delegate(scope int delegate(ref FileInfo)) iterateDirectory(NativePath path,
+	DirectoryListMode mode = DirectoryListMode.shallow)
 {
 	int iterator(scope int delegate(ref FileInfo) del){
 		int ret = 0;
-		listDirectory(path, (fi){
+		listDirectory(path, mode, (fi) {
 			ret = del(fi);
 			return ret == 0;
 		});
@@ -429,9 +436,10 @@ int delegate(scope int delegate(ref FileInfo)) iterateDirectory(NativePath path)
 	return &iterator;
 }
 /// ditto
-int delegate(scope int delegate(ref FileInfo)) iterateDirectory(string path)
+int delegate(scope int delegate(ref FileInfo)) iterateDirectory(string path,
+	DirectoryListMode mode = DirectoryListMode.shallow)
 {
-	return iterateDirectory(NativePath(path));
+	return iterateDirectory(NativePath(path), mode);
 }
 
 /**
@@ -461,6 +469,9 @@ NativePath getWorkingDirectory()
 struct FileInfo {
 	/// Name of the file (not including the path)
 	string name;
+
+	/// The directory containing the file
+	NativePath directory;
 
 	/// Size of the file (zero for directories)
 	ulong size;
@@ -501,6 +512,16 @@ enum FileMode {
 	/// The file is opened for appending data to it and created if it does not exist.
 	append = FileOpenMode.append
 }
+
+enum DirectoryListMode {
+	/// Only iterate the directory itself
+	shallow,
+	/// Iterate recursively (depth-first, pre-order)
+	recursive,
+	/// Iterate only directories recursively (depth-first, pre-order)
+	recursiveDirectories,
+}
+
 
 /**
 	Accesses the contents of a file as a stream.
@@ -822,11 +843,11 @@ private FileInfo makeFileInfo(DirEntry ent)
 
 	FileInfo ret;
 	string fullname = ent.name;
-	if (ent.name.length) {
+	if (fullname.length) {
 		if (ent.name[$-1].among('/', '\\'))
 			fullname = ent.name[0 .. $-1];
 		ret.name = baseName(fullname);
-		if (ret.name.length == 0) ret.name = fullname;
+		ret.directory = NativePath.fromTrustedString(dirName(fullname));
 	}
 
 	try {
@@ -923,4 +944,173 @@ private auto performInWorker(C, ARGS...)(C callable, auto ref ARGS args)
 	}
 }
 
+private void performListDirectory(ListDirectoryRequest req)
+@trusted nothrow {
+	scope (exit) req.channel.close();
+
+	auto dirs_only = req.spanMode == DirectoryListMode.recursiveDirectories;
+
+	bool scanRec(NativePath path)
+	{
+		import std.algorithm.comparison : among;
+		import std.algorithm.searching : countUntil;
+
+		version (Windows) {
+			import core.sys.windows.windows : FILE_ATTRIBUTE_DIRECTORY,
+				FILE_ATTRIBUTE_DEVICE, FILE_ATTRIBUTE_HIDDEN,
+				FILE_ATTRIBUTE_REPARSE_POINT, FINDEX_INFO_LEVELS, FINDEX_SEARCH_OPS,
+				INVALID_HANDLE_VALUE, WIN32_FIND_DATAW,
+				FindFirstFileExW, FindNextFileW, FindClose;
+			import std.conv : to;
+			import std.utf : toUTF16z;
+			import std.windows.syserror : wenforce;
+
+			static immutable timebase = SysTime(DateTime(1601, 1, 1), UTC());
+
+			WIN32_FIND_DATAW fd;
+			FINDEX_INFO_LEVELS lvl;
+			static if (is(typeof(FINDEX_INFO_LEVELS.FindExInfoBasic)))
+				lvl = FINDEX_INFO_LEVELS.FindExInfoBasic;
+			else lvl = cast(FINDEX_INFO_LEVELS)1;
+			auto fh = FindFirstFileExW((path.toString ~ "\\*").toUTF16z,
+				lvl, &fd, dirs_only ? FINDEX_SEARCH_OPS.FindExSearchLimitToDirectories
+					: FINDEX_SEARCH_OPS.FindExSearchNameMatch,
+				null, 2/*FIND_FIRST_EX_LARGE_FETCH*/);
+			wenforce(fh != INVALID_HANDLE_VALUE, path.toString);
+			scope (exit) FindClose(fh);
+			do {
+				// skip non-directories if requested
+				if (dirs_only && !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+					continue;
+
+				FileInfo fi;
+				auto zi = fd.cFileName[].representation.countUntil(0);
+				if (zi < 0) zi = fd.cFileName.length;
+				if (fd.cFileName[0 .. zi].among("."w, ".."w))
+					continue;
+				fi.name = fd.cFileName[0 .. zi].to!string;
+				fi.directory = path;
+				fi.size = (ulong(fd.nFileSizeHigh) << 32) + fd.nFileSizeLow;
+				fi.timeModified = timebase + hnsecs((ulong(fd.ftLastWriteTime.dwHighDateTime) << 32) + fd.ftLastWriteTime.dwLowDateTime);
+				fi.timeCreated = timebase + hnsecs((ulong(fd.ftCreationTime.dwHighDateTime) << 32) + fd.ftCreationTime.dwLowDateTime);
+				fi.isSymlink = !!(fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT);
+				fi.isDirectory = !!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+				fi.isFile = !fi.isDirectory && !(fd.dwFileAttributes & FILE_ATTRIBUTE_DEVICE);
+				fi.hidden = !!(fd.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
+
+				try req.channel.put(ListDirectoryData(fi, null));
+				catch (Exception e) return false; // channel got closed
+
+				if (req.spanMode != DirectoryListMode.shallow && fi.isDirectory) {
+					if (fi.isSymlink && !req.followSymlinks)
+						continue;
+					try {
+						if (!scanRec(path ~ NativePath.Segment2(fi.name)))
+							return false;
+					} catch (Exception e) {}
+				}
+			} while (FindNextFileW(fh, &fd));
+		} else {
+			import core.sys.posix.dirent : DT_DIR, DT_LNK, DT_UNKNOWN,
+				dirent, opendir, closedir, readdir;
+			import std.string : toStringz;
+
+			static immutable timebase = SysTime(DateTime(1970, 1, 1), UTC());
+
+			auto dir = opendir(path.toString.toStringz);
+			errnoEnforce(dir !is null, path.toString);
+			scope (exit) closedir(dir);
+
+			auto dfd = dirfd(dir);
+
+			dirent* de;
+			while ((de = readdir(dir)) !is null) {
+				// skip non-directories early, if possible
+				if (dirs_only && !de.d_type.among(DT_DIR, DT_LNK, DT_UNKNOWN))
+					continue;
+
+				FileInfo fi;
+				auto zi = de.d_name[].countUntil(0);
+				if (zi < 0) zi = de.d_name.length;
+				if (de.d_name[0 .. zi].among(".", ".."))
+					continue;
+
+				fi.name = de.d_name[0 .. zi].idup;
+				fi.directory = path;
+
+				stat_t st;
+				if (fstatat(dfd, fi.name.toStringz, &st, AT_SYMLINK_NOFOLLOW) != 0)
+					continue;
+
+				fi.isSymlink = S_ISLNK(st.st_mode);
+
+				// apart from the symlink flag, get the rest of the information from the link target
+				if (fi.isSymlink) fstatat(dfd, fi.name.toStringz, &st, 0);
+
+				fi.size = st.st_size;
+				fi.timeModified = timebase + st.st_mtime.seconds + (st.st_mtimensec / 100).hnsecs;
+				fi.timeCreated = timebase + st.st_ctime.seconds + (st.st_ctimensec / 100).hnsecs;
+				fi.isDirectory = S_ISDIR(st.st_mode);
+				fi.isFile = S_ISREG(st.st_mode);
+				fi.hidden = de.d_name[0] == '.';
+
+				// skip non-directories if requested
+				if (dirs_only && !fi.isDirectory)
+					continue;
+
+				try req.channel.put(ListDirectoryData(fi, null));
+				catch (Exception e) return false; // channel got closed
+
+				if (req.spanMode != DirectoryListMode.shallow && fi.isDirectory) {
+					if (fi.isSymlink && !req.followSymlinks)
+						continue;
+					try {
+						if (!scanRec(path ~ NativePath.Segment2(fi.name)))
+							return false;
+					} catch (Exception e) {}
+				}
+			}
+		}
+
+		return true;
+	}
+
+	try scanRec(req.path);
+	catch (Exception e) {
+		logException(e, "goo");
+		try req.channel.put(ListDirectoryData(FileInfo.init, e.msg.length ? e.msg : "Failed to iterate directory"));
+		catch (Exception e2) {} // channel got closed
+	}
+}
+
+version (Posix) {
+	import core.sys.posix.dirent : DIR;
+	import core.sys.posix.sys.stat : stat;
+	extern(C) @safe nothrow @nogc {
+		static if (!is(typeof(dirfd)))
+			 int dirfd(DIR*);
+		static if (!is(typeof(fstatat)))
+			int fstatat(int dirfd, const(char)* pathname, stat_t *statbuf, int flags);
+	}
+
+	version (darwin) {
+		static if (!is(typeof(AT_SYMLINK_NOFOLLOW)))
+			enum AT_SYMLINK_NOFOLLOW = 0x0020;
+	}
+}
+
 private immutable TaskSettings ioTaskSettings = { priority: 20 * Task.basePriority };
+
+private struct ListDirectoryData {
+	FileInfo info;
+	string error;
+}
+
+private struct ListDirectoryRequest {
+	import vibe.core.channel : Channel;
+
+	NativePath path;
+	DirectoryListMode spanMode;
+	Channel!ListDirectoryData channel;
+	bool followSymlinks;
+}
