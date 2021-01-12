@@ -839,6 +839,7 @@ unittest
 		logger.endLine();
 	}
 	auto path = fstream.path;
+	destroy(logger);
 	fstream.close();
 
 	import std.file;
