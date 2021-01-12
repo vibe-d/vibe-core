@@ -1033,7 +1033,7 @@ private void performListDirectory(ListDirectoryRequest req)
 					continue;
 
 				FileInfo fi;
-				auto zi = de.d_name[].countUntil(0);
+				auto zi = de.d_name[].representation.countUntil(0);
 				if (zi < 0) zi = de.d_name.length;
 				if (de.d_name[0 .. zi].among(".", ".."))
 					continue;
