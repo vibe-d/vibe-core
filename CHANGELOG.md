@@ -1,4 +1,4 @@
-1.11.4 - 2021-01-12
+1.12.0 - 2021-01-12
 ===================
 
 - Added `ChannelConfig` and a channel mode to minimize synchronization overhead - [pull #241][issue241]
