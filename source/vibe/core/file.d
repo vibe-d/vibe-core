@@ -515,11 +515,13 @@ enum FileMode {
 
 enum DirectoryListMode {
 	/// Only iterate the directory itself
-	shallow,
+	shallow = 0,
+	/// Only iterate over directories directly within the given directory
+	shallowDirectories = 1<<1,
 	/// Iterate recursively (depth-first, pre-order)
-	recursive,
+	recursive = 1<<0,
 	/// Iterate only directories recursively (depth-first, pre-order)
-	recursiveDirectories,
+	recursiveDirectories = recursive | shallowDirectories,
 }
 
 
@@ -948,7 +950,8 @@ private void performListDirectory(ListDirectoryRequest req)
 @trusted nothrow {
 	scope (exit) req.channel.close();
 
-	auto dirs_only = req.spanMode == DirectoryListMode.recursiveDirectories;
+	auto dirs_only = !!(req.spanMode & DirectoryListMode.shallowDirectories);
+	auto rec = !!(req.spanMode & DirectoryListMode.recursive);
 
 	bool scanRec(NativePath path)
 	{
@@ -1001,7 +1004,7 @@ private void performListDirectory(ListDirectoryRequest req)
 				try req.channel.put(ListDirectoryData(fi, null));
 				catch (Exception e) return false; // channel got closed
 
-				if (req.spanMode != DirectoryListMode.shallow && fi.isDirectory) {
+				if (rec && fi.isDirectory) {
 					if (fi.isSymlink && !req.followSymlinks)
 						continue;
 					try {
@@ -1030,29 +1033,28 @@ private void performListDirectory(ListDirectoryRequest req)
 					continue;
 
 				FileInfo fi;
-				auto zi = de.d_name[].countUntil(0);
+				auto zi = de.d_name[].representation.countUntil(0);
 				if (zi < 0) zi = de.d_name.length;
 				if (de.d_name[0 .. zi].among(".", ".."))
 					continue;
 
 				fi.name = de.d_name[0 .. zi].idup;
 				fi.directory = path;
+				fi.hidden = de.d_name[0] == '.';
 
 				stat_t st;
-				if (fstatat(dfd, fi.name.toStringz, &st, AT_SYMLINK_NOFOLLOW) != 0)
-					continue;
+				if (fstatat(dfd, fi.name.toStringz, &st, AT_SYMLINK_NOFOLLOW) == 0) {
+					fi.isSymlink = S_ISLNK(st.st_mode);
 
-				fi.isSymlink = S_ISLNK(st.st_mode);
+					// apart from the symlink flag, get the rest of the information from the link target
+					if (fi.isSymlink) fstatat(dfd, fi.name.toStringz, &st, 0);
 
-				// apart from the symlink flag, get the rest of the information from the link target
-				if (fi.isSymlink) fstatat(dfd, fi.name.toStringz, &st, 0);
-
-				fi.size = st.st_size;
-				fi.timeModified = timebase + st.st_mtime.seconds + (st.st_mtimensec / 100).hnsecs;
-				fi.timeCreated = timebase + st.st_ctime.seconds + (st.st_ctimensec / 100).hnsecs;
-				fi.isDirectory = S_ISDIR(st.st_mode);
-				fi.isFile = S_ISREG(st.st_mode);
-				fi.hidden = de.d_name[0] == '.';
+					fi.size = st.st_size;
+					fi.timeModified = timebase + st.st_mtime.seconds + (st.st_mtimensec / 100).hnsecs;
+					fi.timeCreated = timebase + st.st_ctime.seconds + (st.st_ctimensec / 100).hnsecs;
+					fi.isDirectory = S_ISDIR(st.st_mode);
+					fi.isFile = S_ISREG(st.st_mode);
+				}
 
 				// skip non-directories if requested
 				if (dirs_only && !fi.isDirectory)
@@ -1061,7 +1063,7 @@ private void performListDirectory(ListDirectoryRequest req)
 				try req.channel.put(ListDirectoryData(fi, null));
 				catch (Exception e) return false; // channel got closed
 
-				if (req.spanMode != DirectoryListMode.shallow && fi.isDirectory) {
+				if (rec && fi.isDirectory) {
 					if (fi.isSymlink && !req.followSymlinks)
 						continue;
 					try {
@@ -1089,8 +1091,12 @@ version (Posix) {
 	extern(C) @safe nothrow @nogc {
 		static if (!is(typeof(dirfd)))
 			 int dirfd(DIR*);
-		static if (!is(typeof(fstatat)))
-			int fstatat(int dirfd, const(char)* pathname, stat_t *statbuf, int flags);
+		static if (!is(typeof(fstatat))) {
+			version (OSX) {
+				pragma(mangle, "fstatat$INODE64")
+				int fstatat(int dirfd, const(char)* pathname, stat_t *statbuf, int flags);
+			} else int fstatat(int dirfd, const(char)* pathname, stat_t *statbuf, int flags);
+		}
 	}
 
 	version (darwin) {

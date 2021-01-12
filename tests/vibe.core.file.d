@@ -11,7 +11,7 @@ enum ubyte[] bytes(BYTES...) = [BYTES];
 
 void main()
 {
-	auto f = openFile("test.dat", FileMode.createTrunc);
+	auto f = openFile("têst.dat", FileMode.createTrunc);
 	assert(f.size == 0);
 	assert(f.tell == 0);
 	f.write(bytes!(1, 2, 3, 4, 5));
@@ -33,8 +33,8 @@ void main()
 	assert(dst[] == bytes!(3, 4, 5, 6, 7));
 	f.close();
 
-	auto fi = getFileInfo("test.dat");
-	assert(fi.name == "test.dat");
+	auto fi = getFileInfo("têst.dat");
+	assert(fi.name == "têst.dat");
 	assert(fi.isFile);
 	assert(!fi.isDirectory);
 	assert(!fi.isSymlink);
@@ -43,5 +43,18 @@ void main()
 
 	assertThrown(getFileInfo("*impossible:file?"));
 
-	removeFile("test.dat");
+	bool found = false;
+	listDirectory(".", (fi) {
+		if (fi.name != "têst.dat") return true;
+		assert(fi.isFile);
+		assert(!fi.isDirectory);
+		assert(!fi.isSymlink);
+		assert(!fi.hidden);
+		assert(fi.size == 10);
+		found = true;
+		return true;
+	});
+	assert(found, "listDirectory did not find test file.");
+
+	removeFile("têst.dat");
 }
