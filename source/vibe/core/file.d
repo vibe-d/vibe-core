@@ -1089,8 +1089,12 @@ version (Posix) {
 	extern(C) @safe nothrow @nogc {
 		static if (!is(typeof(dirfd)))
 			 int dirfd(DIR*);
-		static if (!is(typeof(fstatat)))
-			int fstatat(int dirfd, const(char)* pathname, stat_t *statbuf, int flags);
+		static if (!is(typeof(fstatat))) {
+			version (OSX) {
+				pragma(mangle, "fstatat$INODE64")
+				int fstatat(int dirfd, const(char)* pathname, stat_t *statbuf, int flags);
+			} else int fstatat(int dirfd, const(char)* pathname, stat_t *statbuf, int flags);
+		}
 	}
 
 	version (darwin) {
