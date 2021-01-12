@@ -77,7 +77,7 @@ ulong pipe(InputStream, OutputStream)(InputStream source, OutputStream sink,
 		case PipeMode.concurrent:
 			{
 				enum bufcount = 4;
-				enum bufsize = 64*1024;
+				enum bufsize = 4*1024*1024;
 
 				static struct ConcurrentPipeState {
 					InputStream source;
@@ -94,6 +94,9 @@ ulong pipe(InputStream, OutputStream)(InputStream source, OutputStream sink,
 
 					void readLoop()
 					{
+						// gradually increased depending on read speed
+						size_t rbsize = 64*1024;
+
 						while (true) {
 							ulong remaining = nbytes == ulong.max ? source.leastSize : nbytes;
 							if (remaining == 0) break;
@@ -101,9 +104,13 @@ ulong pipe(InputStream, OutputStream)(InputStream source, OutputStream sink,
 							while (read_idx >= write_idx + buffers.length)
 								evt.wait();
 
-							size_t chunk = min(remaining, bufsize);
+							size_t chunk = min(remaining, rbsize);
 							auto bi = read_idx % bufcount;
+
+							auto tm = MonoTime.currTime;
 							source.read(buffers[bi][0 .. chunk]);
+							if (rbsize < bufsize && MonoTime.currTime - tm < 100.msecs)
+								rbsize *= 2;
 							if (nbytes != ulong.max) nbytes -= chunk;
 							bytesWritten += chunk;
 							bufferFill[bi] = chunk;
