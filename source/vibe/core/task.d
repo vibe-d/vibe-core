@@ -440,7 +440,7 @@ final package class TaskFiber : Fiber {
 					debug if (ms_taskEventCallback) ms_taskEventCallback(TaskEvent.end, handle);
 
 					debug if (() @trusted { return (cast(shared)this); } ().getTaskStatus().interrupt)
-						logDebug("Task exited while an interrupt was in flight.");
+						logDebugV("Task exited while an interrupt was in flight.");
 				} catch (Exception e) {
 					debug if (ms_taskEventCallback) ms_taskEventCallback(TaskEvent.fail, handle);
 					e.logException!(LogLevel.critical)("Task terminated with uncaught exception");
