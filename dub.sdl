@@ -15,10 +15,6 @@ configuration "winapi" {
 	subConfiguration "eventcore" "winapi"
 	versions "Windows7"
 }
-configuration "winapi-optlink" {
-	subConfiguration "eventcore" "winapi-optlink"
-	versions "Windows7"
-}
 configuration "epoll" {
 	subConfiguration "eventcore" "epoll"
 }
@@ -30,11 +26,7 @@ configuration "kqueue" {
 }
 configuration "select" {
 	subConfiguration "eventcore" "select"
-	versions "Windows7" platform="win"
-}
-configuration "select-optlink" {
-	subConfiguration "eventcore" "select-optlink"
-	versions "Windows7" platform="win"
+	versions "Windows7" platform="windows"
 }
 configuration "libasync" {
 	subConfiguration "eventcore" "libasync"
