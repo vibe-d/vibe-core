@@ -788,7 +788,7 @@ struct GenericPath(F) {
 
 	/** Determines if the `parentPath` property is valid.
 	*/
-	bool hasParentPath()
+	@property bool hasParentPath()
 	const @nogc {
 		auto b = Format.getBackNode(m_path);
 		return b.length < m_path.length;
@@ -800,13 +800,31 @@ struct GenericPath(F) {
 			An `Exception` is thrown if this path has no parent path. Use
 			`hasParentPath` to test this upfront.
 	*/
-	GenericPath parentPath()
+	@property GenericPath parentPath()
 	const @nogc {
 		auto b = Format.getBackNode(m_path);
 		static immutable Exception e = new Exception("Path has no parent path");
 		if (b.length >= m_path.length) throw e;
 		return GenericPath.fromTrustedString(m_path[0 .. $ - b.length]);
 	}
+
+
+	/** Returns the normalized form of the path.
+
+		See `normalize` for a full description.
+	*/
+	@property GenericPath normalized()
+	const {
+		GenericPath ret = this;
+		ret.normalize();
+		return ret;
+	}
+
+	unittest {
+		assert(PosixPath("foo/../bar").normalized == PosixPath("bar"));
+		assert(PosixPath("foo//./bar/../baz").normalized == PosixPath("foo/baz"));
+	}
+
 
 	/** Removes any redundant path segments and replaces all separators by the
 		default one.
