@@ -1,3 +1,15 @@
+1.13.0 - 2021-01-15
+===================
+
+- Added `parallelMap` and `parallelUnorderedMap` - [pull #247][issue247]
+- Added `GenericPath.filenameExtension`, as well as `Segment2.extension` and `.withoutExtension` properties - [pull #246][issue246]
+- Added `workerTaskPool` accessor to get the default task pool - [pull #247][issue247]
+- Added `GenericPath.normalized` - [pull #246][issue246]
+
+[issue246]: https://github.com/vibe-d/vibe-core/issues/246
+[issue247]: https://github.com/vibe-d/vibe-core/issues/247
+
+
 1.12.0 - 2021-01-12
 ===================
 
