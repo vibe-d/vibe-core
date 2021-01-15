@@ -343,7 +343,8 @@ unittest { // tuple fields
 bool areConvertibleTo(alias TYPES, alias TARGET_TYPES)()
 	if (isGroup!TYPES && isGroup!TARGET_TYPES)
 {
-	static assert(TYPES.expand.length == TARGET_TYPES.expand.length);
+	static assert(TYPES.expand.length == TARGET_TYPES.expand.length,
+		"Argument count does not match.");
 	foreach (i, V; TYPES.expand)
 		if (!is(V : TARGET_TYPES.expand[i]))
 			return false;

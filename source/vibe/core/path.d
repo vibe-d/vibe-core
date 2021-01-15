@@ -1,7 +1,7 @@
 /**
 	Contains routines for high level path handling.
 
-	Copyright: © 2012-2019 Sönke Ludwig
+	Copyright: © 2012-2021 Sönke Ludwig
 	License: Subject to the terms of the MIT license, as written in the included LICENSE.txt file.
 	Authors: Sönke Ludwig
 */
@@ -12,8 +12,9 @@ import std.algorithm.comparison : equal, min;
 import std.algorithm.iteration : map;
 import std.exception : enforce;
 import std.range : empty, front, popFront, popFrontExactly, takeExactly;
-import std.range.primitives : ElementType, isInputRange, isOutputRange;
-import std.traits : isInstanceOf;
+import std.range.primitives : ElementType, isInputRange, isOutputRange, isForwardRange, save;
+import std.traits : isArray, isInstanceOf, isSomeChar;
+import std.utf : byChar;
 
 
 /** Computes the relative path from `base_path` to this path.
@@ -467,6 +468,47 @@ struct GenericPath(F) {
 		/// Returns `true` $(I iff) the segment has a trailing path separator.
 		@property bool hasSeparator() const nothrow @nogc { return m_separator != '\0'; }
 
+
+		/** The extension part of the file name.
+
+			If the file name contains an extension, this returns a forward range
+			with the extension including the leading dot. Otherwise an empty
+			range is returned.
+
+			See_also: `stripExtension`
+		*/
+		@property auto extension()
+		const nothrow @nogc {
+			return .extension(this.name);
+		}
+
+		///
+		unittest {
+			assert(PosixPath("/foo/bar.txt").head2.extension.equal(".txt"));
+			assert(PosixPath("/foo/bar").head2.extension.equal(""));
+			assert(PosixPath("/foo/.bar").head2.extension.equal(""));
+			assert(PosixPath("/foo/.bar.txt").head2.extension.equal(".txt"));
+		}
+
+
+		/** Returns the file base name, excluding the extension.
+
+			See_also: `extension`
+		*/
+		@property auto withoutExtension()
+		const nothrow @nogc {
+			return .stripExtension(this.name);
+		}
+
+		///
+		unittest {
+			assert(PosixPath("/foo/bar.txt").head2.withoutExtension.equal("bar"));
+			assert(PosixPath("/foo/bar").head2.withoutExtension.equal("bar"));
+			assert(PosixPath("/foo/.bar").head2.withoutExtension.equal(".bar"));
+			assert(PosixPath("/foo/.bar.txt").head2.withoutExtension.equal(".bar"));
+		}
+
+
 		/** Converts the segment to another path type.
 
 			The segment name will be re-validated during the conversion. The
@@ -788,7 +830,7 @@ struct GenericPath(F) {
 
 	/** Determines if the `parentPath` property is valid.
 	*/
-	bool hasParentPath()
+	@property bool hasParentPath()
 	const @nogc {
 		auto b = Format.getBackNode(m_path);
 		return b.length < m_path.length;
@@ -800,13 +842,48 @@ struct GenericPath(F) {
 			An `Exception` is thrown if this path has no parent path. Use
 			`hasParentPath` to test this upfront.
 	*/
-	GenericPath parentPath()
+	@property GenericPath parentPath()
 	const @nogc {
 		auto b = Format.getBackNode(m_path);
 		static immutable Exception e = new Exception("Path has no parent path");
 		if (b.length >= m_path.length) throw e;
 		return GenericPath.fromTrustedString(m_path[0 .. $ - b.length]);
 	}
+
+
+	/** The extension part of the file name pointed to by the path.
+
+		If the path is not empty and its head segment has  an extension, this
+		returns a forward range with the extension including the leading dot.
+		Otherwise an empty range is returned.
+
+		See `Segment2.extension` for a full description.
+
+		See_also: `Segment2.extension`, `Segment2.stripExtension`
+	*/
+	@property auto fileExtension()
+	const nothrow @nogc {
+		if (this.empty) return typeof(this.head2.extension).init;
+		return this.head2.extension;
+	}
+
+
+	/** Returns the normalized form of the path.
+
+		See `normalize` for a full description.
+	*/
+	@property GenericPath normalized()
+	const {
+		GenericPath ret = this;
+		ret.normalize();
+		return ret;
+	}
+
+	unittest {
+		assert(PosixPath("foo/../bar").normalized == PosixPath("bar"));
+		assert(PosixPath("foo//./bar/../baz").normalized == PosixPath("foo/baz"));
+	}
+
 
 	/** Removes any redundant path segments and replaces all separators by the
 		default one.
@@ -1767,6 +1844,8 @@ struct InetPathFormat {
 
 			@property bool empty() const { return m_index >= m_str.length; }
 
+			@property R save() const { return this; }
+
 			@property char front()
 			const {
 				auto ch = m_str[m_index];
@@ -1849,6 +1928,107 @@ struct InetPathFormat {
 		}
 	}
 }
+
+private auto extension(R)(R filename)
+	if (isForwardRange!R && isSomeChar!(ElementType!R))
+{
+	if (filename.empty) return filename;
+
+	static if (isArray!R) { // avoid auto decoding
+		filename = filename[1 .. $]; // ignore leading dot
+
+		R candidate;
+		while (filename.length) {
+			if (filename[0] == '.')
+				candidate = filename;
+			filename = filename[1 .. $];
+		}
+		return candidate;
+	} else {
+		filename.popFront(); // ignore leading dot
+
+		R candidate;
+		while (!filename.empty) {
+			if (filename.front == '.')
+				candidate = filename.save;
+			filename.popFront();
+		}
+		return candidate;
+	}
+}
+
+@safe nothrow unittest {
+	assert(extension("foo") == "");
+	assert(extension("foo.txt") == ".txt");
+	assert(extension(".foo") == "");
+	assert(extension(".foo.txt") == ".txt");
+	assert(extension("foo.bar.txt") == ".txt");
+}
+
+unittest {
+	assert(extension(InetPath("foo").head2.name).equal(""));
+	assert(extension(InetPath("foo.txt").head2.name).equal(".txt"));
+	assert(extension(InetPath(".foo").head2.name).equal(""));
+	assert(extension(InetPath(".foo.txt").head2.name).equal(".txt"));
+	assert(extension(InetPath("foo.bar.txt").head2.name).equal(".txt"));
+}
+
+
+private auto stripExtension(R)(R filename)
+	if (isForwardRange!R && isSomeChar!(ElementType!R))
+{
+	static if (isArray!R) { // make sure to return a slice
+		if (!filename.length) return filename;
+		R r = filename;
+		r = r[1 .. $]; // ignore leading dot
+		size_t cnt = 0, rcnt = r.length;
+		while (r.length) {
+			if (r[0] == '.')
+				rcnt = cnt;
+			cnt++;
+			r = r[1 .. $];
+		}
+		return filename[0 .. rcnt + 1];
+	} else {
+		if (filename.empty) return filename.takeExactly(0);
+		R r = filename.save;
+		size_t cnt = 0, rcnt = size_t.max;
+		r.popFront(); // ignore leading dot
+		while (!r.empty) {
+			if (r.front == '.')
+				rcnt = cnt;
+			cnt++;
+			r.popFront();
+		}
+		if (rcnt == size_t.max) return filename.takeExactly(cnt + 1);
+		return filename.takeExactly(rcnt + 1);
+	}
+}
+
+@safe nothrow unittest {
+	assert(stripExtension("foo") == "foo");
+	assert(stripExtension("foo.txt") == "foo");
+	assert(stripExtension(".foo") == ".foo");
+	assert(stripExtension(".foo.txt") == ".foo");
+	assert(stripExtension("foo.bar.txt") == "foo.bar");
+}
+
+unittest { // test range based path
+	import std.utf : byWchar;
+
+	assert(stripExtension("foo".byWchar).equal("foo"));
+	assert(stripExtension("foo.txt".byWchar).equal("foo"));
+	assert(stripExtension(".foo".byWchar).equal(".foo"));
+	assert(stripExtension(".foo.txt".byWchar).equal(".foo"));
+	assert(stripExtension("foo.bar.txt".byWchar).equal("foo.bar"));
+
+	assert(stripExtension(InetPath("foo").head2.name).equal("foo"));
+	assert(stripExtension(InetPath("foo.txt").head2.name).equal("foo"));
+	assert(stripExtension(InetPath(".foo").head2.name).equal(".foo"));
+	assert(stripExtension(InetPath(".foo.txt").head2.name).equal(".foo"));
+	assert(stripExtension(InetPath("foo.bar.txt").head2.name).equal("foo.bar"));
+}
+
 
 unittest { // regression tests
 	assert(NativePath("").bySegment.empty);
