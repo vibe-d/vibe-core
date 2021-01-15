@@ -721,6 +721,18 @@ public void setupWorkerThreads(uint num = logicalProcessorCount())
 }
 
 
+/** Returns the default worker task pool.
+
+	This pool is used by `runWorkerTask`, `runWorkerTaskH` and
+	`runWorkerTaskDist`.
+*/
+@property shared(TaskPool) workerTaskPool()
+{
+	setupWorkerThreads();
+	return st_workerPool;
+}
+
+
 /**
 	Determines the number of logical processors in the system.
 
