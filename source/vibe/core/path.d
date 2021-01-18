@@ -1736,13 +1736,13 @@ struct InetPathFormat {
 	static string validatePath(string path)
 	@nogc {
 		for (size_t i = 0; i < path.length; i++) {
+			if (isAsciiAlphaNum(path[i]))
+				continue;
+
 			switch (path[i]) {
 				default:
 					return "Invalid character in internet path.";
 				// unreserved
-				case 'A': .. case 'Z':
-				case 'a': .. case 'z':
-				case '0': .. case '9':
 				case '-', '.', '_', '~':
 				// subdelims
 				case '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=':
@@ -2029,6 +2029,25 @@ unittest { // test range based path
 	assert(stripExtension(InetPath("foo.bar.txt").head2.name).equal("foo.bar"));
 }
 
+private static bool isAsciiAlphaNum(char ch)
+@safe nothrow pure @nogc {
+	return (uint(ch) & 0xDF) - 0x41 < 26 || uint(ch) - '0' <= 9;
+}
+
+unittest {
+	assert(!isAsciiAlphaNum('@'));
+	assert(isAsciiAlphaNum('A'));
+	assert(isAsciiAlphaNum('Z'));
+	assert(!isAsciiAlphaNum('['));
+	assert(!isAsciiAlphaNum('`'));
+	assert(isAsciiAlphaNum('a'));
+	assert(isAsciiAlphaNum('z'));
+	assert(!isAsciiAlphaNum('{'));
+	assert(!isAsciiAlphaNum('/'));
+	assert(isAsciiAlphaNum('0'));
+	assert(isAsciiAlphaNum('9'));
+	assert(!isAsciiAlphaNum(':'));
+}
 
 unittest { // regression tests
 	assert(NativePath("").bySegment.empty);
