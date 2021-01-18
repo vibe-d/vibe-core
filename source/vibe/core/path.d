@@ -1881,15 +1881,13 @@ struct InetPathFormat {
 		import std.array : appender;
 
 		foreach (i, char c; segment) {
+			if (isAsciiAlphaNum(c)) continue;
 			switch (c) {
 				default:
 					auto ret = appender!string;
 					ret.put(segment[0 .. i]);
 					encodeSegment(ret, segment[i .. $]);
 					return ret.data;
-				case 'a': .. case 'z':
-				case 'A': .. case 'Z':
-				case '0': .. case '9':
 				case '-', '.', '_', '~':
 				case '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=':
         		case ':', '@':
