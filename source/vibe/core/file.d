@@ -1122,6 +1122,11 @@ version (Posix) {
 		static if (!is(typeof(AT_SYMLINK_NOFOLLOW)))
 			enum AT_SYMLINK_NOFOLLOW = 0x0020;
 	}
+
+	version (CRuntime_Musl) {
+		static if (!is(typeof(AT_SYMLINK_NOFOLLOW)))
+			enum AT_SYMLINK_NOFOLLOW = 0x0100;
+	}
 }
 
 private immutable TaskSettings ioTaskSettings = { priority: 20 * Task.basePriority };
