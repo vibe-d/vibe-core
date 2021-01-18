@@ -1042,6 +1042,25 @@ private void performListDirectory(ListDirectoryRequest req)
 				fi.directory = path;
 				fi.hidden = de.d_name[0] == '.';
 
+				static SysTime getTimeField(string f)(ref const stat_t st)
+				{
+					long secs, nsecs;
+					static if (is(typeof(__traits(getMember, st, f)))) {
+						secs = __traits(getMember, st, f).tv_sec;
+						nsecs = __traits(getMember, st, f).tv_nsec;
+					} else {
+						secs = __traits(getMember, st, f ~ "e");
+						static if (is(typeof(__traits(getMember, st, f ~ "ensec"))))
+							nsecs = __traits(getMember, st, f ~ "ensec");
+						else static if (is(typeof(__traits(getMember, st, "__" ~ f ~ "ensec"))))
+							nsecs = __traits(getMember, st, "__" ~ f ~ "ensec");
+						else static if (is(typeof(__traits(getMember, st, "__" ~ f ~ "e_nsec"))))
+							nsecs = __traits(getMember, st, "__" ~ f ~ "e_nsec");
+						else static assert(false, "Found no nanoseconds fields in struct stat");
+					}
+					return timebase + secs.seconds + (nsecs / 100).hnsecs;
+				}
+
 				stat_t st;
 				if (fstatat(dfd, fi.name.toStringz, &st, AT_SYMLINK_NOFOLLOW) == 0) {
 					fi.isSymlink = S_ISLNK(st.st_mode);
@@ -1050,8 +1069,8 @@ private void performListDirectory(ListDirectoryRequest req)
 					if (fi.isSymlink) fstatat(dfd, fi.name.toStringz, &st, 0);
 
 					fi.size = st.st_size;
-					fi.timeModified = timebase + st.st_mtime.seconds + (st.st_mtimensec / 100).hnsecs;
-					fi.timeCreated = timebase + st.st_ctime.seconds + (st.st_ctimensec / 100).hnsecs;
+					fi.timeModified = getTimeField!"st_mtim"(st);
+					fi.timeCreated = getTimeField!"st_ctim"(st);
 					fi.isDirectory = S_ISDIR(st.st_mode);
 					fi.isFile = S_ISREG(st.st_mode);
 				}
@@ -1102,6 +1121,11 @@ version (Posix) {
 	version (darwin) {
 		static if (!is(typeof(AT_SYMLINK_NOFOLLOW)))
 			enum AT_SYMLINK_NOFOLLOW = 0x0020;
+	}
+
+	version (CRuntime_Musl) {
+		static if (!is(typeof(AT_SYMLINK_NOFOLLOW)))
+			enum AT_SYMLINK_NOFOLLOW = 0x0100;
 	}
 }
 
