@@ -333,7 +333,7 @@ struct GenericPath(F) {
 			if (m_path.length) {
 				auto ap = Format.getAbsolutePrefix(m_path);
 				if (ap.length && !Format.isSeparator(ap[0]))
-					m_front = Segment.fromTrustedString(null, '/');
+					m_front = Segment.fromTrustedString(null, Format.defaultSeparator);
 				else readFront();
 			}
 		}
@@ -677,7 +677,7 @@ struct GenericPath(F) {
 				if (m_path.length) {
 					auto ap = Format.getAbsolutePrefix(m_path);
 					if (ap.length && !Format.isSeparator(ap[0]))
-						m_front = Segment2.fromTrustedEncodedString(null, '/');
+						m_front = Segment2.fromTrustedEncodedString(null, Format.defaultSeparator);
 					else readFront();
 				}
 			}
