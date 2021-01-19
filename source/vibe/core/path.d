@@ -1303,8 +1303,7 @@ struct WindowsPathFormat {
 
 	static bool isSeparator(dchar ch)
 	@nogc {
-		import std.algorithm.comparison : among;
-		return ch.among!('\\', '/') != 0;
+		return ch == '\\' || ch == '/';
 	}
 
 	static string getAbsolutePrefix(string path)
