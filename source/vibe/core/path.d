@@ -333,7 +333,7 @@ struct GenericPath(F) {
 			if (m_path.length) {
 				auto ap = Format.getAbsolutePrefix(m_path);
 				if (ap.length && !Format.isSeparator(ap[0]))
-					m_front = Segment.fromTrustedString(null, '/');
+					m_front = Segment.fromTrustedString(null, Format.defaultSeparator);
 				else readFront();
 			}
 		}
@@ -677,7 +677,7 @@ struct GenericPath(F) {
 				if (m_path.length) {
 					auto ap = Format.getAbsolutePrefix(m_path);
 					if (ap.length && !Format.isSeparator(ap[0]))
-						m_front = Segment2.fromTrustedEncodedString(null, '/');
+						m_front = Segment2.fromTrustedEncodedString(null, Format.defaultSeparator);
 					else readFront();
 				}
 			}
@@ -1303,8 +1303,7 @@ struct WindowsPathFormat {
 
 	static bool isSeparator(dchar ch)
 	@nogc {
-		import std.algorithm.comparison : among;
-		return ch.among!('\\', '/') != 0;
+		return ch == '\\' || ch == '/';
 	}
 
 	static string getAbsolutePrefix(string path)
@@ -1736,13 +1735,13 @@ struct InetPathFormat {
 	static string validatePath(string path)
 	@nogc {
 		for (size_t i = 0; i < path.length; i++) {
+			if (isAsciiAlphaNum(path[i]))
+				continue;
+
 			switch (path[i]) {
 				default:
 					return "Invalid character in internet path.";
 				// unreserved
-				case 'A': .. case 'Z':
-				case 'a': .. case 'z':
-				case '0': .. case '9':
 				case '-', '.', '_', '~':
 				// subdelims
 				case '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=':
@@ -1881,15 +1880,13 @@ struct InetPathFormat {
 		import std.array : appender;
 
 		foreach (i, char c; segment) {
+			if (isAsciiAlphaNum(c)) continue;
 			switch (c) {
 				default:
 					auto ret = appender!string;
 					ret.put(segment[0 .. i]);
 					encodeSegment(ret, segment[i .. $]);
 					return ret.data;
-				case 'a': .. case 'z':
-				case 'A': .. case 'Z':
-				case '0': .. case '9':
 				case '-', '.', '_', '~':
 				case '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=':
         		case ':', '@':
@@ -2029,6 +2026,25 @@ unittest { // test range based path
 	assert(stripExtension(InetPath("foo.bar.txt").head2.name).equal("foo.bar"));
 }
 
+private static bool isAsciiAlphaNum(char ch)
+@safe nothrow pure @nogc {
+	return (uint(ch) & 0xDF) - 0x41 < 26 || uint(ch) - '0' <= 9;
+}
+
+unittest {
+	assert(!isAsciiAlphaNum('@'));
+	assert(isAsciiAlphaNum('A'));
+	assert(isAsciiAlphaNum('Z'));
+	assert(!isAsciiAlphaNum('['));
+	assert(!isAsciiAlphaNum('`'));
+	assert(isAsciiAlphaNum('a'));
+	assert(isAsciiAlphaNum('z'));
+	assert(!isAsciiAlphaNum('{'));
+	assert(!isAsciiAlphaNum('/'));
+	assert(isAsciiAlphaNum('0'));
+	assert(isAsciiAlphaNum('9'));
+	assert(!isAsciiAlphaNum(':'));
+}
 
 unittest { // regression tests
 	assert(NativePath("").bySegment.empty);
