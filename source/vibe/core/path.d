@@ -302,7 +302,7 @@ struct GenericPath(F) {
 				be represented in the target path format.
 		*/
 		GenericPath!F.Segment opCast(T : GenericPath!F.Segment, F)()
-		{
+		const {
 			char dsep = '\0';
 			if (m_separator) {
 				if (F.isSeparator(m_separator)) dsep = m_separator;
@@ -520,7 +520,7 @@ struct GenericPath(F) {
 				be represented in the target path format.
 		*/
 		GenericPath!F.Segment2 opCast(T : GenericPath!F.Segment2, F)()
-		{
+		const {
 			import std.array : array;
 
 			char dsep = '\0';
