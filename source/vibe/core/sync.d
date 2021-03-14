@@ -1025,15 +1025,12 @@ struct ManualEvent {
 	shared nothrow @trusted {
 		import core.atomic : atomicOp, cas;
 
-		() @trusted { logTrace("emit shared %s", cast(void*)&this); } ();
-
 		auto ec = atomicOp!"+="(m_emitCount, 1);
 		auto thisthr = Thread.getThis();
 
 		ThreadWaiter lw;
 		auto drv = eventDriver;
 		m_waiters.lock.active.filter((ThreadWaiter w) {
-			() @trusted { logTrace("waiter %s", cast(void*)w); } ();
 			if (w.m_driver is drv) {
 				lw = w;
 				lw.addRef();
@@ -1045,13 +1042,10 @@ struct ManualEvent {
 			}
 			return true;
 		});
-		() @trusted { logTrace("lw %s", cast(void*)lw); } ();
 		if (lw) {
 			lw.emit();
 			releaseWaiter(lw);
 		}
-
-		logTrace("emit shared done");
 
 		return ec;
 	}
