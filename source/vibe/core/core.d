@@ -925,6 +925,25 @@ Timer setTimer(Duration timeout, void delegate() callback, bool periodic = false
 	}, periodic);
 }
 
+unittest { // make sure that periodic timer calls never overlap
+	int ccount = 0;
+	int fcount = 0;
+	Timer tm;
+
+	tm = setTimer(10.msecs, {
+		ccount++;
+		scope (exit) ccount--;
+		assert(ccount == 1); // no concurrency allowed
+		sleep(100.msecs);
+		if (++fcount >= 5)
+			tm.stop();
+	}, true);
+
+	while (tm.pending) sleep(50.msecs);
+
+	assert(fcount == 5);
+}
+
 
 /** Creates a new timer without arming it.
 
@@ -940,8 +959,26 @@ Timer setTimer(Duration timeout, void delegate() callback, bool periodic = false
 Timer createTimer(void delegate() nothrow @safe callback = null)
 @safe nothrow {
 	static struct C {
-		void delegate() nothrow @safe callback;
-		void opCall() nothrow @safe { runTask(callback); }
+		void delegate() nothrow @safe m_callback;
+		bool m_running = false;
+		bool m_pendingFire = false;
+
+		void opCall() nothrow @safe {
+			runTask(() nothrow {
+				if (m_running) {
+					m_pendingFire = true;
+					return;
+				}
+
+				m_running = true;
+				scope (exit) m_running = false;
+
+				do {
+					m_pendingFire = false;
+					m_callback();
+				} while (m_pendingFire);
+			});
+		}
 	}
 
 	if (callback) {
@@ -1296,9 +1333,9 @@ private struct TimerCallbackHandler(CALLABLE) {
 	void handle(TimerID timer, bool fired)
 	@safe nothrow {
 		if (fired) {
-			auto cb = eventDriver.timers.userData!CALLABLE(timer);
 			auto l = yieldLock();
-			cb();
+			auto cb = () @trusted { return &eventDriver.timers.userData!CALLABLE(timer); } ();
+			(*cb)();
 		}
 
 		if (!eventDriver.timers.isUnique(timer) || eventDriver.timers.isPending(timer))
