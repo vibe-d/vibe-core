@@ -1,3 +1,27 @@
+1.14.0 - 2021-03-15
+===================
+
+- Compatibility fixes for POSIX-based platforms, notable Musl-based ones - [pull #249][issue249]
+- Added a CI task to ensure compatibility with Musl - [pull #250][issue250]
+- Various optimizations to `vibe.core.path: InetPath` - [pull #251][issue251]
+- `GenericPath.Segment[2].opCast` is now `const`  - [pull #252][issue252]
+- Compatibility fix for upcoming (v2.097.0) deprecation - [pull #253][issue253]
+- Improve documentation for `setTimer` and `sleep` - [pull #255][issue255]
+- Ensure that a timer callback is never invoked concurrently - [pull #256][issue256], [pull #260][issue260], [pull #262][issue262]
+- Make `LocalTaskSemaphore.this` `nothrow` for compatibility with v2.096.0 - [pull #259][issue259]
+
+[issue249]: https://github.com/vibe-d/vibe-core/issues/249
+[issue250]: https://github.com/vibe-d/vibe-core/issues/250
+[issue251]: https://github.com/vibe-d/vibe-core/issues/251
+[issue252]: https://github.com/vibe-d/vibe-core/issues/252
+[issue253]: https://github.com/vibe-d/vibe-core/issues/253
+[issue255]: https://github.com/vibe-d/vibe-core/issues/255
+[issue256]: https://github.com/vibe-d/vibe-core/issues/256
+[issue259]: https://github.com/vibe-d/vibe-core/issues/259
+[issue260]: https://github.com/vibe-d/vibe-core/issues/260
+[issue262]: https://github.com/vibe-d/vibe-core/issues/262
+
+
 1.13.0 - 2021-01-15
 ===================
 
