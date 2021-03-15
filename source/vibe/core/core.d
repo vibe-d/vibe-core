@@ -1028,8 +1028,9 @@ Timer createTimer(void delegate() nothrow @safe callback = null)
 		bool m_running = false;
 		bool m_pendingFire = false;
 
-		void opCall() nothrow @safe {
-			runTask(() nothrow {
+		void opCall(Timer tm)
+		nothrow @safe {
+			runTask((Timer tm) nothrow {
 				if (m_running) {
 					m_pendingFire = true;
 					return;
@@ -1041,8 +1042,14 @@ Timer createTimer(void delegate() nothrow @safe callback = null)
 				do {
 					m_pendingFire = false;
 					m_callback();
+
+					// make sure that no callbacks are fired after the timer
+					// has been actively stopped
+					if (m_pendingFire && !tm.pending)
+						m_pendingFire = false;
+
 				} while (m_pendingFire);
-			});
+			}, tm);
 		}
 	}
 
@@ -1071,7 +1078,8 @@ Timer createTimer(void delegate() nothrow @safe callback = null)
 	See_also: `createTimer`
 */
 Timer createLeanTimer(CALLABLE)(CALLABLE callback)
-	if (is(typeof(() @safe nothrow { callback(); } ())))
+	if (is(typeof(() @safe nothrow { callback(); } ()))
+		|| is(typeof(() @safe nothrow { callback(Timer.init); } ())))
 {
 	return Timer.create(eventDriver.timers.create(), callback);
 }
@@ -1400,7 +1408,13 @@ private struct TimerCallbackHandler(CALLABLE) {
 		if (fired) {
 			auto l = yieldLock();
 			auto cb = () @trusted { return &eventDriver.timers.userData!CALLABLE(timer); } ();
-			(*cb)();
+			static if (is(typeof(CALLABLE.init(Timer.init)))) {
+				Timer tm;
+				tm.m_driver = eventDriver;
+				tm.m_id = timer;
+				eventDriver.timers.addRef(timer);
+				(*cb)(tm);
+			} else (*cb)();
 		}
 
 		if (!eventDriver.timers.isUnique(timer) || eventDriver.timers.isPending(timer))
