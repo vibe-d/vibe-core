@@ -211,7 +211,7 @@ final class LocalTaskSemaphore
 		LocalManualEvent m_signal;
 	}
 
-	this(uint max_locks)
+	this(uint max_locks) nothrow
 	{
 		m_maxLocks = max_locks;
 		m_signal = createManualEvent();
