@@ -999,12 +999,15 @@ unittest { // make sure that periodic timer calls never overlap
 		ccount++;
 		scope (exit) ccount--;
 		assert(ccount == 1); // no concurrency allowed
+		assert(fcount < 5);
 		sleep(100.msecs);
 		if (++fcount >= 5)
 			tm.stop();
 	}, true);
 
 	while (tm.pending) sleep(50.msecs);
+
+	sleep(50.msecs);
 
 	assert(fcount == 5);
 }
@@ -1030,13 +1033,15 @@ Timer createTimer(void delegate() nothrow @safe callback = null)
 
 		void opCall(Timer tm)
 		nothrow @safe {
-			runTask((Timer tm) nothrow {
-				if (m_running) {
-					m_pendingFire = true;
-					return;
-				}
+			if (m_running) {
+				m_pendingFire = true;
+				return;
+			}
 
-				m_running = true;
+			m_running = true;
+
+			runTask((Timer tm) nothrow {
+				assert(m_running);
 				scope (exit) m_running = false;
 
 				do {
@@ -1047,7 +1052,6 @@ Timer createTimer(void delegate() nothrow @safe callback = null)
 					// has been actively stopped
 					if (m_pendingFire && !tm.pending)
 						m_pendingFire = false;
-
 				} while (m_pendingFire);
 			}, tm);
 		}
