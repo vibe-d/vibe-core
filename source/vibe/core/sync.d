@@ -327,8 +327,8 @@ final class TaskMutex : core.sync.mutex.Mutex, Lockable {
 @safe:
 	private TaskMutexImpl!false m_impl;
 
-	this(Object o) { m_impl.setup(); super(o); }
-	this() { m_impl.setup(); }
+	this(Object o) nothrow { m_impl.setup(); super(o); }
+	this() nothrow { m_impl.setup(); }
 
 	override bool tryLock() nothrow { return m_impl.tryLock(); }
 	override void lock() nothrow { m_impl.lock(); }
