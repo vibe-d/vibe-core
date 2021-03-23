@@ -28,6 +28,7 @@ import std.file;
 import std.path;
 import std.string;
 import std.typecons : Flag, No;
+import taggedalgebraic.taggedunion;
 
 
 version(Posix){
@@ -330,6 +331,78 @@ FileInfo getFileInfo(string path)
 	if (ret[1].length) throw new Exception(ret[1]);
 	return ret[0];
 }
+
+/** Returns file information about multiple files at once.
+
+	This version of `getFileInfo` is more efficient than many individual calls
+	to the singular version.
+*/
+FileInfoResult[] getFileInfo(const(NativePath)[] paths)
+nothrow {
+	import vibe.core.channel : Channel, ChannelConfig, ChannelPriority, createChannel;
+	import vibe.core.core : runTask, runWorkerTask;
+
+	if (!paths.length) return null;
+
+	ChannelConfig cc;
+	cc.priority = ChannelPriority.overhead;
+
+	Channel!NativePath inch;
+	Channel!FileInfoResult outch;
+
+	try {
+		inch = createChannel!NativePath(cc);
+		outch = createChannel!FileInfoResult(cc);
+	} catch (Exception e) assert(false, e.msg);
+
+	static void getInfos(Channel!NativePath inch, Channel!FileInfoResult outch) nothrow {
+		NativePath p;
+		while (inch.tryConsumeOne(p)) {
+			FileInfoResult fi;
+			if (!existsFile(p)) fi = FileInfoResult.missing;
+			else {
+				try {
+					auto ent = DirEntry(p.toString);
+					fi = FileInfoResult.info(makeFileInfo(ent));
+				} catch (Exception e) {
+					fi = FileInfoResult.error(e.msg.length ? e.msg : "Failed to get file information");
+				}
+			}
+			try outch.put(fi);
+			catch (Exception e) assert(false, e.msg);
+		}
+		outch.close();
+	}
+
+	try runWorkerTask(&getInfos, inch, outch);
+	catch (Exception e) assert(false, e.msg);
+
+	runTask(() nothrow {
+		foreach (p; paths) {
+			try inch.put(p);
+			catch (Exception e) assert(false, e.msg);
+		}
+		inch.close();
+	});
+
+	auto ret = new FileInfoResult[](paths.length);
+	size_t i = 0;
+	foreach (ref fi; ret) {
+		if (!outch.tryConsumeOne(fi))
+			assert(false);
+	}
+	assert(outch.empty);
+
+	return ret;
+}
+
+struct FileInfoResultFields {
+	Void missing;
+	string error;
+	FileInfo info;
+}
+alias FileInfoResult = TaggedUnion!FileInfoResultFields;
+
 
 /**
 	Creates a new directory.
