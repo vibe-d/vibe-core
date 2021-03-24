@@ -1,3 +1,13 @@
+1.15.0 - 2021-03-24
+===================
+
+- Added a batch overload of `getFileInfo` - [pull #265][issue265]
+- `TaskMutex`' constructor is now `nothrow` - [pull #264][issue264]
+
+[issue264]: https://github.com/vibe-d/vibe-core/issues/264
+[issue265]: https://github.com/vibe-d/vibe-core/issues/265
+
+
 1.14.0 - 2021-03-15
 ===================
 
