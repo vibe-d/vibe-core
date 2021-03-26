@@ -1,7 +1,7 @@
 /**
 	File handling functions and types.
 
-	Copyright: © 2012-2019 Sönke Ludwig
+	Copyright: © 2012-2021 Sönke Ludwig
 	License: Subject to the terms of the MIT license, as written in the included LICENSE.txt file.
 	Authors: Sönke Ludwig
 */
@@ -427,11 +427,23 @@ void createDirectory(string path, Flag!"recursive" recursive = No.recursive)
 	if (fail) throw new Exception(fail);
 }
 
-/**
-	Enumerates all files in the specified directory.
+/** Enumerates all files in the specified directory.
+
+	Note that unless an explicit `mode` is given, `DirectoryMode.shallow` is the
+	default and only items directly contained in the specified folder will be
+	returned.
+
+	Params:
+		path = Path to the (root) folder to list
+		mode = Defines how files and sub directories are treated during the enumeration
+		del = Callback to invoke for each directory entry
+		directory_predicate = Optional predicate used to determine whether to
+			descent into a sub directory (only available in the recursive
+			`DirectoryListMode` modes)
 */
 void listDirectory(NativePath path, DirectoryListMode mode,
-	scope bool delegate(FileInfo info) @safe del)
+	scope bool delegate(FileInfo info) @safe del,
+	scope bool function(ref const FileInfo) @safe nothrow directory_predicate = null)
 {
 	import vibe.core.channel : ChannelConfig, ChannelPriority, createChannel;
 	import vibe.core.core : runWorkerTask;
@@ -443,6 +455,7 @@ void listDirectory(NativePath path, DirectoryListMode mode,
 	req.path = path;
 	req.channel = createChannel!ListDirectoryData(cc);
 	req.spanMode = mode;
+	req.directoryPredicate = directory_predicate;
 
 	runWorkerTask(ioTaskSettings, &performListDirectory, req);
 
@@ -475,9 +488,10 @@ void listDirectory(string path, scope bool delegate(FileInfo info) @safe del)
 	listDirectory(path, DirectoryListMode.shallow, del);
 }
 /// ditto
-void listDirectory(NativePath path, DirectoryListMode mode, scope bool delegate(FileInfo info) @system del)
+void listDirectory(NativePath path, DirectoryListMode mode, scope bool delegate(FileInfo info) @system del,
+	scope bool function(ref const FileInfo) @safe nothrow directory_predicate = null)
 @system {
-	listDirectory(path, mode, (nfo) @trusted => del(nfo));
+	listDirectory(path, mode, (nfo) @trusted => del(nfo), directory_predicate);
 }
 /// ditto
 void listDirectory(string path, DirectoryListMode mode, scope bool delegate(FileInfo info) @system del)
@@ -496,14 +510,15 @@ void listDirectory(string path, scope bool delegate(FileInfo info) @system del)
 }
 /// ditto
 int delegate(scope int delegate(ref FileInfo)) iterateDirectory(NativePath path,
-	DirectoryListMode mode = DirectoryListMode.shallow)
+	DirectoryListMode mode = DirectoryListMode.shallow,
+	bool function(ref const FileInfo) @safe nothrow directory_predicate = null)
 {
 	int iterator(scope int delegate(ref FileInfo) del){
 		int ret = 0;
 		listDirectory(path, mode, (fi) {
 			ret = del(fi);
 			return ret == 0;
-		});
+		}, directory_predicate);
 		return ret;
 	}
 	return &iterator;
@@ -1077,6 +1092,10 @@ private void performListDirectory(ListDirectoryRequest req)
 				try req.channel.put(ListDirectoryData(fi, null));
 				catch (Exception e) return false; // channel got closed
 
+				if (fi.isDirectory && req.directoryPredicate)
+					if (!req.directoryPredicate(fi))
+						continue;
+
 				if (rec && fi.isDirectory) {
 					if (fi.isSymlink && !req.followSymlinks)
 						continue;
@@ -1155,6 +1174,10 @@ private void performListDirectory(ListDirectoryRequest req)
 				try req.channel.put(ListDirectoryData(fi, null));
 				catch (Exception e) return false; // channel got closed
 
+				if (fi.isDirectory && req.directoryPredicate)
+					if (!req.directoryPredicate(fi))
+						continue;
+
 				if (rec && fi.isDirectory) {
 					if (fi.isSymlink && !req.followSymlinks)
 						continue;
@@ -1216,4 +1239,5 @@ private struct ListDirectoryRequest {
 	DirectoryListMode spanMode;
 	Channel!ListDirectoryData channel;
 	bool followSymlinks;
+	bool function(ref const FileInfo) @safe nothrow directoryPredicate;
 }
