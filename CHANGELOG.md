@@ -1,3 +1,11 @@
+1.16.0 - 2021-03-26
+===================
+
+- Added a sub directory predicate for recursive directory listing - [pull #266][issue266]
+
+[issue266]: https://github.com/vibe-d/vibe-core/issues/266
+
+
 1.15.0 - 2021-03-24
 ===================
 
