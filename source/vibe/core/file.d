@@ -1208,8 +1208,12 @@ version (Posix) {
 			 int dirfd(DIR*);
 		static if (!is(typeof(fstatat))) {
 			version (OSX) {
-				pragma(mangle, "fstatat$INODE64")
-				int fstatat(int dirfd, const(char)* pathname, stat_t *statbuf, int flags);
+    				version (x86_64) {
+					pragma(mangle, "fstatat$INODE64")
+					int fstatat(int dirfd, const(char)* pathname, stat_t *statbuf, int flags);
+    				} else {
+        				int fstatat(int dirfd, const(char)* pathname, stat_t *statbuf, int flags);
+    				}
 			} else int fstatat(int dirfd, const(char)* pathname, stat_t *statbuf, int flags);
 		}
 	}
