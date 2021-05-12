@@ -582,11 +582,41 @@ struct Pipe {
 */
 Pipe pipe()
 {
-	auto p = std.process.pipe();
+	import std.stdio : StdioException;
 
-	auto read = eventDriver.pipes.adopt(p.readEnd.fileno);
-	auto write = eventDriver.pipes.adopt(p.writeEnd.fileno);
+	version (Posix) {
+		import core.sys.posix.unistd : pipe;
+		int[2] fds;
+		if (pipe(fds) != 0)
+			throw new StdioException("Unable to create pipe");
+		int readFD = fds[0];
+		int writeFD = fds[1];
+	}
+	else version (Windows) {
+		import core.sys.windows.winbase : CreatePipe, GetLastError;
+		import core.sys.windows.windef;
+		import std.windows.syserror : sysErrorString;
+		HANDLE readHandle;
+		HANDLE writeHandle;
+		if (!() @trusted { return CreatePipe(&readHandle, &writeHandle, null, 0); }()) {
+			throw new StdioException(
+				"Error creating pipe (" ~ sysErrorString(GetLastError()) ~ ')',
+				0);
+		}
+		version (CRuntime_DigitalMars) {
+			import core.stdc.stdio : _handleToFD, FHND_DEVICE;
+			int readFD = _handleToFD(readHandle, FHND_DEVICE);
+			int writeFD = _handleToFD(writeHandle, FHND_DEVICE);
+		} else {
+			import core.stdc.stdint : intptr_t;
+			import core.stdc.stdio : _open_osfhandle, O_RDONLY, O_APPEND;
+			int readFD = () @trusted { return _open_osfhandle(cast(intptr_t)readHandle, O_RDONLY); }();
+			int writeFD = () @trusted { return _open_osfhandle(cast(intptr_t)writeHandle, O_APPEND); }();
+		}
+	}
 
+	auto read = eventDriver.pipes.adopt(readFD);
+	auto write = eventDriver.pipes.adopt(writeFD);
 	return Pipe(PipeInputStream(read), PipeOutputStream(write));
 }
 
