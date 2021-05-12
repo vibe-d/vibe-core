@@ -412,6 +412,11 @@ void createDirectory(NativePath path)
 	createDirectory(path.toNativeString);
 }
 /// ditto
+void createDirectory(NativePath path, Flag!"recursive" recursive)
+{
+	createDirectory(path.toNativeString, recursive);
+}
+/// ditto
 void createDirectory(string path, Flag!"recursive" recursive = No.recursive)
 {
 	auto fail = performInWorker((string p, bool rec) {
