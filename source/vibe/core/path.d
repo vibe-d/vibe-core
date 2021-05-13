@@ -203,11 +203,6 @@ alias InetPath = GenericPath!InetPathFormat;
 version (Windows) alias NativePath = WindowsPath;
 else alias NativePath = PosixPath;
 
-deprecated("Use NativePath or one the specific path types instead.")
-alias Path = NativePath;
-deprecated("Use NativePath.Segment or one the specific path types instead.")
-alias PathEntry = Path.Segment;
-
 /// Provides a common interface to operate on paths of various kinds.
 struct GenericPath(F) {
 @safe:
@@ -269,12 +264,6 @@ struct GenericPath(F) {
 			return ret;
 		}
 
-		deprecated("Use the constructor instead.")
-		static Segment validateFilename(string name)
-		{
-			return Segment(name);
-		}
-
 		/// The (file/directory) name of the path segment.
 		@property string name() const nothrow @nogc { return m_name; }
 		/// The trailing separator (e.g. `'/'`) or `'\0'`.
@@ -287,9 +276,6 @@ struct GenericPath(F) {
 		}
 		/// Returns `true` $(I iff) the segment has a trailing path separator.
 		@property bool hasSeparator() const nothrow @nogc { return m_separator != '\0'; }
-
-		deprecated("Use .name instead.")
-		string toString() const nothrow @nogc { return m_name; }
 
 		/** Converts the segment to another path type.
 
