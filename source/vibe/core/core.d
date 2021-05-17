@@ -1492,6 +1492,26 @@ unittest {
 	assert(tf.m_yieldLockCount == 0);
 }
 
+debug (VibeRunningTasks) {
+	/** Dumps a list of all active tasks of the calling thread.
+	*/
+	void printRunningTasks()
+	@safe nothrow {
+		string threadname = "unknown";
+		try threadname = Thread.getThis.name;
+		catch (Exception e) {}
+		size_t cnt = 0;
+		foreach (kv; TaskFiber.s_runningTasks.byKeyValue) {
+			auto t = kv.key.task;
+			logInfo("%s (%s): %s", t.getDebugID, threadname, kv.value);
+			cnt++;
+		}
+		logInfo("===================================================");
+		logInfo("%s: %s tasks currently active, %s available",
+			threadname, cnt, s_availableFibers.length);
+	}
+}
+
 
 /**************************************************************************************************/
 /* private types                                                                                  */
@@ -1692,8 +1712,12 @@ shared static ~this()
 
 	size_t tasks_left = s_scheduler.scheduledTaskCount;
 
-	if (tasks_left > 0)
+	if (tasks_left > 0) {
 		logWarn("There were still %d tasks running at exit.", tasks_left);
+
+		debug (VibeRunningTasks)
+			printRunningTasks();
+	}
 }
 
 // per thread setup
