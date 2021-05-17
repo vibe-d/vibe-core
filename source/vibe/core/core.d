@@ -1785,7 +1785,11 @@ private void shutdownDriver()
 		ManualEvent.ms_threadEvent = EventID.init;
 	}
 
-	eventDriver.dispose();
+	static if (is(typeof(tryGetEventDriver()))) {
+		// avoid creating an event driver on threads that don't actually have one
+		if (auto drv = tryGetEventDriver())
+			drv.dispose();
+	} else eventDriver.dispose();
 }
 
 
