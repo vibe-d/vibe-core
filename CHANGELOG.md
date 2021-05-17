@@ -1,3 +1,23 @@
+1.17.0 - 2021-05-17
+===================
+
+- Made more parts of the API `nothrow` - [pull #274][issue274]
+- Added support for debugging currently running tasks via debug version `VibeRunningTasks` and `printRunningTasks` - [pull #275][issue275]
+- Added a `NativePath` based overload for recursive `createDirectory` - [pull #272][issue272]
+- Fixed linking `fstatat` on macOS/ARM (by kookman) - [pull #271][issue271], [issue #269][issue269]
+- Fixed `pipe()` to not close the pipe file descriptors before returning (by Tomáš Chaloupka) - [pull #268][issue268], [issue #267][issue267]
+- Fixed unnecessary creation of event drivers during shutdown for threads that didn't have one - [pull #276][issue276]
+
+[issue267]: https://github.com/vibe-d/vibe-core/issues/267
+[issue268]: https://github.com/vibe-d/vibe-core/issues/268
+[issue269]: https://github.com/vibe-d/vibe-core/issues/269
+[issue271]: https://github.com/vibe-d/vibe-core/issues/271
+[issue272]: https://github.com/vibe-d/vibe-core/issues/272
+[issue274]: https://github.com/vibe-d/vibe-core/issues/274
+[issue275]: https://github.com/vibe-d/vibe-core/issues/275
+[issue276]: https://github.com/vibe-d/vibe-core/issues/276
+
+
 1.16.0 - 2021-03-26
 ===================
 
