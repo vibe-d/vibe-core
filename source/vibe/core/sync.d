@@ -672,7 +672,7 @@ final class TaskCondition : core.sync.condition.Condition {
 	private TaskConditionImpl!(false, Mutex) m_impl;
 
 	this(core.sync.mutex.Mutex mtx)
-	{
+	nothrow {
 		assert(mtx.classinfo is Mutex.classinfo || mtx.classinfo is TaskMutex.classinfo,
 			"TaskCondition can only be used with Mutex or TaskMutex");
 

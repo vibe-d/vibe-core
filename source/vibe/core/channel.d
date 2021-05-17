@@ -159,7 +159,7 @@ private final class ChannelImpl(T, size_t buffer_size) {
 	}
 
 	this(ChannelConfig config)
-	shared @trusted {
+	shared @trusted nothrow {
 		m_mutex = cast(shared)new Mutex;
 		m_condition = cast(shared)new TaskCondition(cast(Mutex)m_mutex);
 		m_config = config;
