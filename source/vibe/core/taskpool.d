@@ -38,7 +38,7 @@ shared final class TaskPool {
 			thread_count = The number of worker threads to create
 	*/
 	this(size_t thread_count = logicalProcessorCount())
-	@safe {
+	@safe nothrow {
 		import std.format : format;
 
 		m_threadCount = thread_count;
@@ -50,9 +50,10 @@ shared final class TaskPool {
 			threads.length = thread_count;
 			foreach (i; 0 .. thread_count) {
 				WorkerThread thr;
-				() @trusted {
+				() @trusted nothrow {
 					thr = new WorkerThread(this);
-					thr.name = format("vibe-%s", i);
+					try thr.name = format("vibe-%s", i);
+					catch (Exception e) logException(e, "Failed to set worker thread name");
 					thr.start();
 				} ();
 				threads[i] = thr;
@@ -62,7 +63,7 @@ shared final class TaskPool {
 
 	/** Returns the number of worker threads.
 	*/
-	@property size_t threadCount() const shared { return m_threadCount; }
+	@property size_t threadCount() const shared nothrow { return m_threadCount; }
 
 	/** Instructs all worker threads to terminate and waits until all have
 		finished.
@@ -331,7 +332,7 @@ private final class WorkerThread : Thread {
 	}
 
 	this(shared(TaskPool) pool)
-	{
+	nothrow {
 		m_pool = pool;
 		m_queue.setup();
 		super(&main);

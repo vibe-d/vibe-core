@@ -706,17 +706,26 @@ void runWorkerTaskDistH(HCB, FT, ARGS...)(TaskSettings settings, scope HCB on_ha
 			`logicalProcessorCount`.
 	See_also: `runWorkerTask`, `runWorkerTaskH`, `runWorkerTaskDist`
 */
-public void setupWorkerThreads(uint num = logicalProcessorCount())
-@safe {
+public void setupWorkerThreads(uint num = 0)
+@safe nothrow {
 	static bool s_workerThreadsStarted = false;
 	if (s_workerThreadsStarted) return;
 	s_workerThreadsStarted = true;
 
-	() @trusted {
-		synchronized (st_threadsMutex) {
-			if (!st_workerPool)
-				st_workerPool = new shared TaskPool(num);
+	if (num == 0) {
+		try num = () @trusted { return logicalProcessorCount(); } ();
+		catch (Exception e) {
+			logException(e, "Failed to get logical processor count, assuming 4.");
+			num = 4;
 		}
+	}
+
+	() @trusted nothrow {
+		st_threadsMutex.lock_nothrow();
+		scope (exit) st_threadsMutex.unlock_nothrow();
+
+		if (!st_workerPool)
+			st_workerPool = new shared TaskPool(num);
 	} ();
 }
 
@@ -1141,12 +1150,14 @@ nothrow {
 	See_also: `runWorkerTask`, `runWorkerTaskH`, `runWorkerTaskDist`,
 	`setupWorkerThreads`
 */
-@property size_t workerThreadCount()
+@property size_t workerThreadCount() nothrow
 	out(count) { assert(count > 0, "No worker threads started after setupWorkerThreads!?"); }
 do {
 	setupWorkerThreads();
-	synchronized (st_threadsMutex)
-		return st_workerPool.threadCount;
+	st_threadsMutex.lock_nothrow();
+	scope (exit) st_threadsMutex.unlock_nothrow();
+
+	return st_workerPool.threadCount;
 }
 
 
