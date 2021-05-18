@@ -6,6 +6,8 @@ module test;
 
 import vibe.core.file;
 import std.exception;
+import std.file : rmdirRecurse;
+import std.typecons : Yes;
 
 enum ubyte[] bytes(BYTES...) = [BYTES];
 
@@ -57,4 +59,15 @@ void main()
 	assert(found, "listDirectory did not find test file.");
 
 	removeFile("têst.dat");
+
+
+	createDirectory("testdir/dir", Yes.recursive);
+	listDirectory("testdir", (fi) {
+		assert(fi.name == "dir");
+		assert(fi.isDirectory);
+		assert(!fi.isSymlink);
+		assert(!fi.hidden);
+		return true;
+	});
+	rmdirRecurse("testdir");
 }
