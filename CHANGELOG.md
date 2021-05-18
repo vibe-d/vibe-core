@@ -1,3 +1,11 @@
+1.17.1 - 2021-05-18
+===================
+
+- Fixed a regression in `listDirectory` caused by the linker fix for macOS/M1 - [pull #277][issue277]
+
+[issue277]: https://github.com/vibe-d/vibe-core/issues/277
+
+
 1.17.0 - 2021-05-17
 ===================
 
