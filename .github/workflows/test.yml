@@ -40,4 +40,7 @@ jobs:
                   compiler: ${{ matrix.dc }}
 
             - name: Run tests
-              run: dub test --arch ${{ matrix.arch }}
+              env:
+                DC: ${{matrix.dc}}
+                ARCH: ${{matrix.arch}}
+              run: ./travis-ci.sh
