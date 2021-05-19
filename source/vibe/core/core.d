@@ -1103,6 +1103,22 @@ unittest {
 }
 
 
+/** Suspends the execution of the calling task an an uninterruptible manner.
+
+	This function behaves the same as `sleep`, except that invoking
+	`Task.interrupt` on the calling task will not result in an
+	`InterruptException` being thrown from `sleepUninterruptible`. Instead,
+	if any, a later interruptible wait state will throw the exception.
+*/
+void sleepUninterruptible(Duration timeout)
+@safe nothrow {
+	assert(timeout >= 0.seconds, "Argument to sleep must not be negative.");
+	if (timeout <= 0.seconds) return;
+	auto tm = setTimer(timeout, null);
+	tm.waitUninterruptible();
+}
+
+
 /**
 	Creates a new timer, that will fire `callback` after `timeout`
 
@@ -1611,6 +1627,21 @@ struct Timer {
 		auto res = asyncAwait!(TimerCallback2,
 			cb => m_driver.timers.wait(m_id, cb),
 			cb => m_driver.timers.cancelWait(m_id)
+		);
+		return res[1];
+	}
+
+	/** Waits until the timer fires.
+
+		Same as `wait`, except that `Task.interrupt` has no effect on the wait.
+	*/
+	bool waitUninterruptible()
+	nothrow {
+		auto cb = m_driver.timers.userData!Callback(m_id);
+		assert(cb is null, "Cannot wait on a timer that was created with a callback.");
+
+		auto res = asyncAwaitUninterruptible!(TimerCallback2,
+			cb => m_driver.timers.wait(m_id, cb)
 		);
 		return res[1];
 	}
