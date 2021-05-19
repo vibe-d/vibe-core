@@ -371,10 +371,12 @@ unittest {
 	void test(ChannelPriority prio)
 	{
 		auto ch = createChannel!int(ChannelConfig(prio));
-		runTask({
-			ch.put(1);
-			ch.put(2);
-			ch.put(3);
+		runTask(() nothrow {
+			try {
+				ch.put(1);
+				ch.put(2);
+				ch.put(3);
+			} catch (Exception e) assert(false, e.msg);
 			ch.close();
 		});
 

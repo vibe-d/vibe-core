@@ -63,14 +63,14 @@ unittest {
 	import vibe.core.core : runWorkerTaskH;
 
 	__gshared int counter;
-	__gshared InterruptibleTaskMutex mutex;
+	__gshared TaskMutex mutex;
 
-	mutex = new InterruptibleTaskMutex;
+	mutex = new TaskMutex;
 
 	Task[] tasks;
 
 	foreach (i; 0 .. 100) {
-		tasks ~= runWorkerTaskH({
+		tasks ~= runWorkerTaskH(() nothrow {
 			auto l = scopedMutexLock(mutex);
 			counter++;
 		});
@@ -112,7 +112,8 @@ struct ScopedMutexLock(M)
 		LockMode m_mode;
 	}
 
-	this(M mutex, LockMode mode = LockMode.lock) {
+	this(M mutex, LockMode mode = LockMode.lock)
+	{
 		assert(mutex !is null);
 		m_mutex = mutex;
 
@@ -125,8 +126,7 @@ struct ScopedMutexLock(M)
 
 	~this()
 	{
-		if( m_locked )
-			m_mutex.unlock();
+		if (m_locked) unlock();
 	}
 
 	@property bool locked() const { return m_locked; }
@@ -134,22 +134,31 @@ struct ScopedMutexLock(M)
 	void unlock()
 	in { assert(this.locked); }
 	do {
-		enforce(m_locked);
-		m_mutex.unlock();
+		assert(m_locked, "Unlocking unlocked scoped mutex lock");
+		static if (is(typeof(m_mutex.unlock_nothrow())))
+			m_mutex.unlock_nothrow();
+		else
+			m_mutex.unlock();
 		m_locked = false;
 	}
 
 	bool tryLock()
 	in { assert(!this.locked); }
 	do {
-		return m_locked = m_mutex.tryLock();
+		static if (is(typeof(m_mutex.tryLock_nothrow())))
+			return m_locked = m_mutex.tryLock_nothrow();
+		else
+			return m_locked = m_mutex.tryLock();
 	}
 
 	void lock()
 	in { assert(!this.locked); }
 	do {
 		m_locked = true;
-		m_mutex.lock();
+		static if (is(typeof(m_mutex.lock_nothrow())))
+			m_mutex.lock_nothrow();
+		else
+			m_mutex.lock();
 	}
 }
 
@@ -167,8 +176,7 @@ struct ScopedMutexLock(M)
 /// private
 ReturnType!PROC performLocked(alias PROC, MUTEX)(MUTEX mutex)
 {
-	mutex.lock();
-	scope (exit) mutex.unlock();
+	auto l = scopedMutexLock(mutex);
 	return PROC();
 }
 
@@ -398,8 +406,8 @@ unittest { // test deferred throwing
 		// mutex is now locked in first task for 20 ms
 		// the second tasks is waiting in lock()
 		t2.interrupt();
-		t1.join();
-		t2.join();
+		t1.joinUninterruptible();
+		t2.joinUninterruptible();
 		assert(!mutex.m_impl.m_locked); // ensure that the scope(exit) has been executed
 		exitEventLoop();
 	});
@@ -470,9 +478,9 @@ final class RecursiveTaskMutex : core.sync.mutex.Mutex, Lockable {
 	this(Object o) { m_impl.setup(); super(o); }
 	this() { m_impl.setup(); }
 
-	override bool tryLock() { return m_impl.tryLock(); }
+	override bool tryLock() nothrow { return m_impl.tryLock(); }
 	override void lock() { m_impl.lock(); }
-	override void unlock() { m_impl.unlock(); }
+	override void unlock() nothrow { m_impl.unlock(); }
 }
 
 unittest {
@@ -501,9 +509,9 @@ final class InterruptibleRecursiveTaskMutex : Lockable {
 		() @trusted { this.__monitor = cast(void*)&NoUseMonitor.instance(); } ();
 	}
 
-	bool tryLock() { return m_impl.tryLock(); }
+	bool tryLock() nothrow { return m_impl.tryLock(); }
 	void lock() { m_impl.lock(); }
-	void unlock() { m_impl.unlock(); }
+	void unlock() nothrow { m_impl.unlock(); }
 }
 
 unittest {
@@ -555,28 +563,34 @@ private void runMutexUnitTests(M)()
 
 		// t1 starts first and acquires the mutex for 20 ms
 		// t2 starts second and has to wait in m.lock()
-		t1 = runTask({
+		t1 = runTask(() nothrow {
 			assert(!m.m_impl.m_locked);
-			m.lock();
+			try m.lock();
+			catch (Exception e) assert(false, e.msg);
 			assert(m.m_impl.m_locked);
-			if (interrupt_t1) assertThrown!InterruptException(sleep(100.msecs));
-			else assertNotThrown(sleep(20.msecs));
+			if (interrupt_t1) {
+				try assertThrown!InterruptException(sleep(100.msecs));
+				catch (Exception e) assert(false, e.msg);
+			} else assertNotThrown(sleep(20.msecs));
 			m.unlock();
 		});
-		t2 = runTask({
+		t2 = runTask(() nothrow {
 			assert(!m.tryLock());
 			if (interrupt_t2) {
 				try m.lock();
 				catch (InterruptException) return;
+				catch (Exception e) assert(false, e.msg);
 				try yield(); // rethrows any deferred exceptions
 				catch (InterruptException) {
 					m.unlock();
 					return;
 				}
+				catch (Exception e) assert(false, e.msg);
 				assert(false, "Supposed to have thrown an InterruptException.");
 			} else assertNotThrown(m.lock());
 			assert(m.m_impl.m_locked);
-			sleep(20.msecs);
+			try sleep(20.msecs);
+			catch (Exception e) assert(false, e.msg);
 			m.unlock();
 			assert(!m.m_impl.m_locked);
 		});
@@ -593,11 +607,12 @@ private void runMutexUnitTests(M)()
 	auto t3 = runTask({
 		assert(t1.running && t2.running);
 		assert(m.m_impl.m_locked);
-		t1.join();
+		t1.joinUninterruptible();
 		assert(!t1.running && t2.running);
-		yield(); // give t2 a chance to take the lock
+		try yield(); // give t2 a chance to take the lock
+		catch (Exception e) assert(false, e.msg);
 		assert(m.m_impl.m_locked);
-		t2.join();
+		t2.joinUninterruptible();
 		assert(!t2.running);
 		assert(!m.m_impl.m_locked);
 		exitEventLoop();
@@ -612,11 +627,12 @@ private void runMutexUnitTests(M)()
 		assert(t1.running && t2.running);
 		assert(m.m_impl.m_locked);
 		t1.interrupt();
-		t1.join();
+		t1.joinUninterruptible();
 		assert(!t1.running && t2.running);
-		yield(); // give t2 a chance to take the lock
+		try yield(); // give t2 a chance to take the lock
+		catch (Exception e) assert(false, e.msg);
 		assert(m.m_impl.m_locked);
-		t2.join();
+		t2.joinUninterruptible();
 		assert(!t2.running);
 		assert(!m.m_impl.m_locked);
 		exitEventLoop();
@@ -631,11 +647,11 @@ private void runMutexUnitTests(M)()
 		assert(t1.running && t2.running);
 		assert(m.m_impl.m_locked);
 		t2.interrupt();
-		t2.join();
+		t2.joinUninterruptible();
 		assert(!t2.running);
 		static if (is(M == InterruptibleTaskMutex) || is (M == InterruptibleRecursiveTaskMutex))
 			assert(t1.running && m.m_impl.m_locked);
-		t1.join();
+		t1.joinUninterruptible();
 		assert(!t1.running);
 		assert(!m.m_impl.m_locked);
 		exitEventLoop();
@@ -712,12 +728,14 @@ unittest {
 	// start up the workers and count how many are running
 	foreach (i; 0 .. 4) {
 		workers_still_running++;
-		runWorkerTask({
+		runWorkerTask(() nothrow {
 			// simulate some work
-			sleep(100.msecs);
+			try sleep(100.msecs);
+			catch (Exception e) {}
 
 			// notify the waiter that we're finished
-			synchronized (mutex) {
+			{
+				auto l = scopedMutexLock(mutex);
 				workers_still_running--;
 			logDebug("DECREMENT %s", workers_still_running);
 			}
@@ -806,7 +824,7 @@ struct LocalManualEvent {
 	}
 
 	this(this)
-	{
+	nothrow {
 		if (m_waiter)
 			return m_waiter.addRef();
 	}
@@ -908,12 +926,14 @@ unittest {
 	import vibe.core.core : exitEventLoop, runEventLoop, runTask, sleep;
 
 	auto e = createManualEvent();
-	auto w1 = runTask({ e.wait(100.msecs, e.emitCount); });
-	auto w2 = runTask({ e.wait(500.msecs, e.emitCount); });
+	auto w1 = runTask({ e.waitUninterruptible(100.msecs, e.emitCount); });
+	auto w2 = runTask({ e.waitUninterruptible(500.msecs, e.emitCount); });
 	runTask({
-		sleep(50.msecs);
+		try sleep(50.msecs);
+		catch (Exception e) assert(false, e.msg);
 		e.emit();
-		sleep(50.msecs);
+		try sleep(50.msecs);
+		catch (Exception e) assert(false, e.msg);
 		assert(!w1.running && !w2.running);
 		exitEventLoop();
 	});
@@ -925,11 +945,13 @@ unittest {
 	auto e = createManualEvent();
 	// integer overflow test
 	e.m_waiter.m_emitCount = int.max;
-	auto w1 = runTask({ e.wait(50.msecs, e.emitCount); });
+	auto w1 = runTask({ e.waitUninterruptible(50.msecs, e.emitCount); });
 	runTask({
-		sleep(5.msecs);
+		try sleep(5.msecs);
+		catch (Exception e) assert(false, e.msg);
 		e.emit();
-		sleep(50.msecs);
+		try sleep(50.msecs);
+		catch (Exception e) assert(false, e.msg);
 		assert(!w1.running);
 		exitEventLoop();
 	});
@@ -943,16 +965,19 @@ unittest { // ensure that cancelled waiters are properly handled and that a FIFO
 
 	Task t2;
 	runTask({
-		l.wait();
+		l.waitUninterruptible();
 		t2.interrupt();
-		sleep(20.msecs);
+		try sleep(20.msecs);
+		catch (Exception e) assert(false, e.msg);
 		exitEventLoop();
 	});
 	t2 = runTask({
 		try {
 			l.wait();
 			assert(false, "Shouldn't reach this.");
-		} catch (InterruptException e) {}
+		}
+		catch (InterruptException e) {}
+		catch (Exception e) assert(false, e.msg);
 	});
 	runTask({
 		l.emit();
@@ -964,13 +989,14 @@ unittest { // ensure that LocalManualEvent behaves correctly after being copied
 	import vibe.core.core : exitEventLoop, runEventLoop, runTask, sleep;
 
 	LocalManualEvent l = createManualEvent();
-	runTask({
+	runTask(() nothrow {
 		auto lc = l;
-		sleep(100.msecs);
+		try sleep(100.msecs);
+		catch (Exception e) assert(false, e.msg);
 		lc.emit();
 	});
 	runTask({
-		assert(l.wait(1.seconds, l.emitCount));
+		assert(l.waitUninterruptible(1.seconds, l.emitCount));
 		exitEventLoop();
 	});
 	runEventLoop();
@@ -1230,13 +1256,15 @@ unittest {
 	import vibe.core.core : exitEventLoop, runEventLoop, runTask, runWorkerTaskH, sleep;
 
 	auto e = createSharedManualEvent();
-	auto w1 = runTask({ e.wait(100.msecs, e.emitCount); });
-	static void w(shared(ManualEvent)* e) { e.wait(500.msecs, e.emitCount); }
+	auto w1 = runTask({ e.waitUninterruptible(100.msecs, e.emitCount); });
+	static void w(shared(ManualEvent)* e) { e.waitUninterruptible(500.msecs, e.emitCount); }
 	auto w2 = runWorkerTaskH(&w, &e);
 	runTask({
-		sleep(50.msecs);
+		try sleep(50.msecs);
+		catch (Exception e) assert(false, e.msg);
 		e.emit();
-		sleep(50.msecs);
+		try sleep(50.msecs);
+		catch (Exception e) assert(false, e.msg);
 		assert(!w1.running && !w2.running);
 		exitEventLoop();
 	});
@@ -1254,8 +1282,9 @@ unittest {
 	scope (exit) tpool.terminate();
 
 	static void test(shared(ManualEvent)* evt, Task owner)
-	{
-		owner.tid.send(Task.getThis());
+	nothrow {
+		try owner.tid.send(Task.getThis());
+		catch (Exception e) assert(false, e.msg);
 
 		int ec = evt.emitCount;
 		auto thist = Task.getThis();
@@ -1263,9 +1292,11 @@ unittest {
 		scope (exit) tm.stop();
 		while (ec < 5_000) {
 			tm.rearm(500.msecs);
-			sleep(uniform(0, 10_000).usecs);
-			if (uniform(0, 10) == 0) evt.emit();
-			auto ecn = evt.wait(ec);
+			try sleep(uniform(0, 10_000).usecs);
+			catch (Exception e) assert(false, e.msg);
+			try if (uniform(0, 10) == 0) evt.emit();
+			catch (Exception e) assert(false, e.msg);
+			auto ecn = evt.waitUninterruptible(ec);
 			assert(ecn > ec);
 			ec = ecn;
 		}
@@ -1277,25 +1308,27 @@ unittest {
 	auto e = createSharedManualEvent();
 	Task[] tasks;
 
-	runTask({
+	runTask(() nothrow {
 		auto thist = Task.getThis();
 
 		// start 25 tasks in each thread
 		foreach (i; 0 .. 25) tpool.runTaskDist(&test, &e, thist);
 		// collect all task handles
-		foreach (i; 0 .. 4*25) tasks ~= receiveOnly!Task;
+		try foreach (i; 0 .. 4*25) tasks ~= receiveOnly!Task;
+		catch (Exception e) assert(false, e.msg);
 
 		auto tm = setTimer(500.msecs, { thist.interrupt(); }); // watchdog
 		scope (exit) tm.stop();
 		int pec = 0;
 		while (e.emitCount < 5_000) {
 			tm.rearm(500.msecs);
-			sleep(50.usecs);
+			try sleep(50.usecs);
+			catch (Exception e) assert(false, e.msg);
 			e.emit();
 		}
 
 		// wait for all worker tasks to finish
-		foreach (t; tasks) t.join();
+		foreach (t; tasks) t.joinUninterruptible();
 	}).join();
 }
 
@@ -1531,7 +1564,7 @@ private struct TaskMutexImpl(bool INTERRUPTIBLE) {
 	}
 
 	@trusted bool tryLock()
-	{
+	nothrow {
 		if (cas(&m_locked, false, true)) {
 			debug m_owner = Task.getThis();
 			debug(VibeMutexLog) logTrace("mutex %s lock %s", cast(void*)&this, atomicLoad(m_waiters));
@@ -1586,7 +1619,7 @@ private struct RecursiveTaskMutexImpl(bool INTERRUPTIBLE) {
 	}
 
 	@trusted bool tryLock()
-	{
+	nothrow {
 		auto self = Task.getThis();
 		return m_mutex.performLocked!({
 			if (!m_owner) {

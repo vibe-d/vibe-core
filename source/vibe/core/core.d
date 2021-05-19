@@ -408,11 +408,11 @@ unittest { // test proportional priority scheduling
 	scope (exit) tm.stop();
 
 	size_t a, b;
-	auto t1 = runTask(TaskSettings(1), { while (a + b < 100) { a++; yield(); } });
-	auto t2 = runTask(TaskSettings(10), { while (a + b < 100) { b++; yield(); } });
+	auto t1 = runTask(TaskSettings(1), { while (a + b < 100) { a++; try yield(); catch (Exception e) assert(false); } });
+	auto t2 = runTask(TaskSettings(10), { while (a + b < 100) { b++; try yield(); catch (Exception e) assert(false); } });
 	runTask({
-		t1.join();
-		t2.join();
+		t1.joinUninterruptible();
+		t2.joinUninterruptible();
 		exitEventLoop();
 	});
 	runEventLoop();
@@ -656,7 +656,7 @@ unittest {
 unittest {
 	static class Test {
 		void workerMethod(int param)
-		shared {
+		shared nothrow {
 			logInfo("Param: %s", param);
 		}
 	}
@@ -674,14 +674,15 @@ unittest {
 /// Running a worker task using a function and communicating with it
 unittest {
 	static void workerFunc(Task caller)
-	{
+	nothrow {
 		int counter = 10;
-		while (receiveOnly!string() == "ping" && --counter) {
-			logInfo("pong");
-			caller.send("pong");
-		}
-		caller.send("goodbye");
-
+		try {
+			while (receiveOnly!string() == "ping" && --counter) {
+				logInfo("pong");
+				caller.send("pong");
+			}
+			caller.send("goodbye");
+		} catch (Exception e) assert(false, e.msg);
 	}
 
 	static void test()
@@ -693,20 +694,23 @@ unittest {
 		} while (receiveOnly!string() == "pong");
 	}
 
-	static void work719(int) {}
+	static void work719(int) nothrow {}
 	static void test719() { runWorkerTaskH(&work719, cast(ubyte)42); }
 }
 
 /// Running a worker task using a class method and communicating with it
 unittest {
 	static class Test {
-		void workerMethod(Task caller) shared {
+		void workerMethod(Task caller)
+		shared nothrow {
 			int counter = 10;
-			while (receiveOnly!string() == "ping" && --counter) {
-				logInfo("pong");
-				caller.send("pong");
-			}
-			caller.send("goodbye");
+			try {
+				while (receiveOnly!string() == "ping" && --counter) {
+					logInfo("pong");
+					caller.send("pong");
+				}
+				caller.send("goodbye");
+			} catch (Exception e) assert(false, e.msg);
 		}
 	}
 
@@ -721,7 +725,7 @@ unittest {
 	}
 
 	static class Class719 {
-		void work(int) shared {}
+		void work(int) shared nothrow {}
 	}
 	static void test719() {
 		auto cls = new shared Class719;
@@ -731,14 +735,22 @@ unittest {
 
 unittest { // run and join local task from outside of a task
 	int i = 0;
-	auto t = runTask({ sleep(1.msecs); i = 1; });
+	auto t = runTask({
+		try sleep(1.msecs);
+		catch (Exception e) assert(false, e.msg);
+		i = 1;
+	});
 	t.join();
 	assert(i == 1);
 }
 
 unittest { // run and join worker task from outside of a task
 	__gshared int i = 0;
-	auto t = runWorkerTaskH({ sleep(5.msecs); i = 1; });
+	auto t = runWorkerTaskH({
+		try sleep(5.msecs);
+		catch (Exception e) assert(false, e.msg);
+		i = 1;
+	});
 	t.join();
 	assert(i == 1);
 }
@@ -974,7 +986,8 @@ unittest {
 	size_t ti;
 	auto t = runTask({
 		for (ti = 0; ti < 10; ti++)
-			yield();
+			try yield();
+			catch (Exception e) assert(false, e.msg);
 	});
 
 	foreach (i; 0 .. 5) yield();
