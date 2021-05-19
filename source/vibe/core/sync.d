@@ -787,8 +787,8 @@ final class InterruptibleTaskCondition {
 	@property Lockable mutex() { return m_impl.mutex; }
 	void wait() { m_impl.wait(); }
 	bool wait(Duration timeout) { return m_impl.wait(timeout); }
-	void notify() { m_impl.notify(); }
-	void notifyAll() { m_impl.notifyAll(); }
+	void notify() nothrow { m_impl.notify(); }
+	void notifyAll() nothrow { m_impl.notifyAll(); }
 }
 
 unittest {
