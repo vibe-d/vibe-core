@@ -364,12 +364,18 @@ shared final class TaskPool {
 
 		// workaround to work when called outside of a task
 		if (caller == Task.init) {
-			.runTask({ runTaskDistH(on_handle, func, args); }).join();
+			Exception ex;
+			.runTask(() {
+				try runTaskDistH(on_handle, func, args);
+				catch (Exception e) ex = e;
+			}).joinUninterruptible();
+			if (ex) throw ex;
 			return;
 		}
 
 		static void call(Task t, FT func, ARGS args) {
-			t.tid.send(Task.getThis());
+			try t.tid.send(Task.getThis());
+			catch (Exception e) assert(false, e.msg);
 			func(args);
 		}
 		runTaskDist(settings, &call, caller, func, args);
