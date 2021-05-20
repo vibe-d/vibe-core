@@ -250,7 +250,7 @@ unittest {
 	import vibe.core.core;
 
 	static void compute(Tid tid, Isolated!(double[]) array, size_t start_index)
-	{
+	nothrow {
 		foreach( i; 0 .. array.length )
 			array[i] = (start_index + i) * 0.5;
 
@@ -1255,7 +1255,9 @@ void prioritySend(ARGS...)(Tid tid, ARGS args) { std.concurrency.prioritySend(ti
 
 package final class VibedScheduler : Scheduler {
 	import core.sync.mutex;
+	import core.stdc.stdlib : abort;
 	import vibe.core.core;
+	import vibe.core.log : LogLevel, logException;
 	import vibe.core.sync;
 
 	override void start(void delegate() op) { op(); }
@@ -1263,10 +1265,20 @@ package final class VibedScheduler : Scheduler {
 		import core.thread : Thread;
 
 		final switch (st_concurrencyPrimitive) with (ConcurrencyPrimitive) {
-			case task: runTask(op); break;
+			case task:
+				static void nothrow_wrapper(void delegate() op) {
+					try op();
+					catch (Exception e) assert(false, e.msg);
+				}
+				runTask(&nothrow_wrapper, op);
+				break;
 			case workerTask:
-				static void wrapper(shared(void delegate()) op) {
-					(cast(void delegate())op)();
+				static void wrapper(shared(void delegate()) op) nothrow {
+					try (cast(void delegate())op)();
+					catch (Exception e) {
+						logException!(LogLevel.fatal)(e, "Uncaught exception in spawn()ed task");
+						abort();
+					}
 				}
 				runWorkerTask(&wrapper, cast(shared)op);
 				break;

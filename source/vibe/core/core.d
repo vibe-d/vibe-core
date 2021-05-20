@@ -314,23 +314,42 @@ void setIdleHandler(bool delegate() @safe nothrow del)
 
 	Note that the maximum size of all args must not exceed `maxTaskParameterSize`.
 */
-Task runTask(ARGS...)(void delegate(ARGS) @safe task, auto ref ARGS args)
+Task runTask(ARGS...)(void delegate(ARGS) @safe nothrow task, auto ref ARGS args)
 {
 	return runTask_internal!((ref tfi) { tfi.set(task, args); });
 }
-/// ditto
-Task runTask(ARGS...)(void delegate(ARGS) @system task, auto ref ARGS args)
+///
+Task runTask(ARGS...)(void delegate(ARGS) @system nothrow task, auto ref ARGS args)
 @system {
 	return runTask_internal!((ref tfi) { tfi.set(task, args); });
 }
 /// ditto
 Task runTask(CALLABLE, ARGS...)(CALLABLE task, auto ref ARGS args)
-	if (!is(CALLABLE : void delegate(ARGS)) && is(typeof(CALLABLE.init(ARGS.init))))
+	if (!is(CALLABLE : void delegate(ARGS)) && isNothrowCallable!(CALLABLE, ARGS))
 {
 	return runTask_internal!((ref tfi) { tfi.set(task, args); });
 }
 /// ditto
-Task runTask(ARGS...)(TaskSettings settings, void delegate(ARGS) @safe task, auto ref ARGS args)
+deprecated("The `task` argument should be nothrow")
+Task runTask(ARGS...)(void delegate(ARGS) @safe task, auto ref ARGS args)
+{
+	return runTask_internal!((ref tfi) { tfi.set(task, args); });
+}
+/// ditto
+deprecated("The `task` argument should be nothrow")
+Task runTask(ARGS...)(void delegate(ARGS) @system task, auto ref ARGS args)
+@system {
+	return runTask_internal!((ref tfi) { tfi.set(task, args); });
+}
+/// ditto
+deprecated("The `task` argument should be nothrow")
+Task runTask(CALLABLE, ARGS...)(CALLABLE task, auto ref ARGS args)
+	if (!is(CALLABLE : void delegate(ARGS)) && isCallable!(CALLABLE, ARGS) && !isNothrowCallable!(CALLABLE, ARGS))
+{
+	return runTask_internal!((ref tfi) { tfi.set(task, args); });
+}
+/// ditto
+Task runTask(ARGS...)(TaskSettings settings, void delegate(ARGS) @safe nothrow task, auto ref ARGS args)
 {
 	return runTask_internal!((ref tfi) {
 		tfi.settings = settings;
@@ -338,7 +357,7 @@ Task runTask(ARGS...)(TaskSettings settings, void delegate(ARGS) @safe task, aut
 	});
 }
 /// ditto
-Task runTask(ARGS...)(TaskSettings settings, void delegate(ARGS) @system task, auto ref ARGS args)
+Task runTask(ARGS...)(TaskSettings settings, void delegate(ARGS) @system nothrow task, auto ref ARGS args)
 @system {
 	return runTask_internal!((ref tfi) {
 		tfi.settings = settings;
@@ -347,7 +366,35 @@ Task runTask(ARGS...)(TaskSettings settings, void delegate(ARGS) @system task, a
 }
 /// ditto
 Task runTask(CALLABLE, ARGS...)(TaskSettings settings, CALLABLE task, auto ref ARGS args)
-	if (!is(CALLABLE : void delegate(ARGS)) && is(typeof(CALLABLE.init(ARGS.init))))
+	if (!is(CALLABLE : void delegate(ARGS)) && isNothrowCallable!(CALLABLE, ARGS))
+{
+	return runTask_internal!((ref tfi) {
+		tfi.settings = settings;
+		tfi.set(task, args);
+	});
+}
+/// ditto
+deprecated("The `task` argument should be nothrow")
+Task runTask(ARGS...)(TaskSettings settings, void delegate(ARGS) @safe task, auto ref ARGS args)
+{
+	return runTask_internal!((ref tfi) {
+		tfi.settings = settings;
+		tfi.set(task, args);
+	});
+}
+/// ditto
+deprecated("The `task` argument should be nothrow")
+Task runTask(ARGS...)(TaskSettings settings, void delegate(ARGS) @system task, auto ref ARGS args)
+@system {
+	return runTask_internal!((ref tfi) {
+		tfi.settings = settings;
+		tfi.set(task, args);
+	});
+}
+/// ditto
+deprecated("The `task` argument should be nothrow")
+Task runTask(CALLABLE, ARGS...)(TaskSettings settings, CALLABLE task, auto ref ARGS args)
+	if (!is(CALLABLE : void delegate(ARGS)) && isCallable!(CALLABLE, ARGS) && !isNothrowCallable!(CALLABLE, ARGS))
 {
 	return runTask_internal!((ref tfi) {
 		tfi.settings = settings;
@@ -361,11 +408,11 @@ unittest { // test proportional priority scheduling
 	scope (exit) tm.stop();
 
 	size_t a, b;
-	auto t1 = runTask(TaskSettings(1), { while (a + b < 100) { a++; yield(); } });
-	auto t2 = runTask(TaskSettings(10), { while (a + b < 100) { b++; yield(); } });
+	auto t1 = runTask(TaskSettings(1), { while (a + b < 100) { a++; try yield(); catch (Exception e) assert(false); } });
+	auto t2 = runTask(TaskSettings(10), { while (a + b < 100) { b++; try yield(); catch (Exception e) assert(false); } });
 	runTask({
-		t1.join();
-		t2.join();
+		t1.joinUninterruptible();
+		t2.joinUninterruptible();
 		exitEventLoop();
 	});
 	runEventLoop();
@@ -460,34 +507,65 @@ unittest { // ensure task.running is true directly after runTask
 	able to guarantee thread-safety.
 */
 void runWorkerTask(FT, ARGS...)(FT func, auto ref ARGS args)
-	if (isFunctionPointer!FT)
+	if (isFunctionPointer!FT && isNothrowCallable!(FT, ARGS))
 {
 	setupWorkerThreads();
 	st_workerPool.runTask(func, args);
 }
-
 /// ditto
 void runWorkerTask(alias method, T, ARGS...)(shared(T) object, auto ref ARGS args)
-	if (is(typeof(__traits(getMember, object, __traits(identifier, method)))))
+	if (isNothrowMethod!(shared(T), method, ARGS))
 {
 	setupWorkerThreads();
 	st_workerPool.runTask!method(object, args);
 }
 /// ditto
 void runWorkerTask(FT, ARGS...)(TaskSettings settings, FT func, auto ref ARGS args)
-	if (isFunctionPointer!FT)
+	if (isFunctionPointer!FT && isNothrowCallable!(FT, ARGS))
 {
 	setupWorkerThreads();
 	st_workerPool.runTask(settings, func, args);
 }
-
 /// ditto
 void runWorkerTask(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, auto ref ARGS args)
-	if (is(typeof(__traits(getMember, object, __traits(identifier, method)))))
+	if (isNothrowMethod!(shared(T), method, ARGS))
 {
 	setupWorkerThreads();
 	st_workerPool.runTask!method(settings, object, args);
 }
+/// ditto
+deprecated("The `func` argument should be nothrow")
+void runWorkerTask(FT, ARGS...)(FT func, auto ref ARGS args)
+	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
+{
+	setupWorkerThreads();
+	st_workerPool.runTask(func, args);
+}
+/// ditto
+deprecated("The `method` argument should be nothrow")
+void runWorkerTask(alias method, T, ARGS...)(shared(T) object, auto ref ARGS args)
+	if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
+{
+	setupWorkerThreads();
+	st_workerPool.runTask!method(object, args);
+}
+/// ditto
+deprecated("The `func` argument should be nothrow")
+void runWorkerTask(FT, ARGS...)(TaskSettings settings, FT func, auto ref ARGS args)
+	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
+{
+	setupWorkerThreads();
+	st_workerPool.runTask(settings, func, args);
+}
+/// ditto
+deprecated("The `method` argument should be nothrow")
+void runWorkerTask(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, auto ref ARGS args)
+	if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
+{
+	setupWorkerThreads();
+	st_workerPool.runTask!method(settings, object, args);
+}
+
 
 /**
 	Runs a new asynchronous task in a worker thread, returning the task handle.
@@ -499,28 +577,60 @@ void runWorkerTask(alias method, T, ARGS...)(TaskSettings settings, shared(T) ob
 	able to guarantee thread-safety.
 */
 Task runWorkerTaskH(FT, ARGS...)(FT func, auto ref ARGS args)
-	if (isFunctionPointer!FT)
+	if (isFunctionPointer!FT && isNothrowCallable!(FT, ARGS))
 {
 	setupWorkerThreads();
 	return st_workerPool.runTaskH(func, args);
 }
 /// ditto
 Task runWorkerTaskH(alias method, T, ARGS...)(shared(T) object, auto ref ARGS args)
-	if (is(typeof(__traits(getMember, object, __traits(identifier, method)))))
+	if (isNothrowMethod!(shared(T), method, ARGS))
 {
 	setupWorkerThreads();
 	return st_workerPool.runTaskH!method(object, args);
 }
 /// ditto
 Task runWorkerTaskH(FT, ARGS...)(TaskSettings settings, FT func, auto ref ARGS args)
-	if (isFunctionPointer!FT)
+	if (isFunctionPointer!FT && isNothrowCallable!(FT, ARGS))
 {
 	setupWorkerThreads();
 	return st_workerPool.runTaskH(settings, func, args);
 }
 /// ditto
 Task runWorkerTaskH(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, auto ref ARGS args)
-	if (is(typeof(__traits(getMember, object, __traits(identifier, method)))))
+	if (isNothrowMethod!(shared(T), method, ARGS))
+{
+	setupWorkerThreads();
+	return st_workerPool.runTaskH!method(settings, object, args);
+}
+/// ditto
+deprecated("The `func` argument should be nothrow")
+Task runWorkerTaskH(FT, ARGS...)(FT func, auto ref ARGS args)
+	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
+{
+	setupWorkerThreads();
+	return st_workerPool.runTaskH(func, args);
+}
+/// ditto
+deprecated("The `method` argument should be nothrow")
+Task runWorkerTaskH(alias method, T, ARGS...)(shared(T) object, auto ref ARGS args)
+	if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
+{
+	setupWorkerThreads();
+	return st_workerPool.runTaskH!method(object, args);
+}
+/// ditto
+deprecated("The `func` argument should be nothrow")
+Task runWorkerTaskH(FT, ARGS...)(TaskSettings settings, FT func, auto ref ARGS args)
+	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
+{
+	setupWorkerThreads();
+	return st_workerPool.runTaskH(settings, func, args);
+}
+/// ditto
+deprecated("The `method` argument should be nothrow")
+Task runWorkerTaskH(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, auto ref ARGS args)
+	if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
 {
 	setupWorkerThreads();
 	return st_workerPool.runTaskH!method(settings, object, args);
@@ -546,7 +656,7 @@ unittest {
 unittest {
 	static class Test {
 		void workerMethod(int param)
-		shared {
+		shared nothrow {
 			logInfo("Param: %s", param);
 		}
 	}
@@ -564,14 +674,15 @@ unittest {
 /// Running a worker task using a function and communicating with it
 unittest {
 	static void workerFunc(Task caller)
-	{
+	nothrow {
 		int counter = 10;
-		while (receiveOnly!string() == "ping" && --counter) {
-			logInfo("pong");
-			caller.send("pong");
-		}
-		caller.send("goodbye");
-
+		try {
+			while (receiveOnly!string() == "ping" && --counter) {
+				logInfo("pong");
+				caller.send("pong");
+			}
+			caller.send("goodbye");
+		} catch (Exception e) assert(false, e.msg);
 	}
 
 	static void test()
@@ -583,20 +694,23 @@ unittest {
 		} while (receiveOnly!string() == "pong");
 	}
 
-	static void work719(int) {}
+	static void work719(int) nothrow {}
 	static void test719() { runWorkerTaskH(&work719, cast(ubyte)42); }
 }
 
 /// Running a worker task using a class method and communicating with it
 unittest {
 	static class Test {
-		void workerMethod(Task caller) shared {
+		void workerMethod(Task caller)
+		shared nothrow {
 			int counter = 10;
-			while (receiveOnly!string() == "ping" && --counter) {
-				logInfo("pong");
-				caller.send("pong");
-			}
-			caller.send("goodbye");
+			try {
+				while (receiveOnly!string() == "ping" && --counter) {
+					logInfo("pong");
+					caller.send("pong");
+				}
+				caller.send("goodbye");
+			} catch (Exception e) assert(false, e.msg);
 		}
 	}
 
@@ -611,7 +725,7 @@ unittest {
 	}
 
 	static class Class719 {
-		void work(int) shared {}
+		void work(int) shared nothrow {}
 	}
 	static void test719() {
 		auto cls = new shared Class719;
@@ -621,14 +735,22 @@ unittest {
 
 unittest { // run and join local task from outside of a task
 	int i = 0;
-	auto t = runTask({ sleep(1.msecs); i = 1; });
+	auto t = runTask({
+		try sleep(1.msecs);
+		catch (Exception e) assert(false, e.msg);
+		i = 1;
+	});
 	t.join();
 	assert(i == 1);
 }
 
 unittest { // run and join worker task from outside of a task
 	__gshared int i = 0;
-	auto t = runWorkerTaskH({ sleep(5.msecs); i = 1; });
+	auto t = runWorkerTaskH({
+		try sleep(5.msecs);
+		catch (Exception e) assert(false, e.msg);
+		i = 1;
+	});
 	t.join();
 	assert(i == 1);
 }
@@ -645,26 +767,60 @@ unittest { // run and join worker task from outside of a task
 	`workerThreadCount`.
 */
 void runWorkerTaskDist(FT, ARGS...)(FT func, auto ref ARGS args)
-	if (is(typeof(*func) == function))
+	if (isFunctionPointer!FT && isNothrowCallable!(FT, ARGS))
 {
 	setupWorkerThreads();
 	return st_workerPool.runTaskDist(func, args);
 }
 /// ditto
 void runWorkerTaskDist(alias method, T, ARGS...)(shared(T) object, ARGS args)
+	if (isNothrowMethod!(shared(T), method, ARGS))
 {
 	setupWorkerThreads();
 	return st_workerPool.runTaskDist!method(object, args);
 }
 /// ditto
 void runWorkerTaskDist(FT, ARGS...)(TaskSettings settings, FT func, auto ref ARGS args)
-	if (is(typeof(*func) == function))
+	if (isFunctionPointer!FT && isNothrowCallable!(FT, ARGS))
 {
 	setupWorkerThreads();
 	return st_workerPool.runTaskDist(settings, func, args);
 }
 /// ditto
 void runWorkerTaskDist(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, ARGS args)
+	if (isNothrowMethod!(shared(T), method, ARGS))
+{
+	setupWorkerThreads();
+	return st_workerPool.runTaskDist!method(settings, object, args);
+}
+/// ditto
+deprecated("The `func` argument should be nothrow")
+void runWorkerTaskDist(FT, ARGS...)(FT func, auto ref ARGS args)
+	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
+{
+	setupWorkerThreads();
+	return st_workerPool.runTaskDist(func, args);
+}
+/// ditto
+deprecated("The `method` argument should be nothrow")
+void runWorkerTaskDist(alias method, T, ARGS...)(shared(T) object, ARGS args)
+	if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
+{
+	setupWorkerThreads();
+	return st_workerPool.runTaskDist!method(object, args);
+}
+/// ditto
+deprecated("The `func` argument should be nothrow")
+void runWorkerTaskDist(FT, ARGS...)(TaskSettings settings, FT func, auto ref ARGS args)
+	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
+{
+	setupWorkerThreads();
+	return st_workerPool.runTaskDist(settings, func, args);
+}
+/// ditto
+deprecated("The `method` argument should be nothrow")
+void runWorkerTaskDist(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, ARGS args)
+	if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
 {
 	setupWorkerThreads();
 	return st_workerPool.runTaskDist!method(settings, object, args);
@@ -679,17 +835,62 @@ void runWorkerTaskDist(alias method, T, ARGS...)(TaskSettings settings, shared(T
 	See_also: `runWorkerTaskDist`
 */
 void runWorkerTaskDistH(HCB, FT, ARGS...)(scope HCB on_handle, FT func, auto ref ARGS args)
-	if (is(typeof(*func) == function))
+	if (isFunctionPointer!FT && isNothrowCallable!(FT, ARGS))
 {
 	setupWorkerThreads();
 	st_workerPool.runTaskDistH(on_handle, func, args);
 }
 /// ditto
 void runWorkerTaskDistH(HCB, FT, ARGS...)(TaskSettings settings, scope HCB on_handle, FT func, auto ref ARGS args)
-	if (is(typeof(*func) == function))
+	if (isFunctionPointer!FT && isNothrowCallable!(FT, ARGS))
 {
 	setupWorkerThreads();
 	st_workerPool.runTaskDistH(settings, on_handle, func, args);
+}
+/// ditto
+deprecated("The `func` argument should be nothrow")
+void runWorkerTaskDistH(HCB, FT, ARGS...)(scope HCB on_handle, FT func, auto ref ARGS args)
+	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
+{
+	setupWorkerThreads();
+	st_workerPool.runTaskDistH(on_handle, func, args);
+}
+/// ditto
+deprecated("The `func` argument should be nothrow")
+void runWorkerTaskDistH(HCB, FT, ARGS...)(TaskSettings settings, scope HCB on_handle, FT func, auto ref ARGS args)
+	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
+{
+	setupWorkerThreads();
+	st_workerPool.runTaskDistH(settings, on_handle, func, args);
+}
+
+
+enum isCallable(CALLABLE, ARGS...) = is(typeof({ mixin(testCall!ARGS("CALLABLE.init")); }));
+enum isNothrowCallable(CALLABLE, ARGS...) = is(typeof(() nothrow { mixin(testCall!ARGS("CALLABLE.init")); }));
+enum isMethod(T, alias method, ARGS...) = is(typeof({ mixin(testCall!ARGS("__traits(getMember, T.init, __traits(identifier, method))")); }));
+enum isNothrowMethod(T, alias method, ARGS...) = is(typeof(() nothrow { mixin(testCall!ARGS("__traits(getMember, T.init, __traits(identifier, method))")); }));
+private string testCall(ARGS...)(string callable) {
+	auto ret = callable ~ "(";
+	foreach (i, Ti; ARGS) {
+		if (i > 0) ret ~= ", ";
+		static if (is(typeof((Ti a) => a)))
+			ret ~= "(function ref ARGS["~i.stringof~"]() { static ARGS["~i.stringof~"] ret; return ret; }) ()";
+		else
+			ret ~= "ARGS["~i.stringof~"].init";
+	}
+	return ret ~ ");";
+}
+
+unittest {
+	static assert(isCallable!(void function() @system));
+	static assert(isCallable!(void function(int) @system, int));
+	static assert(isCallable!(void function(ref int) @system, int));
+	static assert(isNothrowCallable!(void function() nothrow @system));
+	static assert(!isNothrowCallable!(void function() @system));
+
+	struct S { @disable this(this); }
+	static assert(isCallable!(void function(S) @system, S));
+	static assert(isNothrowCallable!(void function(S) @system nothrow, S));
 }
 
 
@@ -785,7 +986,8 @@ unittest {
 	size_t ti;
 	auto t = runTask({
 		for (ti = 0; ti < 10; ti++)
-			yield();
+			try yield();
+			catch (Exception e) assert(false, e.msg);
 	});
 
 	foreach (i; 0 .. 5) yield();
@@ -898,6 +1100,22 @@ unittest {
 		sleep(500.msecs);
 		logInfo("Done sleeping.");
 	}
+}
+
+
+/** Suspends the execution of the calling task an an uninterruptible manner.
+
+	This function behaves the same as `sleep`, except that invoking
+	`Task.interrupt` on the calling task will not result in an
+	`InterruptException` being thrown from `sleepUninterruptible`. Instead,
+	if any, a later interruptible wait state will throw the exception.
+*/
+void sleepUninterruptible(Duration timeout)
+@safe nothrow {
+	assert(timeout >= 0.seconds, "Argument to sleep must not be negative.");
+	if (timeout <= 0.seconds) return;
+	auto tm = setTimer(timeout, null);
+	tm.waitUninterruptible();
 }
 
 
@@ -1412,6 +1630,21 @@ struct Timer {
 		);
 		return res[1];
 	}
+
+	/** Waits until the timer fires.
+
+		Same as `wait`, except that `Task.interrupt` has no effect on the wait.
+	*/
+	bool waitUninterruptible()
+	nothrow {
+		auto cb = m_driver.timers.userData!Callback(m_id);
+		assert(cb is null, "Cannot wait on a timer that was created with a callback.");
+
+		auto res = asyncAwaitUninterruptible!(TimerCallback2,
+			cb => m_driver.timers.wait(m_id, cb)
+		);
+		return res[1];
+	}
 }
 
 private struct TimerCallbackHandler(CALLABLE) {
@@ -1794,15 +2027,18 @@ private void shutdownDriver()
 
 
 private void watchExitFlag()
-{
+nothrow {
 	auto emit_count = st_threadsSignal.emitCount;
 	while (true) {
-		synchronized (st_threadsMutex) {
+		{
+			st_threadsMutex.lock_nothrow();
+			scope (exit) st_threadsMutex.unlock_nothrow();
 			if (getExitFlag()) break;
 		}
 
 		try emit_count = st_threadsSignal.wait(emit_count);
 		catch (InterruptException e) return;
+		catch (Exception e) assert(false, e.msg);
 	}
 
 	logDebug("main thread exit");
