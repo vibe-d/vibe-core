@@ -1,3 +1,18 @@
+1.18.0 - 2021-05-21
+===================
+
+- Deprecated calling `runTask` and its variants with non-`nothrow` task callables - [pull #279][issue279]
+	- Uncaught exceptions in tasks are highly error prone due to the often undetected termination of such a task
+	- Alternative approaches, such as re-throwing from `join` is neither thread-safe, nor statically checkable
+	- Using `nothrow` callables will be mandatory for vibe-core 2.x.x
+- Made more parts of the API `nothrow`
+- Added `getLogLevel` - [issue #235][issue235], [pull #280][issue280]
+
+[issue235]: https://github.com/vibe-d/vibe-core/issues/235
+[issue279]: https://github.com/vibe-d/vibe-core/issues/279
+[issue280]: https://github.com/vibe-d/vibe-core/issues/280
+
+
 1.17.1 - 2021-05-18
 ===================
 
