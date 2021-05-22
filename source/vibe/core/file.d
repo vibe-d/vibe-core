@@ -1151,6 +1151,8 @@ private void performListDirectory(ListDirectoryRequest req)
 							nsecs = __traits(getMember, st, f ~ "ensec");
 						else static if (is(typeof(__traits(getMember, st, "__" ~ f ~ "ensec"))))
 							nsecs = __traits(getMember, st, "__" ~ f ~ "ensec");
+						else static if (is(typeof(__traits(getMember, st, f ~ "e_nsec"))))
+							nsecs = __traits(getMember, st, f ~ "e_nsec");
 						else static if (is(typeof(__traits(getMember, st, "__" ~ f ~ "e_nsec"))))
 							nsecs = __traits(getMember, st, "__" ~ f ~ "e_nsec");
 						else static assert(false, "Found no nanoseconds fields in struct stat");
@@ -1229,6 +1231,11 @@ version (Posix) {
 	}
 
 	version (CRuntime_Musl) {
+		static if (!is(typeof(AT_SYMLINK_NOFOLLOW)))
+			enum AT_SYMLINK_NOFOLLOW = 0x0100;
+	}
+
+	version (Android) {
 		static if (!is(typeof(AT_SYMLINK_NOFOLLOW)))
 			enum AT_SYMLINK_NOFOLLOW = 0x0100;
 	}
