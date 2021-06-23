@@ -399,7 +399,7 @@ template validateInterfaceConformance(T, I)
 */
 template checkInterfaceConformance(T, I) {
 	import std.meta : AliasSeq;
-	import std.traits : FunctionAttribute, FunctionTypeOf, MemberFunctionsTuple, ParameterTypeTuple, ReturnType, functionAttributes;
+	import std.traits : FunctionAttribute, FunctionTypeOf, MemberFunctionsTuple, ParameterTypeTuple, ReturnType, functionAttributes, fullyQualifiedName;
 
 	alias Members = AliasSeq!(__traits(allMembers, I));
 
@@ -415,13 +415,13 @@ template checkInterfaceConformance(T, I) {
 				static if (functionAttributes!F & FunctionAttribute.property) {
 					static if (PT.length > 0) {
 						static if (!is(typeof(mixin("function RT (ref T t)"~attribs~"{ return t."~mem~" = PT.init; }"))))
-							enum impl = "`" ~ T.stringof ~ "` does not implement property setter `" ~
-								mem ~ "` of type `" ~ FT.stringof ~ "`";
+							enum impl = "`" ~ fullyQualifiedName!T ~ "` does not implement property setter `" ~
+								mem ~ "` of type `" ~ FT.stringof ~ "` from `" ~ fullyQualifiedName!I ~ "`";
 						else enum string impl = impl!(i+1);
 					} else {
 						static if (!is(typeof(mixin("function RT(ref T t)"~attribs~"{ return t."~mem~"; }"))))
-							enum impl = "`" ~ T.stringof ~ "` does not implement property getter `" ~
-								mem ~ "` of type `" ~ FT.stringof ~ "`";
+							enum impl = "`" ~ fullyQualifiedName!T ~ "` does not implement property getter `" ~
+								mem ~ "` of type `" ~ FT.stringof ~ "` from `" ~ fullyQualifiedName!I ~ "`";
 						else enum string impl = impl!(i+1);
 					}
 				} else {
@@ -430,14 +430,14 @@ template checkInterfaceConformance(T, I) {
 							static if (mem == "write" && PT.length == 2) {
 								auto f = mixin("function void(ref T t, ref PT p)"~attribs~"{ t."~mem~"(p); }");
 							}
-							enum impl = "`" ~ T.stringof ~ "` does not implement method `" ~
-								mem ~ "` of type `" ~ FT.stringof ~ "`";
+							enum impl = "`" ~ fullyQualifiedName!T ~ "` does not implement method `" ~
+								mem ~ "` of type `" ~ FT.stringof ~ "` from `" ~ fullyQualifiedName!I ~ "`";
 						}
 						else enum string impl = impl!(i+1);
 					} else {
 						static if (!is(typeof(mixin("function RT(ref T t, ref PT p)"~attribs~"{ return t."~mem~"(p); }"))))
-							enum impl = "`" ~ T.stringof ~ "` does not implement method `" ~
-								mem ~ "` of type `" ~ FT.stringof ~ "`";
+							enum impl = "`" ~ fullyQualifiedName!T ~ "` does not implement method `" ~
+								mem ~ "` of type `" ~ FT.stringof ~ "` from `" ~ fullyQualifiedName!I ~ "`";
 						else enum string impl = impl!(i+1);
 					}
 				}
@@ -506,8 +506,28 @@ unittest {
 		void write(InputStream stream, ulong nbytes) {}
 	}
 
-	static assert(checkInterfaceConformance!(NonOSStruct, OutputStream) ==
-		"`NonOSStruct` does not implement method `flush` of type `@safe void()`");
+	string removeUnittestLineNumbers(string s) {
+		import std.string;
+
+		string ret;
+		size_t start;
+		while (true)
+		{
+			size_t next = s.indexOf("__unittest_L", start);
+			if (next == -1)
+				break;
+			size_t dot = s.indexOf('.', next);
+			if (dot == -1)
+				dot = s.length;
+			else
+				ret ~= s[start .. next + "__unittest".length];
+			start = dot;
+		}
+		return ret ~ s[start .. $];
+	}
+
+	static assert(removeUnittestLineNumbers(checkInterfaceConformance!(NonOSStruct, OutputStream)) ==
+		"`vibe.internal.traits.__unittest.NonOSStruct` does not implement method `flush` of type `@safe void()` from `vibe.internal.traits.__unittest.OutputStream`");
 
 	static struct NonOSStruct2 {
 		void write(in ubyte[] bytes) {} // not @safe
@@ -519,12 +539,12 @@ unittest {
     // `in` used to show up as `const` / `const scope`.
     // With dlang/dmd#11474 it shows up as `in`.
     // Remove when support for v2.093.0 is dropped
-    static if (checkInterfaceConformance!(NonOSStruct2, OutputStream) !=
-        "`NonOSStruct2` does not implement method `write` of type `@safe void(in ubyte[] bytes)`")
+    static if (removeUnittestLineNumbers(checkInterfaceConformance!(NonOSStruct2, OutputStream)) !=
+        "`vibe.internal.traits.__unittest.NonOSStruct2` does not implement method `write` of type `@safe void(in ubyte[] bytes)` from `vibe.internal.traits.__unittest.OutputStream`")
     {
         // Fallback to pre-2.092+
-        static assert(checkInterfaceConformance!(NonOSStruct2, OutputStream) ==
-            "`NonOSStruct2` does not implement method `write` of type `@safe void(const(ubyte[]) bytes)`");
+        static assert(removeUnittestLineNumbers(checkInterfaceConformance!(NonOSStruct2, OutputStream)) ==
+            "`vibe.internal.traits.__unittest.NonOSStruct2` does not implement method `write` of type `@safe void(const(ubyte[]) bytes)` from `vibe.internal.traits.__unittest.OutputStream`");
     }
 }
 
