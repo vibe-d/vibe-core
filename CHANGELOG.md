@@ -1,3 +1,11 @@
+1.18.1 - 2021-05-21
+===================
+
+- Fixes compilation on Android - [pull #281][issue281]
+
+[issue281]: https://github.com/vibe-d/vibe-core/issues/281
+
+
 1.18.0 - 2021-05-21
 ===================
 
