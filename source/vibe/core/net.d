@@ -241,16 +241,17 @@ TCPConnection connectTCP(NetworkAddress addr, NetworkAddress bind_address = anyA
 /**
 	Creates a bound UDP socket suitable for sending and receiving packets.
 */
-UDPConnection listenUDP(ref NetworkAddress addr)
+UDPConnection listenUDP(ref NetworkAddress addr, UDPListenOptions options = UDPListenOptions.none)
 {
-	return UDPConnection(addr);
+	return UDPConnection(addr, options);
 }
 /// ditto
-UDPConnection listenUDP(ushort port, string bind_address = "0.0.0.0")
+UDPConnection listenUDP(ushort port, string bind_address = "0.0.0.0",
+	UDPListenOptions options = UDPListenOptions.none)
 {
 	auto addr = resolveHost(bind_address, AddressFamily.UNSPEC, false);
 	addr.port = port;
-	return UDPConnection(addr);
+	return UDPConnection(addr, options);
 }
 
 NetworkAddress anyAddress()
@@ -944,10 +945,14 @@ struct UDPConnection {
 		Context* m_context;
 	}
 
-	private this(ref NetworkAddress bind_address)
+	private this(ref NetworkAddress bind_address, UDPListenOptions options)
 	{
+		DatagramCreateOptions copts;
+		if (options & UDPListenOptions.reuseAddress) copts |= DatagramCreateOptions.reuseAddress;
+		if (options & UDPListenOptions.reusePort) copts |= DatagramCreateOptions.reusePort;
+
 		scope baddr = new RefAddress(bind_address.sockAddr, bind_address.sockAddrLen);
-		m_socket = eventDriver.sockets.createDatagramSocket(baddr, null);
+		m_socket = eventDriver.sockets.createDatagramSocket(baddr, null, copts);
 		enforce(m_socket != DatagramSocketFD.invalid, "Failed to create datagram socket.");
 		m_context = () @trusted { return &eventDriver.sockets.userData!Context(m_socket); } ();
 		m_context.driver = () @trusted { return cast(shared)eventDriver; } ();
@@ -1133,6 +1138,18 @@ enum TCPListenOptions {
 	reuseAddress = 1<<3,
 	///
 	defaults = reuseAddress
+}
+
+
+/** Flags to control the behavior of `listenUDP`
+*/
+enum UDPListenOptions {
+	/// No options
+	none = 0,
+	/// Enable address reuse
+	reuseAddress = 1 << 0,
+	/// Enable port reuse
+	reusePort = 1 << 1
 }
 
 private pure nothrow {
