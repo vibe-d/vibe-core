@@ -4,7 +4,7 @@ authors "Sönke Ludwig"
 copyright "Copyright © 2016-2020, Sönke Ludwig"
 license "MIT"
 
-dependency "eventcore" version="~>0.9.2"
+dependency "eventcore" version="~>0.9.17"
 dependency "stdx-allocator" version="~>2.77.0"
 
 targetName "vibe_core"
