@@ -813,7 +813,7 @@ struct DirectoryWatcher { // TODO: avoid all those heap allocations!
 		// Support for `-preview=in`
 		static if (!is(typeof(mixin(q{(in ref int a) => a}))))
 		{
-			void onChange(WatcherID id, in FileChange change) nothrow {
+			void onChange(WatcherID id, const scope ref FileChange change) nothrow {
 				this.onChangeImpl(id, change);
 			}
 		} else {
