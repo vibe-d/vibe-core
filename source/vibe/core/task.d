@@ -1105,7 +1105,7 @@ private struct TaskFiberQueue {
 
 	@property TaskFiber front() { return first; }
 
-	void insertFront(TaskFiber task)
+	void insertFront(TaskFiber task) @trusted
 	{
 		assert(task.m_queue is null, "Task is already scheduled to be resumed!");
 		assert(task.m_prev is null, "Task has m_prev set without being in a queue!?");
@@ -1122,7 +1122,7 @@ private struct TaskFiberQueue {
 		length++;
 	}
 
-	void insertBack(TaskFiber task)
+	void insertBack(TaskFiber task) @trusted
 	{
 		assert(task.m_queue is null, "Task is already scheduled to be resumed!");
 		assert(task.m_prev is null, "Task has m_prev set without being in a queue!?");
@@ -1143,7 +1143,7 @@ private struct TaskFiberQueue {
 	// starting from the back. a maximum of max_skip tasks will be skipped
 	// before the task is inserted regardless of the predicate.
 	void insertBackPred(TaskFiber task, size_t max_skip,
-		scope bool delegate(TaskFiber) @safe nothrow pred)
+		scope bool delegate(TaskFiber) @safe nothrow pred) @trusted
 	{
 		assert(task.m_queue is null, "Task is already scheduled to be resumed!");
 		assert(task.m_prev is null, "Task has m_prev set without being in a queue!?");
