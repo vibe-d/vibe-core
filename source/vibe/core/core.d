@@ -2058,6 +2058,13 @@ nothrow {
 	catch (Throwable th) {
 		logDebug("Failed to notify for event loop exit: %s", th.msg);
 	}
+
+	// Stop the event loop of the current thread directly instead of relying on
+	// the st_term mechanic, as the event loop might be in a waiting state, so
+	// that no tasks can get scheduled before an event arrives. Explicitly
+	// exiting the event loop on the other hand always terminates the wait state.
+	if (auto drv = tryGetEventDriver())
+		drv.core.exit();
 }
 
 private extern(C) void onBrokenPipe(int signal)
