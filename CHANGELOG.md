@@ -1,3 +1,14 @@
+1.20.0 - 2021-08-25
+===================
+
+- `core.file`: Fix `-preview=in` support - [pull #290][issue290]
+- Mark `TaskFiberQueue.insert` functions `@trusted` (By Dennis Korpel) - [pull #291][issue291]
+- Fix possibly hanging process after SIGINT/SIGTERM - [pull #292][issue292]
+
+[issue290]: https://github.com/vibe-d/vibe-core/issues/290
+[issue291]: https://github.com/vibe-d/vibe-core/issues/291
+[issue292]: https://github.com/vibe-d/vibe-core/issues/292
+
 1.19.0 - 2021-08-14
 ===================
 
