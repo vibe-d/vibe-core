@@ -1,4 +1,4 @@
-1.19.0 - 2021-05-21
+1.19.0 - 2021-08-14
 ===================
 
 - Adds a `UDPListenOptions` argument to `listenUDP` - [pull #286][issue286]
@@ -6,7 +6,7 @@
 [issue286]: https://github.com/vibe-d/vibe-core/issues/286
 
 
-1.18.1 - 2021-05-21
+1.18.1 - 2021-07-04
 ===================
 
 - Fixes compilation on Android - [pull #281][issue281]
