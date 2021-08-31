@@ -391,6 +391,34 @@ interface RandomAccessStream : Stream {
 }
 
 
+/** Extended form of a `RandomAccessStream` that supports truncation/extension.
+*/
+interface TruncatableStream : RandomAccessStream {
+@safe:
+
+	// Note that truncate should be part of RandomAccessStream
+	/// Truncates or extends the size of the stream
+	void truncate(ulong size) @blocking;
+}
+
+
+/** Random access stream with support for explicit closing.
+*/
+interface ClosableRandomAccessStream : TruncatableStream {
+@safe:
+
+	/// Determines if the file stream is still open and accessible
+	@property bool isOpen() const nothrow;
+
+	/** Actively closes the stream and frees associated resources.
+
+		Closing a stream implies a call to `finalize`, so that it doesn't need
+		to be called explicitly.
+	*/
+	void close() @blocking;
+}
+
+
 /**
 	Stream implementation acting as a sink with no function.
 
@@ -415,6 +443,10 @@ alias StreamProxy = InterfaceProxy!Stream;
 alias ConnectionStreamProxy = InterfaceProxy!ConnectionStream;
 /// Generic storage for types that implement the `RandomAccessStream` interface
 alias RandomAccessStreamProxy = InterfaceProxy!RandomAccessStream;
+/// Generic storage for types that implement the `RandomAccessStream` interface
+alias TruncatableStreamProxy = InterfaceProxy!TruncatableStream;
+/// Generic storage for types that implement the `RandomAccessStream` interface
+alias ClosableRandomAccessStreamProxy = InterfaceProxy!ClosableRandomAccessStream;
 
 
 /** Tests if the given aggregate type is a valid input stream.
@@ -446,6 +478,18 @@ enum isConnectionStream(T) = checkInterfaceConformance!(T, ConnectionStream) is 
 	See_also: `validateRandomAccessStream`
 */
 enum isRandomAccessStream(T) = checkInterfaceConformance!(T, RandomAccessStream) is null;
+
+/** Tests if the given aggregate type is a valid random access stream.
+
+	See_also: `validateRandomAccessStream`
+*/
+enum isTruncatableStream(T) = checkInterfaceConformance!(T, TruncatableStream) is null;
+
+/** Tests if the given aggregate type is a valid random access stream.
+
+	See_also: `validateRandomAccessStream`
+*/
+enum isClosableRandomAccessStream(T) = checkInterfaceConformance!(T, ClosableRandomAccessStream) is null;
 
 /** Verifies that the given type is a valid input stream.
 
@@ -496,3 +540,23 @@ mixin template validateConnectionStream(T) { import vibe.internal.traits : valid
 	See_Also: `isRandomAccessStream`
 */
 mixin template validateRandomAccessStream(T) { import vibe.internal.traits : validateInterfaceConformance; mixin validateInterfaceConformance!(T, .RandomAccessStream); }
+
+/** Verifies that the given type is a valid truncatable random access stream.
+
+	A valid random access stream type must implement all methods of the `TruncatableStream`
+	interface. Inheriting form `TruncatableStream` is not strictly necessary, which also enables
+	struct types to be considered as stream implementations.
+
+	See_Also: `isTruncatableStream`
+*/
+mixin template validateTruncatableStream(T) { import vibe.internal.traits : validateInterfaceConformance; mixin validateInterfaceConformance!(T, .TruncatableStream); }
+
+/** Verifies that the given type is a valid closable random access stream.
+
+	A valid random access stream type must implement all methods of the `ClosableRandomAccessStream`
+	interface. Inheriting form `ClosableRandomAccessStream` is not strictly necessary, which also enables
+	struct types to be considered as stream implementations.
+
+	See_Also: `isClosableRandomAccessStream`
+*/
+mixin template validateClosableRandomAccessStream(T) { import vibe.internal.traits : validateInterfaceConformance; mixin validateInterfaceConformance!(T, .ClosableRandomAccessStream); }
