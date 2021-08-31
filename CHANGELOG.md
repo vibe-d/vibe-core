@@ -1,3 +1,11 @@
+1.21.0 - 2021-08-31
+===================
+
+- Added `TruncatableStream` and `ClosableRandomAccessStream` - `FileStream` now implements the latter - [pull #294][issue294]
+
+[issue294]: https://github.com/vibe-d/vibe-core/issues/294
+
+
 1.20.0 - 2021-08-25
 ===================
 
@@ -8,6 +16,7 @@
 [issue290]: https://github.com/vibe-d/vibe-core/issues/290
 [issue291]: https://github.com/vibe-d/vibe-core/issues/291
 [issue292]: https://github.com/vibe-d/vibe-core/issues/292
+
 
 1.19.0 - 2021-08-14
 ===================
