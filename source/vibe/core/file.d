@@ -638,7 +638,7 @@ struct FileStream {
 	}
 
 	private this(FileFD fd, NativePath path, FileMode mode)
-	{
+	nothrow {
 		assert(fd != FileFD.invalid, "Constructing FileStream from invalid file descriptor.");
 		m_fd = fd;
 		m_ctx = new CTX; // TODO: use FD custom storage
@@ -652,24 +652,24 @@ struct FileStream {
 	}
 
 	this(this)
-	{
+	nothrow {
 		if (m_fd != FileFD.invalid)
 			eventDriver.files.addRef(m_fd);
 	}
 
 	~this()
-	{
+	nothrow {
 		if (m_fd != FileFD.invalid)
 			releaseHandle!"files"(m_fd, m_ctx.driver);
 	}
 
-	@property int fd() { return cast(int)m_fd; }
+	@property int fd() const nothrow { return cast(int)m_fd; }
 
 	/// The path of the file.
-	@property NativePath path() const { return ctx.path; }
+	@property NativePath path() const nothrow { return ctx.path; }
 
 	/// Determines if the file stream is still open
-	@property bool isOpen() const { return m_fd != FileFD.invalid; }
+	@property bool isOpen() const nothrow { return m_fd != FileFD.invalid; }
 	@property ulong size() const nothrow { return ctx.size; }
 	@property bool readable() const nothrow { return ctx.mode != FileMode.append; }
 	@property bool writable() const nothrow { return ctx.mode != FileMode.read; }
@@ -788,7 +788,7 @@ struct FileStream {
 	private inout(CTX)* ctx() inout nothrow { return m_ctx; }
 }
 
-mixin validateRandomAccessStream!FileStream;
+mixin validateClosableRandomAccessStream!FileStream;
 
 
 /**
