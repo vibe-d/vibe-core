@@ -408,8 +408,7 @@ final class FileLogger : Logger {
 			case Format.threadTime:
 				dst.put('[');
 				auto tm = msg.time;
-				static if (is(typeof(tm.fracSecs))) auto msecs = tm.fracSecs.total!"msecs"; // 2.069 has deprecated "fracSec"
-				else auto msecs = tm.fracSec.msecs;
+			    auto msecs = tm.fracSecs.total!"msecs";
 				m_curFile.writef("%d-%02d-%02d %02d:%02d:%02d.%03d ", tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second, msecs);
 
 				if (msg.threadName.length) dst.put(msg.threadName);
