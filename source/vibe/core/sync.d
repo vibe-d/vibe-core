@@ -840,7 +840,7 @@ struct LocalManualEvent {
 		}
 	}
 
-	bool opCast() const nothrow { return m_waiter !is null; }
+	bool opCast (T : bool) () const nothrow { return m_waiter !is null; }
 
 	/// A counter that is increased with every emit() call
 	int emitCount() const nothrow { return m_waiter.m_emitCount; }
@@ -1041,7 +1041,7 @@ struct ManualEvent {
 	}
 
 	deprecated("ManualEvent is always non-null!")
-	bool opCast() const shared nothrow { return true; }
+	bool opCast (T : bool) () const shared nothrow { return true; }
 
 	/// A counter that is increased with every emit() call
 	int emitCount() const shared nothrow @trusted { return atomicLoad(m_emitCount); }
