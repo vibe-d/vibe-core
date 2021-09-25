@@ -527,6 +527,8 @@ struct TCPConnection {
 			releaseHandle!"sockets"(m_socket, m_context.driver);
 	}
 
+	@property int fd() const nothrow { return cast(int)m_socket; }
+
 	bool opCast(T)() const nothrow if (is(T == bool)) { return m_socket != StreamSocketFD.invalid; }
 
 	@property void tcpNoDelay(bool enabled) nothrow { eventDriver.sockets.setTCPNoDelay(m_socket, enabled); m_context.tcpNoDelay = enabled; }
@@ -970,6 +972,8 @@ struct UDPConnection {
 		if (m_socket != DatagramSocketFD.invalid)
 			releaseHandle!"sockets"(m_socket, m_context.driver);
 	}
+
+	@property int fd() const nothrow { return cast(int)m_socket; }
 
 	bool opCast(T)() const nothrow if (is(T == bool)) { return m_socket != DatagramSocketFD.invalid; }
 

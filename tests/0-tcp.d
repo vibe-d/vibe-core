@@ -6,6 +6,7 @@
 +/
 module tests;
 
+import eventcore.core;
 import vibe.core.core;
 import vibe.core.log;
 import vibe.core.net;
@@ -29,6 +30,7 @@ void test1()
 		lt = Task.getThis();
 		try {
 			while (!conn.empty) {
+				assert(conn.fd() != StreamSocketFD.invalid);
 				assert(conn.readLine() == "next");
 				auto curtest = test;
 				conn.write("continue\n");
