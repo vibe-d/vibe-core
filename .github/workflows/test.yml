@@ -43,4 +43,4 @@ jobs:
               env:
                 DC: ${{matrix.dc}}
                 ARCH: ${{matrix.arch}}
-              run: ./travis-ci.sh
+              run: ./run-ci.sh
