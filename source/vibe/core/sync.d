@@ -228,7 +228,7 @@ final class LocalTaskSemaphore
 	/// Maximum number of concurrent locks
 	@property void maxLocks(uint max_locks) { m_maxLocks = max_locks; }
 	/// ditto
-	@property uint maxLocks() const { return m_maxLocks; }
+	@property uint maxLocks() const nothrow { return m_maxLocks; }
 
 	/// Number of concurrent locks still available
 	@property uint available() const { return m_maxLocks - m_locks; }

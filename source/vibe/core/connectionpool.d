@@ -60,7 +60,7 @@ final class ConnectionPool(Connection)
 		m_sem.maxLocks = max_concurrent;
 	}
 	/// ditto
-	@property uint maxConcurrency() {
+	@property uint maxConcurrency() nothrow {
 		return m_sem.maxLocks;
 	}
 
@@ -124,6 +124,55 @@ final class ConnectionPool(Connection)
 
 		foreach (c; removed_conns)
 			disconnect_callback(c);
+	}
+
+	/** Removes an existing connection from the pool
+		It can be called with a locked connection, same connection
+		can be added back to the pool anytime. Any fibers that hold
+		a lock on this connection will keep behaving as expected.
+
+		Params:
+			conn = connection to remove from the pool
+	*/
+	void remove(Connection conn) @safe
+	{
+		foreach (idx, c; m_connections)
+			if (c is conn)
+			{
+				m_connections = m_connections[0 .. idx] ~ m_connections[idx + 1 .. $];
+				auto plc = conn in m_lockCount;
+				assert(plc !is null);
+				assert(*plc >= 0);
+				if (*plc > 0)
+					*plc *= -1; // invert the plc to signal LockedConnection that this connection is no longer in the pool
+				else
+					m_lockCount.remove(conn);
+				return;
+			}
+		assert(0, "Removing non existing conn");
+	}
+
+	/** Add a connection to the pool explicitly
+
+		Params:
+			conn = new connection to add to the pool
+
+		Returns:
+			success/failure
+	*/
+	bool add(Connection conn) @safe nothrow
+	{
+		if (m_connections.length < this.maxConcurrency)
+		{
+			auto plc = conn in m_lockCount;
+			if (plc is null)
+				m_lockCount[conn] = 0;
+			else if (*plc < 0)
+				*plc *= -1; // invert the plc back to positive
+			m_connections ~= conn;
+			return true;
+		}
+		return false;
 	}
 }
 
@@ -227,11 +276,15 @@ struct LockedConnection(Connection) {
 			assert(fthis is m_task, "Locked connection destroyed in foreign task.");
 			auto plc = m_conn in m_pool.m_lockCount;
 			assert(plc !is null);
-			assert(*plc >= 1);
+			assert(*plc != 0);
 			//logTrace("conn %s destroy %d", cast(void*)m_conn, *plc-1);
-			if( --*plc == 0 ){
+			if( *plc > 0 && --*plc == 0 ){
 				() @trusted { m_pool.m_sem.unlock(); } ();
 				//logTrace("conn %s release", cast(void*)m_conn);
+			}
+			else if (*plc < 0 && ++*plc == 0) // connection was removed from the pool and no lock remains on it
+			{
+				m_pool.m_lockCount.remove(m_conn);
 			}
 			m_conn = Connection.init;
 		}
@@ -242,4 +295,33 @@ struct LockedConnection(Connection) {
 	@property inout(Connection) __conn() inout { return m_conn; }
 
 	alias __conn this;
+}
+
+///
+unittest {
+	int id = 0;
+	class Connection {
+		public int id;
+	}
+
+	auto pool = new ConnectionPool!Connection({
+		auto conn = new Connection(); // perform the connection here
+		conn.id = id++;
+		return conn;
+	});
+
+	// create and lock a first connection
+	auto c1 = pool.lockConnection();
+	assert(c1.id == 0);
+	pool.remove(c1);
+	destroy(c1);
+
+	auto c2 = pool.lockConnection();
+	assert(c2.id == 1); // assert that we got a new connection
+	pool.remove(c2);
+	pool.add(c2);
+	destroy(c2);
+
+	auto c3 = pool.lockConnection();
+	assert(c3.id == 1); // should get the same connection back
 }
