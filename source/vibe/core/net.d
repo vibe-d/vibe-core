@@ -39,6 +39,7 @@ NetworkAddress resolveHost(string host, ushort address_family, bool use_dns = tr
 	else import core.sys.posix.netinet.in_ : sockaddr_in, sockaddr_in6;
 
 	enforce(host.length > 0, "Host name must not be empty.");
+	// Fast path: If it looks like an IP address, we don't need to resolve it
 	if (isMaybeIPAddress(host)) {
 		auto addr = parseAddress(host);
 		enforce(address_family == AddressFamily.UNSPEC || addr.addressFamily == address_family);
@@ -50,31 +51,32 @@ NetworkAddress resolveHost(string host, ushort address_family, bool use_dns = tr
 			case INET6: *ret.sockAddrInet6 = () @trusted { return *cast(sockaddr_in6*)addr.name; } (); break;
 		}
 		return ret;
-	} else {
-		enforce(use_dns, "Malformed IP address string.");
-		NetworkAddress res;
-		bool success = false;
-		alias waitable = Waitable!(DNSLookupCallback,
-			cb => eventDriver.dns.lookupHost(host, cb),
-			(cb, id) => eventDriver.dns.cancelLookup(id),
-			(DNSLookupID, DNSStatus status, scope RefAddress[] addrs) {
-				if (status == DNSStatus.ok) {
-					foreach (addr; addrs) {
-						if (address_family != AddressFamily.UNSPEC && addr.addressFamily != address_family) continue;
-						try res = NetworkAddress(addr);
-						catch (Exception e) { logDiagnostic("Failed to store address from DNS lookup: %s", e.msg); }
-						success = true;
-						break;
-					}
+	}
+
+	// Otherwise we need to do a DNS lookup
+	enforce(use_dns, "Malformed IP address string.");
+	NetworkAddress res;
+	bool success = false;
+	alias waitable = Waitable!(DNSLookupCallback,
+		cb => eventDriver.dns.lookupHost(host, cb),
+		(cb, id) => eventDriver.dns.cancelLookup(id),
+		(DNSLookupID, DNSStatus status, scope RefAddress[] addrs) {
+			if (status == DNSStatus.ok) {
+				foreach (addr; addrs) {
+					if (address_family != AddressFamily.UNSPEC && addr.addressFamily != address_family) continue;
+					try res = NetworkAddress(addr);
+					catch (Exception e) { logDiagnostic("Failed to store address from DNS lookup: %s", e.msg); }
+					success = true;
+					break;
 				}
 			}
-		);
+		}
+	);
 
-		asyncAwaitAny!(true, waitable)(timeout);
+	asyncAwaitAny!(true, waitable)(timeout);
 
-		enforce(success, "Failed to lookup host '"~host~"'.");
-		return res;
-	}
+	enforce(success, "Failed to lookup host '"~host~"'.");
+	return res;
 }
 
 
