@@ -24,15 +24,37 @@ import core.time : Duration;
 /**
 	Resolves the given host name/IP address string.
 
-	Setting use_dns to false will only allow IP address strings but also guarantees
-	that the call will not block.
+	This routine converts a string to a `NetworkAddress`. If the string is an IP
+	address, no network traffic will be generated and the routine will not block.
+	If it is not, a DNS query will be issued, unless forbidden by the `use_dns`
+	parameter, in which case the query is guaranteed not to block.
+
+	Params:
+		host = The string to resolve, either an IP address or a hostname
+	    family = The desired address family to return. By default, returns
+		    the family that `host` is in. If a value is specified, this routine
+			will throw if the value found for `host` doesn't match this parameter.
+		use_dns = Whether to use the DNS if `host` is not an IP address.
+			If `false` and `host` is not an IP, this routine will throw.
+			Defaults to `true`.
+		timeout = If `use_dns` is `true`, the `Duration` to use as timeout
+			for the DNS lookup.
+
+	Throws:
+		In case of lookup failure, if `family` doesn't match `host`,
+		or if `use_dns` is `false` but `host` is not an IP.
+		See the parameter description for more details.
+
+	Returns:
+		A valid `NetworkAddress` matching `host`.
 */
-NetworkAddress resolveHost(string host, AddressFamily address_family = AddressFamily.UNSPEC, bool use_dns = true, Duration timeout = Duration.max)
+NetworkAddress resolveHost(string host, AddressFamily family = AddressFamily.UNSPEC, bool use_dns = true, Duration timeout = Duration.max)
 {
-	return resolveHost(host, cast(ushort)address_family, use_dns, timeout);
+	return resolveHost(host, cast(ushort)family, use_dns, timeout);
 }
+
 /// ditto
-NetworkAddress resolveHost(string host, ushort address_family, bool use_dns = true, Duration timeout = Duration.max)
+NetworkAddress resolveHost(string host, ushort family, bool use_dns = true, Duration timeout = Duration.max)
 {
 	import std.socket : parseAddress;
 	version (Windows) import core.sys.windows.winsock2 : sockaddr_in, sockaddr_in6;
@@ -42,7 +64,7 @@ NetworkAddress resolveHost(string host, ushort address_family, bool use_dns = tr
 	// Fast path: If it looks like an IP address, we don't need to resolve it
 	if (isMaybeIPAddress(host)) {
 		auto addr = parseAddress(host);
-		enforce(address_family == AddressFamily.UNSPEC || addr.addressFamily == address_family);
+		enforce(family == AddressFamily.UNSPEC || addr.addressFamily == family);
 		NetworkAddress ret;
 		ret.family = addr.addressFamily;
 		switch (addr.addressFamily) with(AddressFamily) {
@@ -63,7 +85,7 @@ NetworkAddress resolveHost(string host, ushort address_family, bool use_dns = tr
 		(DNSLookupID, DNSStatus status, scope RefAddress[] addrs) {
 			if (status == DNSStatus.ok) {
 				foreach (addr; addrs) {
-					if (address_family != AddressFamily.UNSPEC && addr.addressFamily != address_family) continue;
+					if (family != AddressFamily.UNSPEC && addr.addressFamily != family) continue;
 					try res = NetworkAddress(addr);
 					catch (Exception e) { logDiagnostic("Failed to store address from DNS lookup: %s", e.msg); }
 					success = true;
