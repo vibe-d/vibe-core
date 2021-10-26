@@ -615,7 +615,7 @@ struct TCPConnection {
 
 	WaitForDataStatus waitForDataEx(Duration timeout = Duration.max)
 	{
-mixin(tracer);
+		mixin(tracer);
 		if (!m_context) return WaitForDataStatus.noMoreData;
 		if (m_context.readBuffer.length > 0) return WaitForDataStatus.dataAvailable;
 		auto mode = timeout <= 0.seconds ? IOMode.immediate : IOMode.once;
@@ -687,7 +687,7 @@ mixin(tracer);
 	WaitForDataAsyncStatus waitForDataAsync(CALLABLE)(CALLABLE read_ready_callback, Duration timeout = Duration.max)
 		if (is(typeof(() @safe { read_ready_callback(true); } ())))
 	{
-mixin(tracer);
+		mixin(tracer);
 		import vibe.core.core : Timer, setTimer;
 
 		if (!m_context)
@@ -765,7 +765,7 @@ mixin(tracer);
 
 	size_t read(scope ubyte[] dst, IOMode mode)
 	{
-mixin(tracer);
+		mixin(tracer);
 		import std.algorithm.comparison : min;
 		if (!dst.length) return 0;
 		if (m_context.readBuffer.length >= dst.length) {
@@ -793,7 +793,7 @@ mixin(tracer);
 
 	size_t write(in ubyte[] bytes, IOMode mode)
 	{
-mixin(tracer);
+		mixin(tracer);
 		if (bytes.length == 0) return 0;
 
 		auto res = asyncAwait!(IOCallback,
@@ -820,7 +820,7 @@ mixin(tracer);
 	void write(InputStream stream) { write(stream, 0); }
 
 	void flush() {
-mixin(tracer);
+		mixin(tracer);
 	}
 	void finalize() {}
 	void write(InputStream)(InputStream stream, ulong nbytes = 0) if (isInputStream!InputStream) { writeDefault(stream, nbytes); }
