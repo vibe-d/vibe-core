@@ -1204,18 +1204,13 @@ private enum tracer = "";
 /// Thrown by TCPConnection read-alike operations when timeout is reached.
 class ReadTimeoutException: Exception
 {
-	@safe pure nothrow this(string message,
-							Throwable next,
-							string file =__FILE__,
-							size_t line = __LINE__)
+	@safe pure nothrow @nogc:
+	this(string message, Throwable next, string file =__FILE__, size_t line = __LINE__)
 	{
 		super(message, next, file, line);
 	}
 
-	@safe pure nothrow this(string message,
-							string file =__FILE__,
-							size_t line = __LINE__,
-							Throwable next = null)
+    this(string message, string file =__FILE__, size_t line = __LINE__, Throwable next = null)
 	{
 		super(message, file, line, next);
 	}
