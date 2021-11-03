@@ -24,24 +24,47 @@ import core.time : Duration;
 /**
 	Resolves the given host name/IP address string.
 
-	Setting use_dns to false will only allow IP address strings but also guarantees
-	that the call will not block.
+	This routine converts a string to a `NetworkAddress`. If the string is an IP
+	address, no network traffic will be generated and the routine will not block.
+	If it is not, a DNS query will be issued, unless forbidden by the `use_dns`
+	parameter, in which case the query is guaranteed not to block.
+
+	Params:
+		host = The string to resolve, either an IP address or a hostname
+	    family = The desired address family to return. By default, returns
+		    the family that `host` is in. If a value is specified, this routine
+			will throw if the value found for `host` doesn't match this parameter.
+		use_dns = Whether to use the DNS if `host` is not an IP address.
+			If `false` and `host` is not an IP, this routine will throw.
+			Defaults to `true`.
+		timeout = If `use_dns` is `true`, the `Duration` to use as timeout
+			for the DNS lookup.
+
+	Throws:
+		In case of lookup failure, if `family` doesn't match `host`,
+		or if `use_dns` is `false` but `host` is not an IP.
+		See the parameter description for more details.
+
+	Returns:
+		A valid `NetworkAddress` matching `host`.
 */
-NetworkAddress resolveHost(string host, AddressFamily address_family = AddressFamily.UNSPEC, bool use_dns = true, Duration timeout = Duration.max)
+NetworkAddress resolveHost(string host, AddressFamily family = AddressFamily.UNSPEC, bool use_dns = true, Duration timeout = Duration.max)
 {
-	return resolveHost(host, cast(ushort)address_family, use_dns, timeout);
+	return resolveHost(host, cast(ushort)family, use_dns, timeout);
 }
+
 /// ditto
-NetworkAddress resolveHost(string host, ushort address_family, bool use_dns = true, Duration timeout = Duration.max)
+NetworkAddress resolveHost(string host, ushort family, bool use_dns = true, Duration timeout = Duration.max)
 {
 	import std.socket : parseAddress;
 	version (Windows) import core.sys.windows.winsock2 : sockaddr_in, sockaddr_in6;
 	else import core.sys.posix.netinet.in_ : sockaddr_in, sockaddr_in6;
 
 	enforce(host.length > 0, "Host name must not be empty.");
+	// Fast path: If it looks like an IP address, we don't need to resolve it
 	if (isMaybeIPAddress(host)) {
 		auto addr = parseAddress(host);
-		enforce(address_family == AddressFamily.UNSPEC || addr.addressFamily == address_family);
+		enforce(family == AddressFamily.UNSPEC || addr.addressFamily == family);
 		NetworkAddress ret;
 		ret.family = addr.addressFamily;
 		switch (addr.addressFamily) with(AddressFamily) {
@@ -50,31 +73,32 @@ NetworkAddress resolveHost(string host, ushort address_family, bool use_dns = tr
 			case INET6: *ret.sockAddrInet6 = () @trusted { return *cast(sockaddr_in6*)addr.name; } (); break;
 		}
 		return ret;
-	} else {
-		enforce(use_dns, "Malformed IP address string.");
-		NetworkAddress res;
-		bool success = false;
-		alias waitable = Waitable!(DNSLookupCallback,
-			cb => eventDriver.dns.lookupHost(host, cb),
-			(cb, id) => eventDriver.dns.cancelLookup(id),
-			(DNSLookupID, DNSStatus status, scope RefAddress[] addrs) {
-				if (status == DNSStatus.ok) {
-					foreach (addr; addrs) {
-						if (address_family != AddressFamily.UNSPEC && addr.addressFamily != address_family) continue;
-						try res = NetworkAddress(addr);
-						catch (Exception e) { logDiagnostic("Failed to store address from DNS lookup: %s", e.msg); }
-						success = true;
-						break;
-					}
+	}
+
+	// Otherwise we need to do a DNS lookup
+	enforce(use_dns, "Malformed IP address string.");
+	NetworkAddress res;
+	bool success = false;
+	alias waitable = Waitable!(DNSLookupCallback,
+		cb => eventDriver.dns.lookupHost(host, cb),
+		(cb, id) => eventDriver.dns.cancelLookup(id),
+		(DNSLookupID, DNSStatus status, scope RefAddress[] addrs) {
+			if (status == DNSStatus.ok) {
+				foreach (addr; addrs) {
+					if (family != AddressFamily.UNSPEC && addr.addressFamily != family) continue;
+					try res = NetworkAddress(addr);
+					catch (Exception e) { logDiagnostic("Failed to store address from DNS lookup: %s", e.msg); }
+					success = true;
+					break;
 				}
 			}
-		);
+		}
+	);
 
-		asyncAwaitAny!(true, waitable)(timeout);
+	asyncAwaitAny!(true, waitable)(timeout);
 
-		enforce(success, "Failed to lookup host '"~host~"'.");
-		return res;
-	}
+	enforce(success, "Failed to lookup host '"~host~"'.");
+	return res;
 }
 
 
@@ -591,7 +615,7 @@ struct TCPConnection {
 
 	WaitForDataStatus waitForDataEx(Duration timeout = Duration.max)
 	{
-mixin(tracer);
+		mixin(tracer);
 		if (!m_context) return WaitForDataStatus.noMoreData;
 		if (m_context.readBuffer.length > 0) return WaitForDataStatus.dataAvailable;
 		auto mode = timeout <= 0.seconds ? IOMode.immediate : IOMode.once;
@@ -663,7 +687,7 @@ mixin(tracer);
 	WaitForDataAsyncStatus waitForDataAsync(CALLABLE)(CALLABLE read_ready_callback, Duration timeout = Duration.max)
 		if (is(typeof(() @safe { read_ready_callback(true); } ())))
 	{
-mixin(tracer);
+		mixin(tracer);
 		import vibe.core.core : Timer, setTimer;
 
 		if (!m_context)
@@ -741,7 +765,7 @@ mixin(tracer);
 
 	size_t read(scope ubyte[] dst, IOMode mode)
 	{
-mixin(tracer);
+		mixin(tracer);
 		import std.algorithm.comparison : min;
 		if (!dst.length) return 0;
 		if (m_context.readBuffer.length >= dst.length) {
@@ -769,7 +793,7 @@ mixin(tracer);
 
 	size_t write(in ubyte[] bytes, IOMode mode)
 	{
-mixin(tracer);
+		mixin(tracer);
 		if (bytes.length == 0) return 0;
 
 		auto res = asyncAwait!(IOCallback,
@@ -796,7 +820,7 @@ mixin(tracer);
 	void write(InputStream stream) { write(stream, 0); }
 
 	void flush() {
-mixin(tracer);
+		mixin(tracer);
 	}
 	void finalize() {}
 	void write(InputStream)(InputStream stream, ulong nbytes = 0) if (isInputStream!InputStream) { writeDefault(stream, nbytes); }
@@ -1180,18 +1204,13 @@ private enum tracer = "";
 /// Thrown by TCPConnection read-alike operations when timeout is reached.
 class ReadTimeoutException: Exception
 {
-	@safe pure nothrow this(string message,
-							Throwable next,
-							string file =__FILE__,
-							size_t line = __LINE__)
+	@safe pure nothrow @nogc:
+	this(string message, Throwable next, string file =__FILE__, size_t line = __LINE__)
 	{
 		super(message, next, file, line);
 	}
 
-	@safe pure nothrow this(string message,
-							string file =__FILE__,
-							size_t line = __LINE__,
-							Throwable next = null)
+    this(string message, string file =__FILE__, size_t line = __LINE__, Throwable next = null)
 	{
 		super(message, file, line, next);
 	}
