@@ -341,6 +341,7 @@ final class TaskMutex : core.sync.mutex.Mutex, Lockable {
 	override bool tryLock() nothrow { return m_impl.tryLock(); }
 	override void lock() nothrow { m_impl.lock(); }
 	override void unlock() nothrow { m_impl.unlock(); }
+	bool lock(Duration timeout) nothrow { return m_impl.lock(timeout); }
 }
 
 unittest {
@@ -1573,18 +1574,25 @@ private struct TaskMutexImpl(bool INTERRUPTIBLE) {
 		return false;
 	}
 
-	@trusted void lock()
+	@trusted bool lock(Duration timeout = Duration.max)
 	{
-		if (tryLock()) return;
+		if (tryLock()) return true;
 		debug assert(m_owner == Task() || m_owner != Task.getThis(), "Recursive mutex lock.");
 		atomicOp!"+="(m_waiters, 1);
 		debug(VibeMutexLog) logTrace("mutex %s wait %s", cast(void*)&this, atomicLoad(m_waiters));
 		scope(exit) atomicOp!"-="(m_waiters, 1);
 		auto ecnt = m_signal.emitCount();
+		MonoTime target = MonoTime.currTime + timeout;
 		while (!tryLock()) {
-			static if (INTERRUPTIBLE) ecnt = m_signal.wait(ecnt);
-			else ecnt = m_signal.waitUninterruptible(ecnt);
+			auto now = MonoTime.currTime;
+			if (timeout != Duration.max && now >= target)
+				return false;
+
+			auto remaining = timeout != Duration.max ? target - now : Duration.max;
+			static if (INTERRUPTIBLE) ecnt = m_signal.wait(remaining, ecnt);
+			else ecnt = m_signal.waitUninterruptible(remaining, ecnt);
 		}
+		return true;
 	}
 
 	@trusted void unlock()
