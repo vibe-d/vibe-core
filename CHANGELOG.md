@@ -1,3 +1,13 @@
+1.22.0 - 2021-12-16
+===================
+
+- Fixed `FileStream.leastSize` in case the file pointer is past the file size - [pull #304][issue304]
+- Added `TCPConnection.fd` and `UDPConnection.fd` properties (by Hiroki Noda aka kubo39) - [pull #296][issue296]
+
+[issue296]: https://github.com/vibe-d/vibe-core/issues/296
+[issue304]: https://github.com/vibe-d/vibe-core/issues/304
+
+
 1.21.0 - 2021-08-31
 ===================
 
