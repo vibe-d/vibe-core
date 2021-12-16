@@ -718,7 +718,11 @@ struct FileStream {
 	}
 
 	@property bool empty() const { assert(this.readable); return ctx.ptr >= ctx.size; }
-	@property ulong leastSize() const { assert(this.readable); return ctx.size - ctx.ptr; }
+	@property ulong leastSize()
+	const {
+		assert(this.readable);
+		return ctx.ptr < ctx.size ? ctx.size - ctx.ptr : 0;
+	}
 	@property bool dataAvailableForRead() { return true; }
 
 	const(ubyte)[] peek()
