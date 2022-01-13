@@ -20,6 +20,10 @@ jobs:
                 dc: [dmd-latest, ldc-latest]
                 arch: [x86_64]
                 include:
+                  - { os: windows-latest, dc: dmd-2.097.2, arch: x86_64 }
+                  - { os: windows-latest, dc: dmd-2.097.2, arch: x86_mscoff }                  
+                  - { os: windows-latest, dc: dmd-2.094.2, arch: x86_64 }
+                  - { os: windows-latest, dc: dmd-2.094.2, arch: x86_mscoff }                  
                   - { os: windows-latest, dc: dmd-2.092.0, arch: x86_64 }
                   - { os: windows-latest, dc: dmd-2.092.0, arch: x86_mscoff }
                   - { os: windows-latest, dc: dmd-2.091.1, arch: x86_64 }
