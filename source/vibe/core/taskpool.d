@@ -15,7 +15,6 @@ import vibe.core.sync : ManualEvent, VibeSyncMonitor = Monitor, createSharedManu
 import vibe.core.task : Task, TaskFuncInfo, TaskSettings, callWithMove;
 import core.sync.mutex : Mutex;
 import core.thread : Thread;
-import std.concurrency : prioritySend, receiveOnly;
 import std.traits : isFunctionPointer;
 
 
@@ -247,21 +246,26 @@ shared final class TaskPool {
 		if (isFunctionPointer!FT)
 	{
 		import std.typecons : Typedef;
+		import vibe.core.channel : Channel, createChannel;
 
 		foreach (T; ARGS) static assert(isWeaklyIsolated!T, "Argument type "~T.stringof~" is not safe to pass between threads.");
 
 		alias PrivateTask = Typedef!(Task, Task.init, __PRETTY_FUNCTION__);
-		Task caller = Task.getThis();
 
-		assert(caller != Task.init, "runWorkderTaskH can currently only be called from within a task.");
-		static void taskFun(Task caller, FT func, ARGS args) {
-			PrivateTask callee = Task.getThis();
-			caller.tid.prioritySend(callee);
+		auto ch = createChannel!Task();
+
+		static void taskFun(Channel!Task ch, FT func, ARGS args) {
+			try ch.put(Task.getThis());
+			catch (Exception e) assert(false, e.msg);
 			mixin(callWithMove!ARGS("func", "args"));
 		}
-		runTask_unsafe(settings, &taskFun, caller, func, args);
-		try return cast(Task)() @trusted { return receiveOnly!PrivateTask(); } ();
+		runTask_unsafe(settings, &taskFun, ch, func, args);
+
+		Task ret;
+		try ret = ch.consumeOne();
 		catch (Exception e) assert(false, "Failed to reveice task handle: " ~ e.msg);
+		ch.close();
+		return ret;
 	}
 
 
