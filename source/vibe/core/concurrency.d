@@ -1092,6 +1092,9 @@ struct Future(T) {
 	/// Checks if the values was fully computed.
 	@property bool ready() const @safe { return !m_task.running; }
 
+	/// Return the associated task.
+	@property Task task() @safe { return m_task; }
+
 	/** Returns the computed value.
 
 		This function waits for the computation to finish, if necessary, and
