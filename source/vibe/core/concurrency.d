@@ -966,7 +966,7 @@ template isStronglyIsolated(T...)
 		else static if (is(typeof(T[0].__isIsolatedType))) enum bool isStronglyIsolated = true;
 		else static if (is(T[0] == class)) enum bool isStronglyIsolated = false;
 		else static if (is(T[0] == interface)) enum bool isStronglyIsolated = false; // can't know if the implementation is isolated
-		else static if (is(T[0] == delegate)) enum bool isStronglyIsolated = false; // can't know to what a delegate points
+		else static if (is(T[0] == delegate)) enum bool isStronglyIsolated = !!(functionAttributes!(T[0]) & FunctionAttribute.immutable_);
 		else static if (isDynamicArray!(T[0])) enum bool isStronglyIsolated = is(typeof(T[0].init[0]) == immutable);
 		else static if (isAssociativeArray!(T[0])) enum bool isStronglyIsolated = false; // TODO: be less strict here
 		else static if (isSomeFunction!(T[0])) enum bool isStronglyIsolated = true; // functions are immutable
@@ -998,7 +998,7 @@ template isWeaklyIsolated(T...)
 		else static if (is(typeof(T[0].__isWeakIsolatedType))) enum bool isWeaklyIsolated = true;
 		else static if (is(T[0] == class)) enum bool isWeaklyIsolated = false;
 		else static if (is(T[0] == interface)) enum bool isWeaklyIsolated = false; // can't know if the implementation is isolated
-		else static if (is(T[0] == delegate)) enum bool isWeaklyIsolated = T[0].stringof.endsWith(" shared"); // can't know to what a delegate points - FIXME: use something better than a string comparison
+		else static if (is(T[0] == delegate)) enum bool isWeaklyIsolated = !!(functionAttributes!(T[0]) & (FunctionAttribute.shared_|FunctionAttribute.immutable_));
 		else static if (isDynamicArray!(T[0])) enum bool isWeaklyIsolated = is(typeof(T[0].init[0]) == immutable);
 		else static if (isAssociativeArray!(T[0])) enum bool isWeaklyIsolated = false; // TODO: be less strict here
 		else static if (isSomeFunction!(T[0])) enum bool isWeaklyIsolated = true; // functions are immutable
@@ -1033,6 +1033,8 @@ unittest {
 
 	static struct D { A a; } // not isolated
 	static struct E { void delegate() a; } // not isolated
+	static struct ES { void delegate() shared a; } // weakly isolated
+	static struct EI { void delegate() immutable a; } // strongly isolated
 	static struct F { void function() a; } // strongly isolated (functions are immutable)
 	static struct G { void test(); } // strongly isolated
 	static struct H { A[] a; } // not isolated
@@ -1044,6 +1046,8 @@ unittest {
 	static assert(!isStronglyIsolated!C);
 	static assert(!isStronglyIsolated!D);
 	static assert(!isStronglyIsolated!E);
+	static assert(!isStronglyIsolated!ES);
+	static assert(isStronglyIsolated!EI);
 	static assert(isStronglyIsolated!F);
 	static assert(isStronglyIsolated!G);
 	static assert(!isStronglyIsolated!H);
@@ -1055,6 +1059,8 @@ unittest {
 	static assert(isWeaklyIsolated!C);
 	static assert(!isWeaklyIsolated!D);
 	static assert(!isWeaklyIsolated!E);
+	static assert(isWeaklyIsolated!ES);
+	static assert(isWeaklyIsolated!EI);
 	static assert(isWeaklyIsolated!F);
 	static assert(isWeaklyIsolated!G);
 	static assert(!isWeaklyIsolated!H);
