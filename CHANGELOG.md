@@ -1,3 +1,14 @@
+1.22.1 - 2022-03-04
+===================
+
+- Reduced resource overhead for tasks that don't use `std.concurrency` - [pull #309][issue309]
+- Added `Future.task` property - [pull #308][issue308]
+- `shared`/`immutable` delegates are now treated as (weakly) isolated - [pull #309][issue309]
+
+[issue308]: https://github.com/vibe-d/vibe-core/issues/308
+[issue309]: https://github.com/vibe-d/vibe-core/issues/309
+
+
 1.22.0 - 2021-12-16
 ===================
 
