@@ -10,7 +10,7 @@ module vibe.core.task;
 import vibe.core.log;
 import vibe.core.sync;
 
-import core.atomic : atomicOp, atomicLoad, cas;
+import core.atomic : atomicOp, atomicLoad, atomicStore, cas;
 import core.thread;
 import std.exception;
 import std.traits;
@@ -330,6 +330,8 @@ enum maxTaskParameterSize = 128;
 	with other tasks. Each task is owned by a single thread.
 */
 final package class TaskFiber : Fiber {
+	import std.concurrency : Tid, thisTid;
+
 	static if ((void*).sizeof >= 8) enum defaultTaskStackSize = 16*1024*1024;
 	else enum defaultTaskStackSize = 512*1024;
 
@@ -356,6 +358,7 @@ final package class TaskFiber : Fiber {
 		shared ulong m_taskCounterAndFlags = 0; // bits 0-Flags.shiftAmount are flags
 
 		bool m_shutdown = false;
+		shared(bool) m_tidUsed = false;
 
 		shared(ManualEvent) m_onExit;
 
@@ -403,13 +406,16 @@ final package class TaskFiber : Fiber {
 	private void run()
 	nothrow {
 		import std.algorithm.mutation : swap;
-		import std.concurrency : Tid, thisTid;
 		import std.encoding : sanitize;
 		import vibe.core.core : isEventLoopRunning, recycleFiber, taskScheduler, yield, yieldLock;
 
 		version (VibeDebugCatchAll) alias UncaughtException = Throwable;
 		else alias UncaughtException = Exception;
 		try {
+			// force creation of a message box/Tid
+			try thisTid;
+			catch (Exception e) assert(false, e.msg);
+
 			while (true) {
 				while (!m_taskFunc.func) {
 					try {
@@ -431,8 +437,6 @@ final package class TaskFiber : Fiber {
 				try {
 					atomicOp!"|="(m_taskCounterAndFlags, Flags.running); // set running
 					scope(exit) atomicOp!"&="(m_taskCounterAndFlags, ~Flags.flagsMask); // clear running/initialized
-
-					thisTid; // force creation of a message box
 
 					debug if (ms_taskEventCallback) ms_taskEventCallback(TaskEvent.start, handle);
 					if (!isEventLoopRunning) {
@@ -457,7 +461,15 @@ final package class TaskFiber : Fiber {
 
 				debug assert(Thread.getThis() is m_thread, "Fiber moved?");
 
-				this.tidInfo.ident = Tid.init; // clear message box
+				// re-create message box if it has been used to guarantee a
+				// unique Tid per task
+				if (atomicLoad(m_tidUsed)) {
+					m_tidInfo.cleanup();
+					m_tidInfo.ident = Tid.init;
+					try thisTid;
+					catch (Exception e) assert(false, e.msg);
+					atomicStore(m_tidUsed, false);
+				}
 
 				debug (VibeTaskLog) logTrace("Notifying joining tasks.");
 
@@ -520,7 +532,7 @@ final package class TaskFiber : Fiber {
 		return Task(this, ts.counter);
 	}
 
-	@property ref inout(ThreadInfo) tidInfo() inout @safe nothrow { return m_tidInfo; }
+	@property ref inout(ThreadInfo) tidInfo() inout @trusted nothrow { atomicStore((cast()this).m_tidUsed, true); return m_tidInfo; }
 
 	/** Shuts down the task handler loop.
 	*/
