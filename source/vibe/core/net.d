@@ -491,17 +491,14 @@ struct NetworkAddress {
 		}
 	}
 
-	version(Have_libev) {}
-	else {
-		unittest {
-			void test(string ip) {
-				auto res = () @trusted { return resolveHost(ip, AF_UNSPEC, false); } ().toAddressString();
-				assert(res == ip,
-					   "IP "~ip~" yielded wrong string representation: "~res);
-			}
-			test("1.2.3.4");
-			test("102:304:506:708:90a:b0c:d0e:f10");
+	unittest {
+		void test(string ip) {
+			auto res = () @trusted { return resolveHost(ip, AF_UNSPEC, false); } ().toAddressString();
+			assert(res == ip,
+				   "IP "~ip~" yielded wrong string representation: "~res);
 		}
+		test("1.2.3.4");
+		test("102:304:506:708:90a:b0c:d0e:f10");
 	}
 }
 
