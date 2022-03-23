@@ -144,7 +144,7 @@ auto parallelMap(alias fun, R)(R items, shared(TaskPool) task_pool, ChannelConfi
 	import std.algorithm : canFind, countUntil, move, remove;
 	import std.container.array : Array;
 	import std.range : enumerate;
-	import std.typecons : Tuple;
+	import std.typecons : RefCounted, Tuple;
 
 	alias I = ElementType!R;
 	alias O = typeof(fun(I.init));
@@ -202,35 +202,14 @@ auto parallelMap(alias fun, R)(R items, shared(TaskPool) task_pool, ChannelConfi
 	}
 
 	static struct Result {
-		private State* state;
-
-		this(State* st)
-		{
-			assert(st.m_refCount == 0);
-			st.m_refCount++;
-			this.state = st;
-		}
-
-		this(this)
-		{
-			if (state) state.m_refCount++;
-		}
-
-		~this()
-		{
-			if (state) {
-				if (!--state.m_refCount) {
-					destroy(*state);
-				}
-			}
-		}
+		private RefCounted!State state;
 
 		@property bool empty() { return state.empty; }
 		@property ref O front() { return state.front; }
 		void popFront() { state.popFront; }
 	}
 
-	return Result(new State(resunord.move));
+	return Result(RefCounted!State(resunord.move));
 }
 
 /// ditto
