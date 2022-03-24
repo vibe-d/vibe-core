@@ -142,8 +142,9 @@ auto parallelMap(alias fun, R)(R items, shared(TaskPool) task_pool, ChannelConfi
 	if (isInputRange!R && isWeaklyIsolated!(ElementType!R) && isWeaklyIsolated!(typeof(fun(ElementType!R.init))))
 {
 	import std.algorithm : canFind, countUntil, move, remove;
+	import std.container.array : Array;
 	import std.range : enumerate;
-	import std.typecons : Tuple;
+	import std.typecons : RefCounted, Tuple;
 
 	alias I = ElementType!R;
 	alias O = typeof(fun(I.init));
@@ -156,7 +157,8 @@ auto parallelMap(alias fun, R)(R items, shared(TaskPool) task_pool, ChannelConfi
 	static struct State {
 		typeof(resunord) m_source;
 		size_t m_index = 0, m_minIndex = -1;
-		SR[] m_buffer;
+		Array!SR m_buffer;
+		int m_refCount = 0;
 
 		@property bool empty()
 		{
@@ -165,7 +167,7 @@ auto parallelMap(alias fun, R)(R items, shared(TaskPool) task_pool, ChannelConfi
 		@property ref O front()
 		{
 			fetchFront();
-			auto idx = m_buffer.countUntil!(sr => sr.index == m_index);
+			auto idx = m_buffer[].countUntil!(sr => sr.index == m_index);
 			if (idx < 0) {
 				assert(m_source.front.index == m_index);
 				return m_source.front.value;
@@ -176,19 +178,20 @@ auto parallelMap(alias fun, R)(R items, shared(TaskPool) task_pool, ChannelConfi
 		{
 			m_index++;
 
-			auto idx = m_buffer.countUntil!(sr => sr.index == m_index-1);
+			auto idx = m_buffer[].countUntil!(sr => sr.index == m_index-1);
 			if (idx < 0) {
 				assert(m_source.front.index == m_index-1);
 				m_source.popFront();
 			} else {
-				m_buffer = m_buffer.remove(idx);
-				m_buffer.assumeSafeAppend();
+				if (idx < m_buffer.length-1)
+					m_buffer[idx] = m_buffer[$-1];
+				m_buffer.removeBack();
 			}
 		}
 
 		private void fetchFront()
 		{
-			if (m_buffer.canFind!(sr => sr.index == m_index))
+			if (m_buffer[].canFind!(sr => sr.index == m_index))
 				return;
 
 			while (m_source.front.index != m_index) {
@@ -199,13 +202,14 @@ auto parallelMap(alias fun, R)(R items, shared(TaskPool) task_pool, ChannelConfi
 	}
 
 	static struct Result {
-		private State* state;
+		private RefCounted!State state;
+
 		@property bool empty() { return state.empty; }
 		@property ref O front() { return state.front; }
 		void popFront() { state.popFront; }
 	}
 
-	return Result(new State(resunord.move));
+	return Result(RefCounted!State(resunord.move));
 }
 
 /// ditto
