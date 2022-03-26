@@ -81,7 +81,7 @@ unittest {
 			double sum = 0;
 
 			// lock() is required to access shared objects
-			foreach (itm; m_items.unsafeGet) {
+			foreach (itm; m_items) {
 				auto l = itm.lock();
 				sum += l.value;
 			}
@@ -999,7 +999,7 @@ template isWeaklyIsolated(T...)
 		else static if (is(T[0] == class)) enum bool isWeaklyIsolated = false;
 		else static if (is(T[0] == interface)) enum bool isWeaklyIsolated = false; // can't know if the implementation is isolated
 		else static if (is(T[0] == delegate)) enum bool isWeaklyIsolated = !!(functionAttributes!(T[0]) & (FunctionAttribute.shared_|FunctionAttribute.immutable_));
-		else static if (isDynamicArray!(T[0])) enum bool isWeaklyIsolated = is(typeof(T[0].init[0]) == immutable);
+		else static if (isDynamicArray!(T[0])) enum bool isWeaklyIsolated = is(typeof(T[0].init[0]) == immutable) || is(typeof(T[0].init[0]) == shared);
 		else static if (isAssociativeArray!(T[0])) enum bool isWeaklyIsolated = false; // TODO: be less strict here
 		else static if (isSomeFunction!(T[0])) enum bool isWeaklyIsolated = true; // functions are immutable
 		else static if (isPointer!(T[0])) enum bool isWeaklyIsolated = is(typeof(*T[0].init) == immutable) || is(typeof(*T[0].init) == shared);
