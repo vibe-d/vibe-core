@@ -1688,6 +1688,8 @@ private struct TaskConditionImpl(bool INTERRUPTIBLE, LOCKABLE) {
 		}
 	}
 
+	@disable this(this);
+
 	void setup(LOCKABLE mtx)
 	{
 		m_mutex = mtx;
