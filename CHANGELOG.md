@@ -1,3 +1,14 @@
+1.22.2 - 2022-03-26
+===================
+
+- Fixed `parallelMap` to clean up processed elements without relying on the GC - [pull #311][issue311]
+- Fixed `runWorkerTaskH`/`TaskPool.runTaskH` to not create a GC closure with the passed arguments - [pull #312][issue312]
+- Fixed `isWeaklyIsolated` to consider dynamic arrays of `shared` values weakly isolated - [pull #312][issue312]
+
+[issue311]: https://github.com/vibe-d/vibe-core/issues/311
+[issue312]: https://github.com/vibe-d/vibe-core/issues/312
+
+
 1.22.1 - 2022-03-04
 ===================
 
