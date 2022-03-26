@@ -156,7 +156,7 @@ shared final class TaskPool {
 		// workaround for runWorkerTaskH to work when called outside of a task
 		if (Task.getThis() == Task.init) {
 			Task ret;
-			.runTask(() nothrow { ret = doRunTaskH(TaskSettings.init, func, args); }).joinUninterruptible();
+			.runTask((FT func, ARGS args) nothrow { ret = doRunTaskH(TaskSettings.init, func, args); }, func, args).joinUninterruptible();
 			return ret;
 		} else return doRunTaskH(TaskSettings.init, func, args);
 	}
@@ -178,7 +178,7 @@ shared final class TaskPool {
 		// workaround for runWorkerTaskH to work when called outside of a task
 		if (Task.getThis() == Task.init) {
 			Task ret;
-			.runTask(() nothrow { ret = doRunTaskH(settings, func, args); }).joinUninterruptible();
+			.runTask((TaskSettings settings, FT func, ARGS args) nothrow { ret = doRunTaskH(settings, func, args); }, settings, func, args).joinUninterruptible();
 			return ret;
 		} else return doRunTaskH(settings, func, args);
 	}
