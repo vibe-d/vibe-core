@@ -420,7 +420,10 @@ final package class TaskFiber : Fiber {
 				while (!m_taskFunc.func) {
 					try {
 						debug (VibeTaskLog) logTrace("putting fiber to sleep waiting for new task...");
-						import core.memory : GC; assert(!GC.inFinalizer, "Yiedling within finalizer - this would most likely result in a dead-lock!");
+						static if (__VERSION__ >= 2090) {
+							import core.memory : GC;
+							assert(!GC.inFinalizer, "Yiedling within finalizer - this would most likely result in a dead-lock!");
+						}
 						Fiber.yield();
 					} catch (Exception e) {
 						e.logException!(LogLevel.warn)(
@@ -1084,8 +1087,6 @@ package struct TaskScheduler {
 
 	private void doYield(Task task)
 	{
-		import core.memory : GC;
-
 		debug (VibeRunningTasks) () nothrow {
 			try throw new Exception("");
 			catch (Exception e) {
@@ -1096,7 +1097,10 @@ package struct TaskScheduler {
 
 		assert(() @trusted { return task.taskFiber; } ().m_yieldLockCount == 0, "May not yield while in an active yieldLock()!");
 		debug if (TaskFiber.ms_taskEventCallback) () @trusted { TaskFiber.ms_taskEventCallback(TaskEvent.yield, task); } ();
-		assert(!GC.inFinalizer, "Yiedling within finalizer - this would most likely result in a dead-lock!");
+		static if (__VERSION__ >= 2090) {
+			import core.memory : GC;
+			assert(!GC.inFinalizer, "Yiedling within finalizer - this would most likely result in a dead-lock!");
+		}
 		() @trusted { Fiber.yield(); } ();
 		debug if (TaskFiber.ms_taskEventCallback) () @trusted { TaskFiber.ms_taskEventCallback(TaskEvent.resume, task); } ();
 		assert(!task.m_fiber.m_queue, "Task is still scheduled after resumption.");
