@@ -1,3 +1,13 @@
+1.22.3 - 2022-04-01
+===================
+
+- Added `ConnectionPool.add()/remove()` (by Ömer Faruk Irmak) - [pull #303][issue303]
+- Added a timeout based overload of `TaskMutex.wait` (by Ömer Faruk Irmak) - [pull #303][issue303]
+- Fixed compilation on DMD frontend/runtime version prior to 2.090.0
+
+[issue303]: https://github.com/vibe-d/vibe-core/issues/303
+
+
 1.22.2 - 2022-03-26
 ===================
 
