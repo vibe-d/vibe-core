@@ -375,7 +375,7 @@ struct NetworkAddress {
 
 	/** A pointer to a sockaddr struct suitable for passing to socket functions.
 	*/
-	@property inout(sockaddr)* sockAddr() inout pure nothrow { return &addr; }
+	@property inout(sockaddr)* sockAddr() inout return pure nothrow { return &addr; }
 
 	/** Size of the sockaddr struct that is returned by sockAddr().
 	*/
@@ -391,16 +391,16 @@ struct NetworkAddress {
 		}
 	}
 
-	@property inout(sockaddr_in)* sockAddrInet4() inout pure nothrow
+	@property inout(sockaddr_in)* sockAddrInet4() inout return pure nothrow
 		in { assert (family == AF_INET); }
 		do { return &addr_ip4; }
 
-	@property inout(sockaddr_in6)* sockAddrInet6() inout pure nothrow
+	@property inout(sockaddr_in6)* sockAddrInet6() inout return pure nothrow
 		in { assert (family == AF_INET6); }
 		do { return &addr_ip6; }
 
 	version (Posix) {
-		@property inout(sockaddr_un)* sockAddrUnix() inout pure nothrow
+		@property inout(sockaddr_un)* sockAddrUnix() inout return pure nothrow
 			in { assert (family == AddressFamily.UNIX); }
 			do { return &addr_unix; }
 	}
