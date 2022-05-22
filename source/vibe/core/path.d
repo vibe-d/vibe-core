@@ -628,7 +628,9 @@ struct GenericPath(F) {
 	*/
 	static GenericPath fromTrustedString(string p)
 	nothrow @nogc {
-		assert(Format.validatePath(p) is null, "Invalid trusted path.");
+		if (auto val = Format.validatePath(p))
+			assert(false, val);
+
 		GenericPath ret;
 		ret.m_path = p;
 		return ret;
