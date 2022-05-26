@@ -1,3 +1,12 @@
+1.22.4 - 2022-05-26
+===================
+
+- Annotate `inout` functions with `return` (By Dennis Korpel) - [pull #313][issue313]
+- Better error message for GenericPath.fromTrustedString - [pull #314][issue314]
+
+[issue313]: https://github.com/vibe-d/vibe-core/issues/313
+[issue314]: https://github.com/vibe-d/vibe-core/issues/314
+
 1.22.3 - 2022-04-01
 ===================
 
