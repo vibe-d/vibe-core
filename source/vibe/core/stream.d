@@ -87,7 +87,6 @@ ulong pipe(InputStream, OutputStream)(InputStream source, OutputStream sink,
 					size_t[bufcount] bufferFill;
 					// buffer index that is being read/written
 					size_t read_idx = 0, write_idx = 0;
-                    Exception readex;
 					bool done = false;
 					LocalManualEvent evt;
 					size_t bytesWritten;
