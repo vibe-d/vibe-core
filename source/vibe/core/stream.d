@@ -87,7 +87,6 @@ ulong pipe(InputStream, OutputStream)(InputStream source, OutputStream sink,
 					size_t[bufcount] bufferFill;
 					// buffer index that is being read/written
 					size_t read_idx = 0, write_idx = 0;
-					Exception readex;
 					bool done = false;
 					LocalManualEvent evt;
 					size_t bytesWritten;
@@ -148,10 +147,12 @@ ulong pipe(InputStream, OutputStream)(InputStream source, OutputStream sink,
 				state.nbytes = nbytes;
 				state.evt = createManualEvent();
 
-				auto reader = runTask(function(ConcurrentPipeState* state) nothrow {
+				Exception ex;
+
+				auto reader = runTask(delegate (ConcurrentPipeState* state) nothrow {
 						try state.readLoop();
 						catch (InterruptException e) {}
-						catch (Exception e) state.readex = e;
+						catch (Exception e) ex = e;
 						state.done = true;
 						state.evt.emit();
 					}, &state);
@@ -165,7 +166,7 @@ ulong pipe(InputStream, OutputStream)(InputStream source, OutputStream sink,
 
 				reader.join();
 
-				if (state.readex) throw state.readex;
+				if (ex) throw ex;
 
 				return state.bytesWritten;
 			}
