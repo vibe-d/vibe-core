@@ -1076,7 +1076,7 @@ struct UDPConnection {
 		If peer_address is given, the packet is send to that address. Otherwise the packet
 		will be sent to the address specified by a call to connect().
 	*/
-	void send(in ubyte[] data, in NetworkAddress* peer_address = null)
+	void send(in ubyte[] data, scope const NetworkAddress* peer_address = null)
 	{
 		scope addrc = new RefAddress;
 		if (peer_address)
@@ -1109,12 +1109,12 @@ struct UDPConnection {
 		The timeout overload will throw an Exception if no data arrives before the
 		specified duration has elapsed.
 	*/
-	ubyte[] recv(ubyte[] buf = null, NetworkAddress* peer_address = null)
+	ubyte[] recv(ubyte[] buf = null, scope NetworkAddress* peer_address = null)
 	{
 		return recv(Duration.max, buf, peer_address);
 	}
 	/// ditto
-	ubyte[] recv(Duration timeout, ubyte[] buf = null, NetworkAddress* peer_address = null)
+	ubyte[] recv(Duration timeout, ubyte[] buf = null, scope NetworkAddress* peer_address = null)
 	{
 		import std.socket : Address;
 		if (buf.length == 0) buf = new ubyte[65536];

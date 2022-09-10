@@ -304,7 +304,18 @@ struct FixedRingBuffer(T, size_t N = 0, bool INITIALIZE = true) {
 	static if( N == 0 ){
 		bool m_freeOnDestruct;
 		this(size_t capacity) { m_buffer = new T[capacity]; }
-		~this() { if (m_freeOnDestruct && m_buffer.length > 0) deleteCompat(m_buffer); }
+		~this()
+		{
+			if (m_buffer.length > 0) {
+				if (m_freeOnDestruct) deleteCompat(m_buffer);
+				else {
+					static if (hasElaborateDestructor!T) {
+						foreach (i; 0 .. m_fill)
+							destroy(m_buffer[mod(m_start + i)]);
+					}
+				}
+			}
+		}
 	}
 
 	@property bool empty() const { return m_fill == 0; }
@@ -330,7 +341,7 @@ struct FixedRingBuffer(T, size_t N = 0, bool INITIALIZE = true) {
 
 		@property void capacity(size_t new_size)
 		{
-			if( m_buffer.length ){
+			if (m_buffer.length) {
 				auto newbuffer = new T[new_size];
 				auto dst = newbuffer;
 				auto newfill = min(m_fill, new_size);
@@ -342,9 +353,6 @@ struct FixedRingBuffer(T, size_t N = 0, bool INITIALIZE = true) {
 				m_start = 0;
 				m_fill = newfill;
 			} else {
-				if (m_freeOnDestruct && m_buffer.length > 0) () @trusted {
-					deleteCompat(m_buffer);
-				} ();
 				m_buffer = new T[new_size];
 			}
 		}
@@ -378,11 +386,41 @@ struct FixedRingBuffer(T, size_t N = 0, bool INITIALIZE = true) {
 	}
 	void putN(size_t n) { assert(m_fill+n <= m_buffer.length); m_fill += n; }
 
-	void popFront() { assert(!empty); m_start = mod(m_start+1); m_fill--; }
-	void popFrontN(size_t n) { assert(length >= n); m_start = mod(m_start + n); m_fill -= n; }
+	void popFront()
+	{
+		assert(!empty);
+		static if (hasElaborateDestructor!T)
+			destroy(m_buffer[m_start]);
+		m_start = mod(m_start+1);
+		m_fill--;
+	}
+	void popFrontN(size_t n)
+	{
+		assert(length >= n);
+		static if (hasElaborateDestructor!T) {
+			foreach (i; 0 .. n)
+				destroy(m_buffer[mod(m_start + i)]);
+		}
+		m_start = mod(m_start + n);
+		m_fill -= n;
+	}
 
-	void popBack() { assert(!empty); m_fill--; }
-	void popBackN(size_t n) { assert(length >= n); m_fill -= n; }
+	void popBack()
+	{
+		assert(!empty);
+		static if (hasElaborateDestructor!T)
+			destroy(m_buffer[mod(m_start + m_fill - 1)]);
+		m_fill--;
+	}
+	void popBackN(size_t n)
+	{
+		assert(length >= n);
+		static if (hasElaborateDestructor!T) {
+			foreach (i; 0 .. n)
+				destroy(m_buffer[mod(m_start + m_fill - n + i)]);
+		}
+		m_fill -= n;
+	}
 
 	void removeAt(Range r)
 	{
@@ -564,6 +602,51 @@ unittest {
 	{
 		assert(i == item);
 	}
+}
+
+unittest {
+	int* pcnt = new int;
+
+	static struct S {
+		int* cnt;
+		this(int* cnt) { this.cnt = cnt; (*cnt)++; }
+		this(this) { if (cnt) (*cnt)++; }
+		~this() { if (cnt) (*cnt)--; }
+	}
+
+	{
+		FixedRingBuffer!(S, 0) buf;
+		buf.capacity = 1;
+		auto s = S(pcnt);
+		assert(*pcnt == 1);
+		buf.put(S(pcnt));
+		assert(*pcnt == 2);
+		s = S.init;
+		assert(*pcnt == 1);
+		buf.popBack();
+		assert(*pcnt == 0);
+		buf.put(S(pcnt));
+		assert(*pcnt == 1);
+		buf.capacity = 2;
+		assert(*pcnt == 1);
+	}
+	assert(*pcnt == 0);
+
+	{
+		FixedRingBuffer!(S, 0) buf;
+		buf.capacity = 2;
+		buf.put(S(pcnt));
+		buf.put(S(pcnt));
+		assert(*pcnt == 2);
+		buf.popFrontN(2);
+		assert(*pcnt == 0);
+		buf.put(S(pcnt));
+		buf.put(S(pcnt));
+		assert(*pcnt == 2);
+		buf.removeAt(buf[0 .. 1]);
+		assert(*pcnt == 1);
+	}
+	assert(*pcnt == 0);
 }
 
 
