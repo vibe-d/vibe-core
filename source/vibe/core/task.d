@@ -422,7 +422,12 @@ final package class TaskFiber : Fiber {
 						debug (VibeTaskLog) logTrace("putting fiber to sleep waiting for new task...");
 						static if (__VERSION__ >= 2090) {
 							import core.memory : GC;
-							assert(!GC.inFinalizer, "Yiedling within finalizer - this would most likely result in a dead-lock!");
+							import core.stdc.stdlib : abort;
+							import std.stdio : stderr;
+							if (GC.inFinalizer) {
+								stderr.writeln("Yiedling within finalizer - this would most likely result in a dead-lock!");
+								abort();
+							}
 						}
 						Fiber.yield();
 					} catch (Exception e) {
@@ -1044,6 +1049,16 @@ package struct TaskScheduler {
 		assert(t != Task.init, "Resuming null task");
 
 		debug (VibeTaskLog) logTrace("task fiber resume");
+		static if (__VERSION__ >= 2090) {
+			import core.memory : GC;
+			import core.stdc.stdlib : abort;
+			import std.stdio : stderr;
+			if (GC.inFinalizer) {
+				try () @trusted { stderr.writeln("Resuming task within finalizer - this would most likely result in a dead-lock!"); } ();
+				catch (Exception e) {}
+				abort();
+			}
+		}
 		auto uncaught_exception = () @trusted nothrow { return t.fiber.call!(Fiber.Rethrow.no)(); } ();
 		debug (VibeTaskLog) logTrace("task fiber yielded");
 
@@ -1099,7 +1114,13 @@ package struct TaskScheduler {
 		debug if (TaskFiber.ms_taskEventCallback) () @trusted { TaskFiber.ms_taskEventCallback(TaskEvent.yield, task); } ();
 		static if (__VERSION__ >= 2090) {
 			import core.memory : GC;
-			assert(!GC.inFinalizer, "Yiedling within finalizer - this would most likely result in a dead-lock!");
+			import core.stdc.stdlib : abort;
+			import std.stdio : stderr;
+			if (GC.inFinalizer) {
+				try () @trusted { stderr.writeln("Yiedling within finalizer - this would most likely result in a dead-lock!"); } ();
+				catch (Exception e) {}
+				abort();
+			}
 		}
 		() @trusted { Fiber.yield(); } ();
 		debug if (TaskFiber.ms_taskEventCallback) () @trusted { TaskFiber.ms_taskEventCallback(TaskEvent.resume, task); } ();
