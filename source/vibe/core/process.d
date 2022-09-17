@@ -7,7 +7,12 @@
 */
 module vibe.core.process;
 
-public import std.process : Pid, Redirect;
+version (iOS) {
+	struct Pid { int processID; }
+	enum Redirect { all, stdin, stderrToStdout, stdout, stdoutToStderr, stderr }
+} else {
+	public import std.process : Pid, Redirect;
+}
 static import std.process;
 
 import core.time;
@@ -51,14 +56,22 @@ Process adoptProcessID(int pid)
 
 	See_Also: `nativeShell`
 */
-@property NativePath userShell() { return NativePath(std.process.userShell); }
+version (iOS) {
+	const NativePath userShell = NativePath("/bin/sh");
+} else {
+	@property NativePath userShell() { return NativePath(std.process.userShell); }
+}
 
 /**
 	The platform specific native shell path.
 
 	See_Also: `userShell`
 */
-const NativePath nativeShell = NativePath(std.process.nativeShell);
+version (iOS) {
+	const NativePath nativeShell = NativePath("/bin/sh");
+} else {
+	const NativePath nativeShell = NativePath(std.process.nativeShell);
+}
 
 /**
 	Equivalent to `std.process.Config` except with less flag support

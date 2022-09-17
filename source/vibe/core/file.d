@@ -1229,7 +1229,12 @@ version (Posix) {
 		}
 	}
 
-	version (darwin) {
+	version (OSX) {
+		static if (!is(typeof(AT_SYMLINK_NOFOLLOW)))
+			enum AT_SYMLINK_NOFOLLOW = 0x0020;
+	}
+
+	version (iOS) {
 		static if (!is(typeof(AT_SYMLINK_NOFOLLOW)))
 			enum AT_SYMLINK_NOFOLLOW = 0x0020;
 	}
