@@ -834,6 +834,11 @@ package struct TaskScheduler {
 		This will execute scheduled tasks and process events from the
 		event queue, as long as possible without having to wait.
 
+		Params:
+			timeout = Maximum amount of time to wait for an event. A duration of
+				zero will cause the function to only process pending events. A
+				duration of `Duration.max`, if necessary, will wait indefinitely
+				until an event arrives.
 		Returns:
 			A reason is returned:
 			$(UL
@@ -847,7 +852,7 @@ package struct TaskScheduler {
 					but there were no pending events present.)
 			)
 	*/
-	ExitReason process()
+	ExitReason process(Duration timeout=0.seconds)
 	{
 		assert(TaskFiber.getThis().m_yieldLockCount == 0, "May not process events within an active yieldLock()!");
 
@@ -858,7 +863,7 @@ package struct TaskScheduler {
 			bool any_tasks_processed = schedule() != ScheduleStatus.idle;
 
 			debug (VibeTaskLog) logTrace("Processing pending events...");
-			ExitReason er = eventDriver.core.processEvents(0.seconds);
+			ExitReason er = eventDriver.core.processEvents(timeout);
 			debug (VibeTaskLog) logTrace("Done: %s", er);
 
 			final switch (er) {
