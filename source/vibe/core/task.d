@@ -921,7 +921,7 @@ package struct TaskScheduler {
 				if (!scheduledTaskCount)
 					return ExitReason.outOfWaiters;
 				break;
-			case ExitReason.timeout: 
+			case ExitReason.timeout:
 				assert(timeout!=Duration.max, "Unexpected return code");
 				break;
 			case ExitReason.idle: break;
