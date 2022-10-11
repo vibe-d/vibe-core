@@ -882,6 +882,12 @@ package struct TaskScheduler {
 
 	/** Performs a single round of scheduling, blocking if necessary.
 
+		Params:
+			timeout = Maximum amount of time to wait for an event. A duration of
+				zero will cause the function to only process pending events. A
+				duration of `Duration.max`, if necessary, will wait indefinitely
+				until an event arrives.
+
 		Returns:
 			A reason is returned:
 			$(UL
@@ -893,7 +899,7 @@ package struct TaskScheduler {
 					have been processed normally)
 			)
 	*/
-	ExitReason waitAndProcess()
+	ExitReason waitAndProcess(Duration timeout=Duration.max)
 	{
 		// first, process tasks without blocking
 		auto er = process();
@@ -907,7 +913,7 @@ package struct TaskScheduler {
 		// if the first run didn't process any events, block and
 		// process one chunk
 		debug (VibeTaskLog) logTrace("Wait for new events to process...");
-		er = eventDriver.core.processEvents(Duration.max);
+		er = eventDriver.core.processEvents(timeout);
 		debug (VibeTaskLog) logTrace("Done: %s", er);
 		final switch (er) {
 			case ExitReason.exited: return ExitReason.exited;
@@ -915,7 +921,9 @@ package struct TaskScheduler {
 				if (!scheduledTaskCount)
 					return ExitReason.outOfWaiters;
 				break;
-			case ExitReason.timeout: assert(false, "Unexpected return code");
+			case ExitReason.timeout:
+				assert(timeout!=Duration.max, "Unexpected return code");
+				break;
 			case ExitReason.idle: break;
 		}
 

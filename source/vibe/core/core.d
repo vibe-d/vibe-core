@@ -278,10 +278,17 @@ bool processEvents()
 
 /**
 	Wait once for events and process them.
+
+	Params:
+		timeout = Maximum amount of time to wait for an event. A duration of
+			zero will cause the function to only process pending events. A
+			duration of `Duration.max`, if necessary, will wait indefinitely
+			until an event arrives.
+
 */
-ExitReason runEventLoopOnce()
+ExitReason runEventLoopOnce(Duration timeout=Duration.max)
 @safe nothrow {
-	auto ret = s_scheduler.waitAndProcess();
+	auto ret = s_scheduler.waitAndProcess(timeout);
 	if (ret == ExitReason.idle)
 		performIdleProcessing();
 	return ret;
