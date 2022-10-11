@@ -269,25 +269,26 @@ void exitEventLoop(bool shutdown_all_threads = false)
 
 	Checks if events are ready to trigger immediately, and run their callbacks if so.
 
+	Returns: Returns false $(I iff) exitEventLoop was called in the process.
+*/
+bool processEvents()
+@safe nothrow {
+	return !s_scheduler.process().among(ExitReason.exited, ExitReason.outOfWaiters);
+}
+
+/**
+	Wait once for events and process them.
+
 	Params:
 		timeout = Maximum amount of time to wait for an event. A duration of
 			zero will cause the function to only process pending events. A
 			duration of `Duration.max`, if necessary, will wait indefinitely
 			until an event arrives.
 
-	Returns: Returns false $(I iff) exitEventLoop was called in the process.
 */
-bool processEvents(Duration timeout=0.seconds)
+ExitReason runEventLoopOnce(Duration timeout=Duration.max)
 @safe nothrow {
-	return !s_scheduler.process(timeout).among(ExitReason.exited, ExitReason.outOfWaiters);
-}
-
-/**
-	Wait once for events and process them.
-*/
-ExitReason runEventLoopOnce()
-@safe nothrow {
-	auto ret = s_scheduler.waitAndProcess();
+	auto ret = s_scheduler.waitAndProcess(timeout);
 	if (ret == ExitReason.idle)
 		performIdleProcessing();
 	return ret;
