@@ -1,3 +1,18 @@
+1.22.5 - 2022-11-04
+===================
+
+- Added an optional `timeout` parameter to `runEventLoopOnce` (by Grillo del Mal) - [pull #325][issue325]
+- Marked `peer_address` parameters of the `UDPConnection` API as `scope` - [pull #321][issue321]
+- Fixed compilation errors on iOS - [pull #323][issue323]
+- Fixed an issue with non-deterministic destruction in `FixedRingBuffer` - [pull #321][issue321]
+- Fixed a possible infinite recursion when using `yield()` outside of a task - [pull #326][issue326]
+
+[issue321]: https://github.com/vibe-d/vibe-core/issues/321
+[issue323]: https://github.com/vibe-d/vibe-core/issues/323
+[issue325]: https://github.com/vibe-d/vibe-core/issues/325
+[issue326]: https://github.com/vibe-d/vibe-core/issues/326
+
+
 1.22.4 - 2022-05-26
 ===================
 
@@ -6,6 +21,7 @@
 
 [issue313]: https://github.com/vibe-d/vibe-core/issues/313
 [issue314]: https://github.com/vibe-d/vibe-core/issues/314
+
 
 1.22.3 - 2022-04-01
 ===================
