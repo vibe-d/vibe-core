@@ -976,6 +976,13 @@ void yield()
 		s_scheduler.yield();
 		tf.handleInterrupt();
 	} else {
+		// avoid recursive event processing, which could result in an infinite
+		// recursion
+		static bool in_yield = false;
+		if (in_yield) return;
+		in_yield = true;
+		scope (exit) in_yield = false;
+
 		// Let yielded tasks execute
 		assert(TaskFiber.getThis().m_yieldLockCount == 0, "May not yield within an active yieldLock()!");
 		() @safe nothrow { performIdleProcessingOnce(true); } ();
