@@ -39,3 +39,4 @@ jobs:
                 DC: ${{matrix.dc}}
                 ARCH: ${{matrix.arch}}
               run: ./run-ci.sh
+              shell: bash
