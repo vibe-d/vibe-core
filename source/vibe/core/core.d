@@ -1281,20 +1281,24 @@ Timer createTimer(void delegate() nothrow @safe callback = null)
 
 			m_running = true;
 
-			runTask((Timer tm) nothrow {
-				assert(m_running);
-				scope (exit) m_running = false;
+			runTask(function(Timer tm, C* ctx) nothrow {
+				assert(ctx.m_running);
+				scope (exit) ctx.m_running = false;
 
 				do {
-					m_pendingFire = false;
-					m_callback();
+					ctx.m_pendingFire = false;
+					ctx.m_callback();
 
 					// make sure that no callbacks are fired after the timer
 					// has been actively stopped
-					if (m_pendingFire && !tm.pending)
-						m_pendingFire = false;
-				} while (m_pendingFire);
-			}, tm);
+					if (ctx.m_pendingFire && !tm.pending)
+						ctx.m_pendingFire = false;
+				} while (ctx.m_pendingFire);
+			}, tm, () @trusted { return &this; } ());
+			// NOTE: the called C is allocated at a fixed address within the
+			//       timer descriptor slot of eventcore, so that we can "safely"
+			//       pass the address to runTask here, as long as it is
+			//       guaranteed that the timer lives longer than the task.
 		}
 	}
 
@@ -1680,7 +1684,7 @@ private struct TimerCallbackHandler(CALLABLE) {
 		}
 
 		if (!eventDriver.timers.isUnique(timer) || eventDriver.timers.isPending(timer))
-			eventDriver.timers.wait(timer, &handle);
+			eventDriver.timers.wait(timer, () @trusted { return &handle; } ());
 	}
 }
 

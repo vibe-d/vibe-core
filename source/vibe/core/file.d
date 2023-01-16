@@ -730,7 +730,7 @@ struct FileStream {
 		return null;
 	}
 
-	size_t read(ubyte[] dst, IOMode mode)
+	size_t read(scope ubyte[] dst, IOMode mode)
 	{
 		// NOTE: cancelRead is currently not behaving as specified and cannot
 		//       be relied upon. For this reason, we MUST use the uninterruptible
@@ -743,7 +743,7 @@ struct FileStream {
 		return res[2];
 	}
 
-	void read(ubyte[] dst)
+	void read(scope ubyte[] dst)
 	{
 		auto ret = read(dst, IOMode.all);
 		assert(ret == dst.length, "File.read returned less data than requested for IOMode.all.");

@@ -205,8 +205,8 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 		import std.meta : AliasSeq;
 		import std.traits : FunctionAttribute, MemberFunctionsTuple, ReturnType, ParameterTypeTuple, functionAttributes;
 
-		void _destroy(void[] stor) @safe nothrow;
-		void _postblit(void[] stor) @safe nothrow;
+		void _destroy(scope void[] stor) @safe nothrow;
+		void _postblit(scope void[] stor) @safe nothrow;
 		TypeInfo _typeInfo() @safe nothrow;
 
 		mixin methodDecls!0;
@@ -230,7 +230,7 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 				foreach (idx, F; Overloads) {
 					enum attribs = functionAttributeString!F(false);
 					enum vtype = functionAttributeThisType!F("void[]");
-					ret ~= q{ReturnType!(Overloads[%s]) %s(%s obj, %s) %s;}
+					ret ~= q{ReturnType!(Overloads[%s]) %s(scope %s obj, %s) %s;}
 						.format(idx, mem, vtype, parameterDecls!(F, idx), attribs);
 				}
 				return ret;
@@ -248,7 +248,7 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 			return impl;
 		}
 
-		override void _destroy(void[] stor)
+		override void _destroy(scope void[] stor)
 		@trusted nothrow {
 			static if (is(O == struct)) {
 				try destroy(_extract(stor));
@@ -256,7 +256,7 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 			}
 		}
 
-		override void _postblit(void[] stor)
+		override void _postblit(scope void[] stor)
 		@trusted nothrow {
 			static if (is(O == struct)) {
 				try typeid(O).postblit(stor.ptr);
@@ -300,10 +300,10 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 					enum vtype = functionAttributeThisType!F("void[]");
 
 					static if (is(R == void))
-						ret ~= q{override void %s(%s obj, %s) %s { _extract(obj).%s(%s); }}
+						ret ~= q{override void %s(scope %s obj, %s) %s { _extract(obj).%s(%s); }}
 							.format(mem, vtype, parameterDecls!(F, idx), attribs, mem, parameterNames!F);
 					else
-						ret ~= q{override ReturnType!(Overloads[%s]) %s(%s obj, %s) %s { return _extract(obj).%s(%s); }}
+						ret ~= q{override ReturnType!(Overloads[%s]) %s(scope %s obj, %s) %s { return _extract(obj).%s(%s); }}
 							.format(idx, mem, vtype, parameterDecls!(F, idx), attribs, mem, parameterNames!F);
 				}
 				return ret;
