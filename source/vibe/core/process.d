@@ -95,7 +95,7 @@ Process spawnProcess(
 	scope string[] args,
 	const string[string] env = null,
 	Config config = Config.none,
-	scope NativePath workDir = NativePath.init)
+	NativePath workDir = NativePath.init)
 @trusted {
 	auto process = eventDriver.processes.spawn(
 		args,
@@ -114,10 +114,10 @@ Process spawnProcess(
 
 /// ditto
 Process spawnProcess(
-	scope string program,
+	string program,
 	const string[string] env = null,
 	Config config = Config.none,
-	scope NativePath workDir = NativePath.init)
+	NativePath workDir = NativePath.init)
 {
 	return spawnProcess(
 		[program],
@@ -129,11 +129,11 @@ Process spawnProcess(
 
 /// ditto
 Process spawnShell(
-	scope string command,
+	string command,
 	const string[string] env = null,
 	Config config = Config.none,
-	scope NativePath workDir = NativePath.init,
-	scope NativePath shellPath = nativeShell)
+	NativePath workDir = NativePath.init,
+	NativePath shellPath = nativeShell)
 {
 	return spawnProcess(
 		shellCommand(command, shellPath),
@@ -718,12 +718,12 @@ ProcessPipes pipeProcess(
 
 /// ditto
 ProcessPipes pipeShell(
-	scope string command,
+	string command,
 	Redirect redirect = Redirect.all,
 	const string[string] env = null,
 	Config config = Config.none,
-	scope NativePath workDir = NativePath.init,
-	scope NativePath shellPath = nativeShell)
+	NativePath workDir = NativePath.init,
+	NativePath shellPath = nativeShell)
 {
 	return pipeProcess(
 		shellCommand(command, nativeShell),
@@ -746,29 +746,29 @@ auto execute(
 	const string[string] env = null,
 	Config config = Config.none,
 	size_t maxOutput = size_t.max,
-	scope NativePath workDir = NativePath.init)
+	NativePath workDir = NativePath.init)
 @blocking {
 	return executeImpl!pipeProcess(args, env, config, maxOutput, workDir);
 }
 
 /// ditto
 auto execute(
-	scope string program,
+	string program,
 	const string[string] env = null,
 	Config config = Config.none,
 	size_t maxOutput = size_t.max,
-	scope NativePath workDir = NativePath.init)
+	NativePath workDir = NativePath.init)
 @blocking @trusted {
 	return executeImpl!pipeProcess(program, env, config, maxOutput, workDir);
 }
 
 /// ditto
 auto executeShell(
-	scope string command,
+	string command,
 	const string[string] env = null,
 	Config config = Config.none,
 	size_t maxOutput = size_t.max,
-	scope NativePath workDir = null,
+	NativePath workDir = null,
 	NativePath shellPath = nativeShell)
 @blocking {
 	return executeImpl!pipeShell(command, env, config, maxOutput, workDir, shellPath);
@@ -779,7 +779,7 @@ private auto executeImpl(alias spawn, Cmd, Args...)(
 	const string[string] env,
 	Config config,
 	size_t maxOutput,
-	scope NativePath workDir,
+	NativePath workDir,
 	Args args)
 @blocking {
 	Redirect redirect = Redirect.stdout;

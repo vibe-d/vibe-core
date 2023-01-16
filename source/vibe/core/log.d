@@ -423,7 +423,8 @@ final class FileLogger : Logger {
 
 	override void put(scope const(char)[] text)
 	{
-		m_curFile.write(text);
+		// NOTE: (DMD 2.101.2) File.write parameters are not annotated scope
+		m_curFile.write(() @trusted { return text; } ());
 	}
 
 	override void endLine()
@@ -997,18 +998,19 @@ private struct LogOutputRange {
 		if (text.empty)
 			return;
 
-		if (logger.multilineLogger)
+		if (logger.multilineLogger) {
 			logger.put(text);
-		else
-		{
+		} else {
 			auto rng = text.splitter('\n');
-			logger.put(rng.front);
-			rng.popFront;
-			foreach (line; rng)
-			{
+			// NOTE: (DMD 2.101.2) splitter() appears to return a range that has
+			//       non-scope this parameters for all of its methods
+			logger.put(() @trusted { return rng.front; } ());
+			() @trusted { rng.popFront(); } ();
+			while (!() @trusted { return rng.empty; } ()) {
 				logger.endLine();
 				logger.beginLine(info);
-				logger.put(line);
+				logger.put(() @trusted { return rng.front; } ());
+				() @trusted { rng.popFront(); } ();
 			}
 		}
 	}

@@ -318,7 +318,7 @@ struct NetworkAddress {
 	enum socklen_t sockAddrMaxLen = max(addr.sizeof, addr_ip6.sizeof);
 
 
-	this(Address addr)
+	this(scope const(Address) addr)
 		@trusted
 	{
 		assert(addr !is null);
@@ -433,14 +433,16 @@ struct NetworkAddress {
 				break;
 			case AF_INET: {
 				ubyte[4] ip = () @trusted { return (cast(ubyte*)&addr_ip4.sin_addr.s_addr)[0 .. 4]; } ();
-				sink.formattedWrite("%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+				// NOTE: (DMD 2.101.2) FormatSpec.writeUpToNextSpec doesn't forward 'sink' as scope
+				() @trusted { sink.formattedWrite("%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]); } ();
 				} break;
 			case AF_INET6: {
 				ubyte[16] ip = addr_ip6.sin6_addr.s6_addr;
 				foreach (i; 0 .. 8) {
 					if (i > 0) sink(":");
 					_dummy[] = ip[i*2 .. i*2+2];
-					sink.formattedWrite("%x", bigEndianToNative!ushort(_dummy));
+					// NOTE: (DMD 2.101.2) FormatSpec.writeUpToNextSpec doesn't forward 'sink' as scope
+					() @trusted { sink.formattedWrite("%x", bigEndianToNative!ushort(_dummy)); } ();
 				}
 				} break;
 			version (Posix) {
@@ -477,12 +479,14 @@ struct NetworkAddress {
 					break;
 				case AF_INET:
 					toAddressString(sink);
-					sink.formattedWrite(":%s", port);
+					// NOTE: (DMD 2.101.2) FormatSpec.writeUpToNextSpec doesn't forward 'sink' as scope
+					() @trusted { sink.formattedWrite(":%s", port); } ();
 					break;
 				case AF_INET6:
 					sink("[");
 					toAddressString(sink);
-					sink.formattedWrite("]:%s", port);
+					// NOTE: (DMD 2.101.2) FormatSpec.writeUpToNextSpec doesn't forward 'sink' as scope
+					() @trusted { sink.formattedWrite("]:%s", port); } ();
 					break;
 				case AddressFamily.UNIX:
 					toAddressString(sink);
@@ -792,13 +796,13 @@ struct TCPConnection {
 
 	void read(scope ubyte[] dst) { auto r = read(dst, IOMode.all); assert(r == dst.length); }
 
-	size_t write(in ubyte[] bytes, IOMode mode)
+	size_t write(scope const(ubyte)[] bytes, IOMode mode)
 	{
 		mixin(tracer);
 		if (bytes.length == 0) return 0;
 
 		auto res = asyncAwait!(IOCallback,
-			cb => eventDriver.sockets.write(m_socket, bytes, mode, cb),
+			cb => eventDriver.sockets.write(m_socket, () @trusted { return bytes; } (), mode, cb),
 			cb => eventDriver.sockets.cancelWrite(m_socket));
 
 		switch (res[1]) {
@@ -816,8 +820,8 @@ struct TCPConnection {
 		return res[2];
 	}
 
-	void write(in ubyte[] bytes) { auto r = write(bytes, IOMode.all); assert(r == bytes.length); }
-	void write(in char[] bytes) { write(cast(const(ubyte)[])bytes); }
+	void write(scope const(ubyte)[] bytes) { auto r = write(bytes, IOMode.all); assert(r == bytes.length); }
+	void write(scope const(char)[] bytes) { write(cast(const(ubyte)[])bytes); }
 	void write(InputStream stream) { write(stream, 0); }
 
 	void flush() {
@@ -1090,7 +1094,7 @@ struct UDPConnection {
 		If peer_address is given, the packet is send to that address. Otherwise the packet
 		will be sent to the address specified by a call to connect().
 	*/
-	void send(in ubyte[] data, scope const NetworkAddress* peer_address = null)
+	void send(scope const(ubyte)[] data, scope const NetworkAddress* peer_address = null)
 	{
 		scope addrc = new RefAddress;
 		if (peer_address)
@@ -1101,7 +1105,8 @@ struct UDPConnection {
 		bool cancelled;
 
 		alias waitable = Waitable!(DatagramIOCallback,
-			cb => eventDriver.sockets.send(m_socket, data, IOMode.once, peer_address ? addrc : null, cb),
+			cb => eventDriver.sockets.send(m_socket, () @trusted { return data; } (),
+				IOMode.once, peer_address ? () @trusted { return addrc; } () : null, cb),
 			(cb) { cancelled = true; eventDriver.sockets.cancelSend(m_socket); },
 			(DatagramSocketFD, IOStatus status_, size_t nbytes_, scope RefAddress addr)
 			{
@@ -1123,12 +1128,12 @@ struct UDPConnection {
 		The timeout overload will throw an Exception if no data arrives before the
 		specified duration has elapsed.
 	*/
-	ubyte[] recv(ubyte[] buf = null, scope NetworkAddress* peer_address = null)
+	ubyte[] recv(return scope ubyte[] buf = null, scope NetworkAddress* peer_address = null)
 	{
 		return recv(Duration.max, buf, peer_address);
 	}
 	/// ditto
-	ubyte[] recv(Duration timeout, ubyte[] buf = null, scope NetworkAddress* peer_address = null)
+	ubyte[] recv(Duration timeout, return scope ubyte[] buf = null, scope NetworkAddress* peer_address = null)
 	{
 		import std.socket : Address;
 		if (buf.length == 0) buf = new ubyte[65536];
@@ -1138,7 +1143,7 @@ struct UDPConnection {
 		bool cancelled;
 
 		alias waitable = Waitable!(DatagramIOCallback,
-			cb => eventDriver.sockets.receive(m_socket, buf, IOMode.once, cb),
+			cb => eventDriver.sockets.receive(m_socket, () @trusted { return buf; } (), IOMode.once, cb),
 			(cb) { cancelled = true; eventDriver.sockets.cancelReceive(m_socket); },
 			(DatagramSocketFD, IOStatus status_, size_t nbytes_, scope RefAddress addr)
 			{

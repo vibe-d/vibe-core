@@ -138,15 +138,15 @@ void asyncAwaitAny(bool interruptible, Waitables...)(string func = __FUNCTION__)
 				};
 
 				debug(VibeAsyncLog) logDebugV("Starting operation %%s", %1$s);
-				alias WR%1$s = typeof(Waitables[%1$s].wait(callback_%1$s));
-				static if (is(WR%1$s == void)) Waitables[%1$s].wait(callback_%1$s);
-				else auto wr%1$s = Waitables[%1$s].wait(callback_%1$s);
+				alias WR%1$s = typeof(Waitables[%1$s].wait(() @trusted { return callback_%1$s; } ()));
+				static if (is(WR%1$s == void)) Waitables[%1$s].wait(() @trusted { return callback_%1$s; } ());
+				else auto wr%1$s = Waitables[%1$s].wait(() @trusted { return callback_%1$s; } ());
 
 				scope (exit) {
 					if (!fired[%1$s]) {
 						debug(VibeAsyncLog) logDebugV("Cancelling operation %%s", %1$s);
-						static if (is(WR%1$s == void)) Waitables[%1$s].cancel(callback_%1$s);
-						else Waitables[%1$s].cancel(callback_%1$s, wr%1$s);
+						static if (is(WR%1$s == void)) Waitables[%1$s].cancel(() @trusted { return callback_%1$s; } ());
+						else Waitables[%1$s].cancel(() @trusted { return callback_%1$s; } (), wr%1$s);
 						any_fired = true;
 						fired[%1$s] = true;
 					}

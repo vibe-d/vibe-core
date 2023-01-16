@@ -732,7 +732,7 @@ struct FileStream {
 		//       be relied upon. For this reason, we MUST use the uninterruptible
 		//       version of asyncAwait here!
 		auto res = asyncAwaitUninterruptible!(FileIOCallback,
-			cb => eventDriver.files.read(m_fd, ctx.ptr, dst, mode, cb)
+			cb => eventDriver.files.read(m_fd, ctx.ptr, () @trusted { return dst; } (), mode, cb)
 		);
 		ctx.ptr += res[2];
 		enforce(res[1] == IOStatus.ok, "Failed to read data from disk.");
