@@ -179,8 +179,8 @@ struct TestOutputStream {
 		}
 		return bytes.length;
 	}
-	void write(in ubyte[] bytes) @blocking { auto n = write(bytes, IOMode.all); assert(n == bytes.length); }
-	void write(in char[] bytes) @blocking { write(cast(const(ubyte)[])bytes); }
+	void write(scope const(ubyte)[] bytes) @blocking { auto n = write(bytes, IOMode.all); assert(n == bytes.length); }
+	void write(scope const(char)[] bytes) @blocking { write(cast(const(ubyte)[])bytes); }
 }
 
 mixin validateOutputStream!TestOutputStream;

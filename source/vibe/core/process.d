@@ -522,12 +522,12 @@ struct PipeOutputStream {
 
 	bool opCast(T)() const nothrow if (is(T == bool)) { return m_pipes != PipeFD.invalid; }
 
-	size_t write(in ubyte[] bytes, IOMode mode)
+	size_t write(scope const(ubyte)[] bytes, IOMode mode)
 	@blocking {
 		if (bytes.empty) return 0;
 
 		auto res = asyncAwait!(PipeIOCallback,
-			cb => eventDriver.pipes.write(m_pipe, bytes, mode, cb),
+			cb => eventDriver.pipes.write(m_pipe, () @trusted { return bytes; } (), mode, cb),
 			cb => eventDriver.pipes.cancelWrite(m_pipe));
 
 		switch (res[1]) {
@@ -540,8 +540,8 @@ struct PipeOutputStream {
 		return res[2];
 	}
 
-	void write(in ubyte[] bytes) @blocking { auto r = write(bytes, IOMode.all); assert(r == bytes.length); }
-	void write(in char[] bytes) @blocking { write(cast(const(ubyte)[])bytes); }
+	void write(scope const(ubyte)[] bytes) @blocking { auto r = write(bytes, IOMode.all); assert(r == bytes.length); }
+	void write(scope const(char)[] bytes) @blocking { write(cast(const(ubyte)[])bytes); }
 
 	void flush() {}
 	void finalize() {}
