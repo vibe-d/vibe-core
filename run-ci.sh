@@ -3,6 +3,7 @@
 set -e -x -o pipefail
 
 DUB_FLAGS=${DUB_FLAGS:-}
+DCVER=${DC#*-}
 DC=${DC%-*}
 if [ "$DC" == "ldc" ]; then DC="ldc2"; fi
 
@@ -25,6 +26,7 @@ if [ ${BUILD_EXAMPLE=1} -eq 1 ]; then
         (cd examples/$ex && dub build --compiler=$DC  && dub clean)
     done
 fi
+
 if [ ${RUN_TEST=1} -eq 1 ]; then
     for ex in `\ls -1 tests/*.d`; do
         script="${ex%.d}.sh"
