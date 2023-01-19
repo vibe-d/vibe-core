@@ -1176,7 +1176,6 @@ Future!(ReturnType!CALLABLE) async(CALLABLE, ARGS...)(CALLABLE callable, ARGS ar
 
 	void test()
 	{
-		static if (__VERSION__ >= 2065) {
 		auto val = async({
 			logInfo("Starting to compute value in worker task.");
 			sleep(500.msecs); // simulate some lengthy computation
@@ -1188,7 +1187,6 @@ Future!(ReturnType!CALLABLE) async(CALLABLE, ARGS...)(CALLABLE callable, ARGS ar
 		sleep(200.msecs); // simulate some lengthy computation
 		logInfo("Finished computation in main task. Waiting for async value.");
 		logInfo("Result: %s", val.getResult());
-		}
 	}
 }
 
