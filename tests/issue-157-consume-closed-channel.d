@@ -12,12 +12,12 @@ void main()
 {
 	auto ch = createChannel!int();
 
-	auto p = runTask({
-		sleep(1.seconds);
+	auto p = runTask(() nothrow {
+		sleepUninterruptible(1.seconds);
 		ch.close();
 	});
 
-	auto c = runTask({
+	auto c = runTask(() nothrow {
 		while (!ch.empty) {
 			try ch.consumeOne();
 			catch (Exception e) assert(false, e.msg);
