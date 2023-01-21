@@ -7,11 +7,16 @@ import core.time, vibe.core.core, vibe.core.process;
 
 void main()
 {
-    auto p = pipe();
-    runTask(()
-    {
-        sleep(10.msecs);
-        exitEventLoop();
-    });
-    runEventLoop();
+	version (Windows) {
+		import vibe.core.log : logInfo;
+		logInfo("Skipping pipe test on Windows");
+	} else {
+		auto p = pipe();
+		runTask(()
+		{
+			sleep(10.msecs);
+			exitEventLoop();
+		});
+		runEventLoop();
+	}
 }

@@ -180,8 +180,11 @@ void main()
 	import core.time;
 	import std.meta : AliasSeq;
 
-	// rdmd --eval is only supported in versions >= 2.080
-	static if (__VERSION__ >= 2080) {
+
+	version (Windows) {
+		import vibe.core.log : logInfo;
+		logInfo("Skipping process test on Windows");
+	} else {
 		runTask({
 			alias Tasks = AliasSeq!(
 				testEcho,
