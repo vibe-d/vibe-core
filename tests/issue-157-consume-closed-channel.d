@@ -10,6 +10,9 @@ import core.time;
 
 void main()
 {
+	auto tm = setTimer(10.seconds, { assert(false, "Test timeout."); });
+	scope (exit) tm.stop();
+
 	auto ch = createChannel!int();
 
 	auto p = runTask(() nothrow {
