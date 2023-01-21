@@ -238,8 +238,10 @@ TCPConnection connectTCP(NetworkAddress addr, NetworkAddress bind_address = anyA
 			cb => eventDriver.sockets.connectStream(uaddr, baddr, cb),
 			(cb, sock_fd) {
 				cancelled = true;
-				if (sock_fd != SocketFD.invalid)
+				if (sock_fd != SocketFD.invalid) {
 					eventDriver.sockets.cancelConnectStream(sock_fd);
+					eventDriver.sockets.releaseRef(sock_fd);
+				}
 			},
 			(fd, st) { sock = fd; status = st; }
 		);
