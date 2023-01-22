@@ -618,8 +618,8 @@ Pipe pipe()
 		}
 		version (CRuntime_DigitalMars) {
 			import core.stdc.stdio : _handleToFD, FHND_DEVICE;
-			int readFD = _handleToFD(readHandle, FHND_DEVICE);
-			int writeFD = _handleToFD(writeHandle, FHND_DEVICE);
+			int readFD = () @trusted { return _handleToFD(readHandle, FHND_DEVICE); } ();
+			int writeFD = () @trusted { return _handleToFD(writeHandle, FHND_DEVICE); } ();
 		} else {
 			import core.stdc.stdint : intptr_t;
 			import core.stdc.stdio : _open_osfhandle, O_RDONLY, O_APPEND;

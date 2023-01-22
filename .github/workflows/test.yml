@@ -13,6 +13,7 @@ on:
 jobs:
     test:
         name: Dub Tests
+        timeout-minutes: 15
         strategy:
             fail-fast: false
             matrix:
@@ -23,12 +24,7 @@ jobs:
                   - { os: windows-latest, dc: dmd-2.092.0, arch: x86_64 }
                   - { os: windows-latest, dc: dmd-2.092.0, arch: x86_mscoff }
                   - { os: windows-latest, dc: dmd-2.091.1, arch: x86_64 }
-                  - { os: windows-latest, dc: dmd-2.086.1, arch: x86_64 }
-                  - { os: windows-latest, dc: dmd-2.085.1, arch: x86_64 }
-                  - { os: windows-latest, dc: dmd-2.079.0, arch: x86_mscoff }
                   - { os: windows-latest, dc: ldc-1.20.1, arch: x86_64 }
-                  - { os: windows-latest, dc: ldc-1.16.0, arch: x86_64 }
-                  - { os: windows-latest, dc: ldc-1.15.0, arch: x86_64 }
 
         runs-on: ${{ matrix.os }}
         steps:
@@ -44,3 +40,4 @@ jobs:
                 DC: ${{matrix.dc}}
                 ARCH: ${{matrix.arch}}
               run: ./run-ci.sh
+              shell: bash

@@ -5,35 +5,29 @@
 module test;
 
 import core.time;
-
+import std.algorithm.searching : countUntil;
 import vibe.core.core;
 import vibe.core.net;
 
 ushort port;
 void main()
 {
-	runTask(&server);
-	runTask(&client);
+	TCPListener listener;
+	try {
+		listener = listenTCP(0, (conn) @safe nothrow {
+			sleepUninterruptible(200.msecs);
+		}, "127.0.0.1");
+		port = listener.bindAddress.port;
+	} catch (Exception e) assert(false, e.msg);
 
-	runEventLoop();
-}
-
-void server()
-{
-	auto listener = listenTCP(0, (conn) @safe nothrow {
-		try { sleep(200.msecs); } catch (Exception) {}
-	});
-	port = listener[0].bindAddress.port;
-}
-
-void client()
-{
-	sleep(100.msecs);
-	auto tcp = connectTCP("127.0.0.1", port);
+	TCPConnection tcp;
+	try tcp = connectTCP("127.0.0.1", port);
+	catch (Exception e) assert(false, e.msg);
 	runTask({
-		sleep(10.msecs);
+		sleepUninterruptible(10.msecs);
 		tcp.close();
 	});
 	assert(!tcp.waitForData());
-	exitEventLoop(true);
+	assert(!tcp.connected);
+	listener.stopListening();
 }
