@@ -1,3 +1,15 @@
+1.22.6 - 2023-01-23
+===================
+
+- Updates compiler frontend support to range from 2.090.0 up to 2.101.2 - [pull #330][issue330]
+- Fixes a socket descriptor leak after a connect timeout - [issue #331][issue331], [pull #332][issue332]
+- Fixed a Windows issue when closing a TCP connection while concurrently reading from it - [pull #330][issue330]
+
+[issue330]: https://github.com/vibe-d/vibe-core/issues/330
+[issue331]: https://github.com/vibe-d/vibe-core/issues/331
+[issue332]: https://github.com/vibe-d/vibe-core/issues/332
+
+
 1.22.5 - 2022-11-04
 ===================
 
