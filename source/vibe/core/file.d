@@ -296,10 +296,6 @@ bool existsFile(NativePath path) nothrow
 /// ditto
 bool existsFile(string path) nothrow
 {
-	// This was *annotated* nothrow in 2.067.
-	static if (__VERSION__ < 2067)
-		scope(failure) assert(0, "Error: existsFile should never throw");
-
 	try return performInWorker((string p) => std.file.exists(p), path);
 	catch (Exception e) {
 		logDebug("Failed to determine file existence for '%s': %s", path, e.msg);

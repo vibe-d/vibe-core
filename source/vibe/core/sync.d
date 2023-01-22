@@ -372,10 +372,8 @@ unittest {
 	});
 	assert(!mutex.m_impl.m_locked);
 
-	static if (__VERSION__ >= 2067) {
-		with(mutex.scopedMutexLock) {
-			assert(mutex.m_impl.m_locked);
-		}
+	with(mutex.scopedMutexLock) {
+		assert(mutex.m_impl.m_locked);
 	}
 }
 
