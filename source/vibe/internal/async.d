@@ -131,9 +131,13 @@ void asyncAwaitAny(bool interruptible, Waitables...)(string func = __FUNCTION__)
 					fired[%1$s] = true;
 					any_fired = true;
 					Waitables[%1$s].done(%3$s);
-					if (t != Task.init) {
-						version (VibeHighEventPriority) switchToTask(t);
-						else switchToTask(t, TaskSwitchPriority.normal);
+
+					static if (!is(typeof(Waitables[%1$s].done(%3$s)) : noreturn))
+					{
+						if (t != Task.init) {
+							version (VibeHighEventPriority) switchToTask(t);
+							else switchToTask(t, TaskSwitchPriority.normal);
+						}
 					}
 				};
 
@@ -145,10 +149,22 @@ void asyncAwaitAny(bool interruptible, Waitables...)(string func = __FUNCTION__)
 				scope (exit) {
 					if (!fired[%1$s]) {
 						debug(VibeAsyncLog) logDebugV("Cancelling operation %%s", %1$s);
-						static if (is(WR%1$s == void)) Waitables[%1$s].cancel(callback_%1$s);
-						else Waitables[%1$s].cancel(callback_%1$s, wr%1$s);
-						any_fired = true;
-						fired[%1$s] = true;
+						static if (is(WR%1$s == void))
+						{
+							Waitables[%1$s].cancel(callback_%1$s);
+							alias CRT = typeof(Waitables[%1$s].cancel(callback_%1$s));
+						}
+						else
+						{
+							Waitables[%1$s].cancel(callback_%1$s, wr%1$s);
+							alias CRT = typeof(Waitables[%1$s].cancel(callback_%1$s, wr%1$s));
+						}
+
+						static if (!is(CRT : noreturn))
+						{
+							any_fired = true;
+							fired[%1$s] = true;
+						}
 					}
 				}
 
@@ -229,6 +245,21 @@ private alias CBDel(alias Waitable) = Waitable.Callback;
 
 	asyncAwaitAny!(false, w3);
 	assert(c == 2);
+}
+
+static if (is(noreturn)) // Requires newer host compilers
+@safe nothrow unittest
+{
+	alias CB = noreturn delegate(int) @safe nothrow;
+
+	alias wait   = delegate noreturn(_)    => assert(0);
+	alias cancel = delegate noreturn(_, x) => assert(0);
+	alias done   = delegate noreturn(_)    => assert(0);
+
+	alias w4 = Waitable!(CB, wait, cancel, done);
+
+	if (false)
+		asyncAwaitAny!(false, w4);
 }
 
 private string generateParamDecls(Fun)(string ptypes_name = "PTypes")
