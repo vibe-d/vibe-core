@@ -191,54 +191,6 @@ shared final class TaskPool {
 		}
 		return runTaskH(settings, &wrapper!(), object, args);
 	}
-	/// ditto
-	deprecated("The `func` argument should be `nothrow`.")
-	Task runTaskH(FT, ARGS...)(FT func, auto ref ARGS args)
-		if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
-	{
-		foreach (T; ARGS) static assert(isWeaklyIsolated!T, "Argument type "~T.stringof~" is not safe to pass between threads.");
-
-		// workaround for runWorkerTaskH to work when called outside of a task
-		if (Task.getThis() == Task.init) {
-			Task ret;
-			.runTask({ ret = doRunTaskH(TaskSettings.init, func, args); }).join();
-			return ret;
-		} else return doRunTaskH(TaskSettings.init, func, args);
-	}
-	/// ditto
-	deprecated("The `method` argument should be `nothrow`.")
-	Task runTaskH(alias method, T, ARGS...)(shared(T) object, auto ref ARGS args)
-		if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
-	{
-		static void wrapper()(shared(T) object, ref ARGS args) {
-			__traits(getMember, object, __traits(identifier, method))(args);
-		}
-		return runTaskH(&wrapper!(), object, args);
-	}
-	/// ditto
-	deprecated("The `func` argument should be `nothrow`.")
-	Task runTaskH(FT, ARGS...)(TaskSettings settings, FT func, auto ref ARGS args)
-		if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
-	{
-		foreach (T; ARGS) static assert(isWeaklyIsolated!T, "Argument type "~T.stringof~" is not safe to pass between threads.");
-
-		// workaround for runWorkerTaskH to work when called outside of a task
-		if (Task.getThis() == Task.init) {
-			Task ret;
-			.runTask({ ret = doRunTaskH(settings, func, args); }).join();
-			return ret;
-		} else return doRunTaskH(settings, func, args);
-	}
-	/// ditto
-	deprecated("The `method` argument should be `nothrow`.")
-	Task runTaskH(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, auto ref ARGS args)
-		if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
-	{
-		static void wrapper()(shared(T) object, ref ARGS args) {
-			__traits(getMember, object, __traits(identifier, method))(args);
-		}
-		return runTaskH(settings, &wrapper!(), object, args);
-	}
 
 	// NOTE: needs to be a separate function to avoid recursion for the
 	//       workaround above, which breaks @safe inference
@@ -303,42 +255,6 @@ shared final class TaskPool {
 	/// ditto
 	void runTaskDist(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, auto ref ARGS args)
 		if (isNothrowMethod!(shared(T), method, ARGS))
-	{
-		auto func = &__traits(getMember, object, __traits(identifier, method));
-		foreach (T; ARGS) static assert(isWeaklyIsolated!T, "Argument type "~T.stringof~" is not safe to pass between threads.");
-
-		runTaskDist_unsafe(settings, func, args);
-	}
-	/// ditto
-	deprecated("The `func` argument should be `nothrow`.")
-	void runTaskDist(FT, ARGS...)(FT func, auto ref ARGS args)
-		if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
-	{
-		foreach (T; ARGS) static assert(isWeaklyIsolated!T, "Argument type "~T.stringof~" is not safe to pass between threads.");
-		runTaskDist_unsafe(TaskSettings.init, func, args);
-	}
-	/// ditto
-	deprecated("The `method` argument should be `nothrow`.")
-	void runTaskDist(alias method, T, ARGS...)(shared(T) object, auto ref ARGS args)
-		if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
-	{
-		auto func = &__traits(getMember, object, __traits(identifier, method));
-		foreach (T; ARGS) static assert(isWeaklyIsolated!T, "Argument type "~T.stringof~" is not safe to pass between threads.");
-
-		runTaskDist_unsafe(TaskSettings.init, func, args);
-	}
-	/// ditto
-	deprecated("The `func` argument should be `nothrow`.")
-	void runTaskDist(FT, ARGS...)(TaskSettings settings, FT func, auto ref ARGS args)
-		if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
-	{
-		foreach (T; ARGS) static assert(isWeaklyIsolated!T, "Argument type "~T.stringof~" is not safe to pass between threads.");
-		runTaskDist_unsafe(settings, func, args);
-	}
-	/// ditto
-	deprecated("The `method` argument should be `nothrow`.")
-	void runTaskDist(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, auto ref ARGS args)
-		if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
 	{
 		auto func = &__traits(getMember, object, __traits(identifier, method));
 		foreach (T; ARGS) static assert(isWeaklyIsolated!T, "Argument type "~T.stringof~" is not safe to pass between threads.");
