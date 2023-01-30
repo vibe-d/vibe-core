@@ -25,6 +25,8 @@ void main()
 	});
 
 	runTask({
+		scope (failure) assert(false);
+
 		auto conn = connectTCP("127.0.0.1", 11375);
 		conn.close();
 

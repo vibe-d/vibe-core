@@ -28,7 +28,8 @@ void performTest(bool reverse)
 			} // expected
 		}, conn);
 		auto wt = runTask!TCPConnection((conn) {
-			sleep(reverse ? 100.msecs : 20.msecs); // give the connection time to establish
+			try sleep(reverse ? 100.msecs : 20.msecs); // give the connection time to establish
+			catch (Exception e) assert(false, e.msg);
 			try {
 				// write enough to let the connection block long enough to let
 				// the remote end close the connection

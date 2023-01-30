@@ -9,17 +9,19 @@ import std.stdio;
 
 struct RC {
 	int* rc;
-	this(int* rc) { this.rc = rc; }
-	this(this) {
+	this(int* rc) nothrow { this.rc = rc; }
+	this(this) nothrow {
 		if (rc) {
 			(*rc)++;
-			writefln("addref %s", *rc);
+			try writefln("addref %s", *rc);
+			catch (Exception e) assert(false, e.msg);
 		}
 	}
-	~this() {
+	~this() nothrow {
 		if (rc) {
 			(*rc)--;
-			writefln("release %s", *rc);
+			try writefln("release %s", *rc);
+			catch (Exception e) assert(false, e.msg);
 		}
 	}
 }
@@ -32,7 +34,7 @@ void main()
 	{
 		auto s = RC(&rc);
 		assert(rc == 1);
-		runTask((RC st) {
+		runTask((RC st) nothrow {
 			assert(rc == 2);
 			st = RC.init;
 			assert(rc == 1);

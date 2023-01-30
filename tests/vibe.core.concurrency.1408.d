@@ -13,8 +13,11 @@ import core.time : msecs;
 import std.functional : toDelegate;
 
 void test()
-{
+nothrow {
+	scope (failure) assert(false);
+
 	auto t = runTask({
+		scope (failure) assert(false);
 		bool gotit;
 		receive((int i) { assert(i == 10); gotit = true; });
 		assert(gotit);
@@ -27,6 +30,7 @@ void test()
 
 	// ensure that recycled fibers will get a clean message queue
 	auto t2 = runTask({
+		scope (failure) assert(false);
 		bool gotit;
 		receive((int i) { assert(i == 12); gotit = true; });
 		assert(gotit);
@@ -36,6 +40,7 @@ void test()
 
 	// test worker tasks
 	auto t3 = runWorkerTaskH({
+		scope (failure) assert(false);
 		bool gotit;
 		receive((int i) { assert(i == 13); gotit = true; });
 		assert(gotit);

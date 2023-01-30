@@ -19,11 +19,14 @@ class Conn {}
 void main()
 {
     runTask({
+    	scope (failure) assert(false);
+
         // create pool with 2 max connections
         bool[int] results;
         auto pool = new ConnectionPool!Conn({ return new Conn; }, 2);
         auto task = Task.getThis(); // main task
-        void worker(int id) {
+        void worker(int id) nothrow {
+        	scope (failure) assert(false);
             {
                 auto conn = pool.lockConnection(); // <-- worker(4) hangs here
                 sleep(1.msecs); // <-- important, without sleep everything works fine

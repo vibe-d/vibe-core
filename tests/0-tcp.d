@@ -144,18 +144,10 @@ void test2()
 	lt.join();
 }
 
-void test()
+void main()
 {
 	test1();
 	test2();
-	exitEventLoop();
-}
-
-void main()
-{
-	import std.functional : toDelegate;
-	runTask(toDelegate(&test));
-	runEventLoop();
 }
 
 string readLine(TCPConnection c) @safe

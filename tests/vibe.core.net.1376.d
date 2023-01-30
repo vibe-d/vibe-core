@@ -39,7 +39,9 @@ void main()
 			conn.close();
 		} catch (Exception e) assert(false, e.msg);
 
-		sleep(50.msecs);
+		try sleep(50.msecs);
+		catch (Exception e) assert(false, e.msg);
+
 		exitEventLoop();
 	});
 
