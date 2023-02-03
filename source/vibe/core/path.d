@@ -210,7 +210,9 @@ struct GenericPath(F) {
 
 	/** A single path segment.
 	*/
-	static struct Segment {
+	deprecated("Use .Segment2 instead.") alias Segment = SegmentOld;
+
+	private static struct SegmentOld {
 		@safe:
 
 		private {
@@ -252,13 +254,13 @@ struct GenericPath(F) {
 				name = The raw (unencoded) name of the path segment
 				separator = Optional trailing path separator (e.g. `'/'`)
 		*/
-		static Segment fromTrustedString(string name, char separator = '\0')
+		static SegmentOld fromTrustedString(string name, char separator = '\0')
 		nothrow @nogc pure {
 			import std.algorithm.searching : any;
 			assert(separator == '\0' || Format.isSeparator(separator));
 			assert(Format.validateDecodedSegment(name) is null, "Invalid path segment.");
 
-			Segment ret;
+			SegmentOld ret;
 			ret.m_name = name;
 			ret.m_separator = separator;
 			return ret;
@@ -287,30 +289,32 @@ struct GenericPath(F) {
 				A `PathValidationException` is thrown if the segment name cannot
 				be represented in the target path format.
 		*/
-		GenericPath!F.Segment opCast(T : GenericPath!F.Segment, F)()
+		GenericPath!F.SegmentOld opCast(T : GenericPath!F.SegmentOld, F)()
 		const {
 			char dsep = '\0';
 			if (m_separator) {
 				if (F.isSeparator(m_separator)) dsep = m_separator;
 				else dsep = F.defaultSeparator;
 			}
-			return GenericPath!F.Segment(m_name, dsep);
+			return GenericPath!F.SegmentOld(m_name, dsep);
 		}
 
 		/// Compares two path segment names
-		bool opEquals(Segment other) const nothrow @nogc { return this.name == other.name && this.hasSeparator == other.hasSeparator; }
+		bool opEquals(SegmentOld other) const nothrow @nogc { return this.name == other.name && this.hasSeparator == other.hasSeparator; }
 		/// ditto
 		bool opEquals(string name) const nothrow @nogc { return this.name == name; }
 	}
 
 	/** Represents a path as an forward range of `Segment`s.
 	*/
-	static struct PathRange {
+	deprecated alias PathRange = PathRangeOld;
+
+	private static  struct PathRangeOld {
 		import std.traits : ReturnType;
 
 		private {
 			string m_path;
-			Segment m_front;
+			SegmentOld m_front;
 		}
 
 		private this(string path)
@@ -319,22 +323,22 @@ struct GenericPath(F) {
 			if (m_path.length) {
 				auto ap = Format.getAbsolutePrefix(m_path);
 				if (ap.length && !Format.isSeparator(ap[0]))
-					m_front = Segment.fromTrustedString(null, Format.defaultSeparator);
+					m_front = SegmentOld.fromTrustedString(null, Format.defaultSeparator);
 				else readFront();
 			}
 		}
 
-		@property bool empty() const nothrow @nogc { return m_path.length == 0 && m_front == Segment.init; }
+		@property bool empty() const nothrow @nogc { return m_path.length == 0 && m_front == SegmentOld.init; }
 
-		@property PathRange save() { return this; }
+		@property PathRangeOld save() { return this; }
 
-		@property Segment front() { return m_front; }
+		@property SegmentOld front() { return m_front; }
 
 		void popFront()
 		nothrow {
-			assert(m_front != Segment.init);
+			assert(m_front != SegmentOld.init);
 			if (m_path.length) readFront();
-			else m_front = Segment.init;
+			else m_front = SegmentOld.init;
 		}
 
 		private void readFront()
@@ -353,8 +357,8 @@ struct GenericPath(F) {
 				string ndec = Format.decodeSingleSegment(n);
 			else
 				string ndec = Format.decodeSingleSegment(n).array;
-			m_front = Segment.fromTrustedString(ndec, sep);
-			assert(m_front != Segment.init);
+			m_front = SegmentOld.fromTrustedString(ndec, sep);
+			assert(m_front != SegmentOld.init);
 		}
 	}
 
@@ -561,7 +565,7 @@ struct GenericPath(F) {
 		This is equivalent to calling the range based constructor with a
 		single-element range.
 	*/
-	this(Segment segment)
+	this(SegmentOld segment)
 	{
 		import std.range : only;
 		this(only(segment));
@@ -580,7 +584,7 @@ struct GenericPath(F) {
 			throw an exception.
 	*/
 	this(R)(R segments)
-		if (isInputRange!R && is(ElementType!R : Segment))
+		if (isInputRange!R && is(ElementType!R : SegmentOld))
 	{
 		import std.array : appender;
 		auto dst = appender!string;
@@ -642,7 +646,7 @@ struct GenericPath(F) {
 	}
 
 	/// Iterates over the path by `Segment`.
-	@property PathRange bySegment() const { return PathRange(m_path); }
+	deprecated @property PathRange bySegment() const { return PathRange(m_path); }
 
 
 	/** Iterates over the individual segments of the path.
@@ -785,7 +789,7 @@ struct GenericPath(F) {
 
 
 	/// Returns the trailing segment of the path.
-	@property Segment head()
+	deprecated @property Segment head()
 	const {
 		import std.array : array;
 
@@ -966,11 +970,11 @@ struct GenericPath(F) {
 	*/
 	GenericPath opBinary(string op : "~")(string subpath) const { return this ~ GenericPath(subpath); }
 	/// ditto
-	GenericPath opBinary(string op : "~")(Segment subpath) const { return this ~ GenericPath(subpath); }
+	GenericPath opBinary(string op : "~")(SegmentOld subpath) const { return this ~ GenericPath(subpath); }
 	/// ditto
 	GenericPath opBinary(string op : "~")(Segment2 subpath) const { return this ~ GenericPath(subpath); }
 	/// ditto
-	GenericPath opBinary(string op : "~", F)(GenericPath!F.Segment subpath) const { return this ~ cast(Segment)(subpath); }
+	GenericPath opBinary(string op : "~", F)(GenericPath!F.SegmentOld subpath) const { return this ~ cast(Segment)(subpath); }
 	/// ditto
 	GenericPath opBinary(string op : "~", F)(GenericPath!F.Segment2 subpath) const { return this ~ cast(Segment2)(subpath); }
 	/// ditto
@@ -983,7 +987,7 @@ struct GenericPath(F) {
 	GenericPath opBinary(string op : "~", F)(GenericPath!F subpath) const if (!is(F == Format)) { return this ~ cast(GenericPath)subpath; }
 	/// ditto
 	GenericPath opBinary(string op : "~", R)(R entries) const nothrow
-		if (isInputRange!R && is(ElementType!R : Segment))
+		if (isInputRange!R && is(ElementType!R : SegmentOld))
 	{
 		return this ~ GenericPath(entries);
 	}
@@ -1007,7 +1011,7 @@ struct GenericPath(F) {
 	}
 }
 
-unittest {
+deprecated unittest {
 	assert(PosixPath("hello/world").bySegment.equal([PosixPath.Segment("hello",'/'), PosixPath.Segment("world")]));
 	assert(PosixPath("/hello/world/").bySegment.equal([PosixPath.Segment("",'/'), PosixPath.Segment("hello",'/'), PosixPath.Segment("world",'/')]));
 	assert(PosixPath("hello\\world").bySegment.equal([PosixPath.Segment("hello\\world")]));
@@ -1031,7 +1035,7 @@ unittest {
 	assert(WindowsPath("C:\\Windows").byPrefix.equal([WindowsPath("C:\\"), WindowsPath("C:\\Windows")]));
 }
 
-unittest
+deprecated unittest
 {
 	{
 		auto unc = "\\\\server\\share\\path";
@@ -1078,7 +1082,10 @@ unittest
 		alias S = WindowsPath.Segment;
 		assert(winpathp.bySegment.equal([S("", '/'), S("C:", '\\'), S("windows", '\\'), S("test")]));
 	}
+}
 
+unittest
+{
 	{
 		auto dotpath = "/test/../test2/././x/y";
 		auto dotpathp = PosixPath(dotpath);
@@ -1110,10 +1117,7 @@ unittest
 	assert(PosixPath("") ~ NativePath("foo/bar") == PosixPath("foo/bar"));
 	assert(PosixPath("foo") ~ NativePath("bar") == PosixPath("foo/bar"));
 	assert(PosixPath("foo/") ~ NativePath("bar") == PosixPath("foo/bar"));
-}
 
-unittest
-{
 	{
 		auto unc = "\\\\server\\share\\path";
 		auto uncp = WindowsPath(unc);
@@ -1170,7 +1174,7 @@ unittest
 	//void test4(const(PosixPath)[] ps) { app.put(ps); }
 }
 
-unittest {
+deprecated unittest {
 	import std.exception : assertThrown, assertNotThrown;
 
 	assertThrown!PathValidationException(WindowsPath.Segment("foo/bar"));
@@ -2034,7 +2038,10 @@ unittest {
 	assert(!isAsciiAlphaNum(':'));
 }
 
-unittest { // regression tests
+deprecated unittest { // regression tests
 	assert(NativePath("").bySegment.empty);
+}
+
+unittest { // regression tests
 	assert(NativePath("").bySegment2.empty);
 }
