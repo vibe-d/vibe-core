@@ -82,7 +82,7 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 	import vibe.internal.traits : checkInterfaceConformance;
 
 	private {
-		void*[4] m_value;
+		void*[8] m_value;
 		enum maxSize = m_value.length * m_value[0].sizeof;
 		Proxy m_intf;
 	}
