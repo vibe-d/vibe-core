@@ -15,7 +15,7 @@ void main()
 	auto udp = listenUDP(11429, "127.0.0.1");
 
 	runTask({
-		sleep(500.msecs);
+		sleepUninterruptible(500.msecs);
 		assert(false, "Receive call did not return in a timely manner. Killing process.");
 	});
 

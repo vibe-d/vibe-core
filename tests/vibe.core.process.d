@@ -33,7 +33,8 @@ void testCat()
 
 	string output;
 	auto outputTask = runTask({
-		output = procPipes.stdout.collectOutput();
+		try output = procPipes.stdout.collectOutput();
+		catch (Exception e) assert(false, e.msg);
 	});
 
 	auto inputs = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
@@ -64,7 +65,8 @@ void testStderr()
 
 	string output;
 	auto outputTask = runTask({
-		output = procPipes.stderr.collectOutput();
+		try output = procPipes.stderr.collectOutput();
+		catch (Exception e) assert(false, e.msg);
 	});
 
 	auto inputs = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
@@ -131,7 +133,8 @@ void testIgnoreSigterm()
 
 	string output;
 	auto outputTask = runTask({
-		output = procPipes.stdout.collectOutput();
+		try output = procPipes.stdout.collectOutput();
+		catch (Exception e) assert(false, e.msg);
 	});
 
 	assert(!procPipes.process.exited);

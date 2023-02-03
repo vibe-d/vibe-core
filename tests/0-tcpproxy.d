@@ -75,7 +75,8 @@ void runTest()
 			auto server = connectTCP(l1.bindAddress);
 
 			// pipe server to client as long as the server connection is alive
-			auto t = runTask!(TCPConnection, TCPConnection)((client, server) {
+			auto t = runTask!(TCPConnection, TCPConnection)((client, server) nothrow {
+					scope (failure) assert(false);
 					scope (exit) client.close();
 					pipe(server, client);
 					logInfo("Proxy 2 out");
@@ -106,18 +107,9 @@ void runTest()
 	testProtocol(connectTCP(l2.bindAddress), true);
 }
 
-int main()
+void main()
 {
-	int ret = 0;
-	runTask({
-		try runTest();
-		catch (Throwable th) {
-			th.logException("Test failed");
-			ret = 1;
-		} finally exitEventLoop(true);
-	});
-	runEventLoop();
-	return ret;
+	runTest();
 }
 
 string readLine(TCPConnection c) @safe

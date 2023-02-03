@@ -10,7 +10,8 @@ void main()
 {
 	bool visited = false;
 	runTask({
-		yield();
+		try yield();
+		catch (Exception e) assert(false, e.msg);
 		visited = true;
 		exitEventLoop();
 	});

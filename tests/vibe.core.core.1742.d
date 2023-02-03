@@ -29,6 +29,8 @@ void main()
 	assert(g.empty);
 
 	runTask({
+		scope (failure) assert(false);
+
 		auto g2 = new Generator!int({
 			auto t = runTask({});
 			t.join();

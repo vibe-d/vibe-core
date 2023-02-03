@@ -103,8 +103,9 @@ void main()
 // corrects for small timing inaccuracies to avoid the counter
 // getting systematically out of sync when sleep timing is inaccurate
 void sleepUntil(Duration until, MonoTime start_time, Duration min_sleep)
-{
+nothrow {
 	auto tm = MonoTime.currTime;
 	auto timeout = max(start_time - tm + until, min_sleep);
-	sleep(timeout);
+	try sleep(timeout);
+	catch (Exception e) assert(false, e.msg);
 }

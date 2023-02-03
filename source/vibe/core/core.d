@@ -337,25 +337,6 @@ Task runTask(CALLABLE, ARGS...)(CALLABLE task, auto ref ARGS args)
 	return runTask_internal!((ref tfi) { tfi.set(task, args); });
 }
 /// ditto
-deprecated("The `task` argument should be nothrow")
-Task runTask(ARGS...)(void delegate(ARGS) @safe task, auto ref ARGS args)
-{
-	return runTask_internal!((ref tfi) { tfi.set(task, args); });
-}
-/// ditto
-deprecated("The `task` argument should be nothrow")
-Task runTask(ARGS...)(void delegate(ARGS) @system task, auto ref ARGS args)
-@system {
-	return runTask_internal!((ref tfi) { tfi.set(task, args); });
-}
-/// ditto
-deprecated("The `task` argument should be nothrow")
-Task runTask(CALLABLE, ARGS...)(CALLABLE task, auto ref ARGS args)
-	if (!is(CALLABLE : void delegate(ARGS)) && isCallable!(CALLABLE, ARGS) && !isNothrowCallable!(CALLABLE, ARGS))
-{
-	return runTask_internal!((ref tfi) { tfi.set(task, args); });
-}
-/// ditto
 Task runTask(ARGS...)(TaskSettings settings, void delegate(ARGS) @safe nothrow task, auto ref ARGS args)
 {
 	return runTask_internal!((ref tfi) {
@@ -380,35 +361,6 @@ Task runTask(CALLABLE, ARGS...)(TaskSettings settings, CALLABLE task, auto ref A
 		tfi.set(task, args);
 	});
 }
-/// ditto
-deprecated("The `task` argument should be nothrow")
-Task runTask(ARGS...)(TaskSettings settings, void delegate(ARGS) @safe task, auto ref ARGS args)
-{
-	return runTask_internal!((ref tfi) {
-		tfi.settings = settings;
-		tfi.set(task, args);
-	});
-}
-/// ditto
-deprecated("The `task` argument should be nothrow")
-Task runTask(ARGS...)(TaskSettings settings, void delegate(ARGS) @system task, auto ref ARGS args)
-@system {
-	return runTask_internal!((ref tfi) {
-		tfi.settings = settings;
-		tfi.set(task, args);
-	});
-}
-/// ditto
-deprecated("The `task` argument should be nothrow")
-Task runTask(CALLABLE, ARGS...)(TaskSettings settings, CALLABLE task, auto ref ARGS args)
-	if (!is(CALLABLE : void delegate(ARGS)) && isCallable!(CALLABLE, ARGS) && !isNothrowCallable!(CALLABLE, ARGS))
-{
-	return runTask_internal!((ref tfi) {
-		tfi.settings = settings;
-		tfi.set(task, args);
-	});
-}
-
 
 unittest { // test proportional priority scheduling
 	auto tm = setTimer(1000.msecs, { assert(false, "Test timeout"); });
@@ -540,38 +492,6 @@ void runWorkerTask(alias method, T, ARGS...)(TaskSettings settings, shared(T) ob
 	setupWorkerThreads();
 	st_workerPool.runTask!method(settings, object, args);
 }
-/// ditto
-deprecated("The `func` argument should be nothrow")
-void runWorkerTask(FT, ARGS...)(FT func, auto ref ARGS args)
-	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
-{
-	setupWorkerThreads();
-	st_workerPool.runTask(func, args);
-}
-/// ditto
-deprecated("The `method` argument should be nothrow")
-void runWorkerTask(alias method, T, ARGS...)(shared(T) object, auto ref ARGS args)
-	if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
-{
-	setupWorkerThreads();
-	st_workerPool.runTask!method(object, args);
-}
-/// ditto
-deprecated("The `func` argument should be nothrow")
-void runWorkerTask(FT, ARGS...)(TaskSettings settings, FT func, auto ref ARGS args)
-	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
-{
-	setupWorkerThreads();
-	st_workerPool.runTask(settings, func, args);
-}
-/// ditto
-deprecated("The `method` argument should be nothrow")
-void runWorkerTask(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, auto ref ARGS args)
-	if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
-{
-	setupWorkerThreads();
-	st_workerPool.runTask!method(settings, object, args);
-}
 
 
 /**
@@ -606,38 +526,6 @@ Task runWorkerTaskH(FT, ARGS...)(TaskSettings settings, FT func, auto ref ARGS a
 /// ditto
 Task runWorkerTaskH(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, auto ref ARGS args)
 	if (isNothrowMethod!(shared(T), method, ARGS))
-{
-	setupWorkerThreads();
-	return st_workerPool.runTaskH!method(settings, object, args);
-}
-/// ditto
-deprecated("The `func` argument should be nothrow")
-Task runWorkerTaskH(FT, ARGS...)(FT func, auto ref ARGS args)
-	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
-{
-	setupWorkerThreads();
-	return st_workerPool.runTaskH(func, args);
-}
-/// ditto
-deprecated("The `method` argument should be nothrow")
-Task runWorkerTaskH(alias method, T, ARGS...)(shared(T) object, auto ref ARGS args)
-	if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
-{
-	setupWorkerThreads();
-	return st_workerPool.runTaskH!method(object, args);
-}
-/// ditto
-deprecated("The `func` argument should be nothrow")
-Task runWorkerTaskH(FT, ARGS...)(TaskSettings settings, FT func, auto ref ARGS args)
-	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
-{
-	setupWorkerThreads();
-	return st_workerPool.runTaskH(settings, func, args);
-}
-/// ditto
-deprecated("The `method` argument should be nothrow")
-Task runWorkerTaskH(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, auto ref ARGS args)
-	if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
 {
 	setupWorkerThreads();
 	return st_workerPool.runTaskH!method(settings, object, args);
@@ -800,38 +688,6 @@ void runWorkerTaskDist(alias method, T, ARGS...)(TaskSettings settings, shared(T
 	setupWorkerThreads();
 	return st_workerPool.runTaskDist!method(settings, object, args);
 }
-/// ditto
-deprecated("The `func` argument should be nothrow")
-void runWorkerTaskDist(FT, ARGS...)(FT func, auto ref ARGS args)
-	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
-{
-	setupWorkerThreads();
-	return st_workerPool.runTaskDist(func, args);
-}
-/// ditto
-deprecated("The `method` argument should be nothrow")
-void runWorkerTaskDist(alias method, T, ARGS...)(shared(T) object, ARGS args)
-	if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
-{
-	setupWorkerThreads();
-	return st_workerPool.runTaskDist!method(object, args);
-}
-/// ditto
-deprecated("The `func` argument should be nothrow")
-void runWorkerTaskDist(FT, ARGS...)(TaskSettings settings, FT func, auto ref ARGS args)
-	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
-{
-	setupWorkerThreads();
-	return st_workerPool.runTaskDist(settings, func, args);
-}
-/// ditto
-deprecated("The `method` argument should be nothrow")
-void runWorkerTaskDist(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, ARGS args)
-	if (isMethod!(shared(T), method, ARGS) && !isNothrowMethod!(shared(T), method, ARGS))
-{
-	setupWorkerThreads();
-	return st_workerPool.runTaskDist!method(settings, object, args);
-}
 
 
 /** Runs a new asynchronous task in all worker threads and returns the handles.
@@ -850,22 +706,6 @@ void runWorkerTaskDistH(HCB, FT, ARGS...)(scope HCB on_handle, FT func, auto ref
 /// ditto
 void runWorkerTaskDistH(HCB, FT, ARGS...)(TaskSettings settings, scope HCB on_handle, FT func, auto ref ARGS args)
 	if (isFunctionPointer!FT && isNothrowCallable!(FT, ARGS))
-{
-	setupWorkerThreads();
-	st_workerPool.runTaskDistH(settings, on_handle, func, args);
-}
-/// ditto
-deprecated("The `func` argument should be nothrow")
-void runWorkerTaskDistH(HCB, FT, ARGS...)(scope HCB on_handle, FT func, auto ref ARGS args)
-	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
-{
-	setupWorkerThreads();
-	st_workerPool.runTaskDistH(on_handle, func, args);
-}
-/// ditto
-deprecated("The `func` argument should be nothrow")
-void runWorkerTaskDistH(HCB, FT, ARGS...)(TaskSettings settings, scope HCB on_handle, FT func, auto ref ARGS args)
-	if (isFunctionPointer!FT && isCallable!(FT, ARGS) && !isNothrowCallable!(FT, ARGS))
 {
 	setupWorkerThreads();
 	st_workerPool.runTaskDistH(settings, on_handle, func, args);

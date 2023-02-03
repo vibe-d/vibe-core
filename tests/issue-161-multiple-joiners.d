@@ -19,8 +19,9 @@ void main()
 	Task t;
 
 	runTask({
-		t = runTask({ sleep(100.msecs); });
-		t.join();
+		t = runTask({ try sleep(100.msecs); catch (Exception e) assert(false, e.msg); });
+		try t.join();
+		catch (Exception e) assert(false, e.msg);
 	});
 
 	// let the outer task run and start the inner task

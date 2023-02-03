@@ -14,7 +14,7 @@ void main()
 		auto p = pipe();
 		runTask(()
 		{
-			sleep(10.msecs);
+			sleepUninterruptible(10.msecs);
 			exitEventLoop();
 		});
 		runEventLoop();
