@@ -473,14 +473,14 @@ unittest {
 
 	interface OutputStream {
 		@safe:
-		void write(in ubyte[] bytes);
+		void write(scope const(ubyte)[] bytes);
 		void flush();
 		void finalize();
 		void write(InputStream stream, ulong nbytes = 0);
 	}
 
 	static class OSClass : OutputStream {
-		override void write(in ubyte[] bytes) {}
+		override void write(scope const(ubyte)[] bytes) {}
 		override void flush() {}
 		override void finalize() {}
 		override void write(InputStream stream, ulong nbytes) {}
@@ -490,7 +490,7 @@ unittest {
 
 	static struct OSStruct {
 		@safe:
-		void write(in ubyte[] bytes) {}
+		void write(scope const(ubyte)[] bytes) {}
 		void flush() {}
 		void finalize() {}
 		void write(IS)(IS stream, ulong nbytes) {}
@@ -500,7 +500,7 @@ unittest {
 
 	static struct NonOSStruct {
 		@safe:
-		void write(in ubyte[] bytes) {}
+		void write(scope const(ubyte)[] bytes) {}
 		void flush(bool) {}
 		void finalize() {}
 		void write(InputStream stream, ulong nbytes) {}
@@ -530,7 +530,7 @@ unittest {
 		"`vibe.internal.traits.__unittest.NonOSStruct` does not implement method `flush` of type `@safe void()` from `vibe.internal.traits.__unittest.OutputStream`");
 
 	static struct NonOSStruct2 {
-		void write(in ubyte[] bytes) {} // not @safe
+		void write(scope const(ubyte)[] bytes) {} // not @safe
 		void flush(bool) {}
 		void finalize() {}
 		void write(InputStream stream, ulong nbytes) {}
@@ -540,7 +540,7 @@ unittest {
     // With dlang/dmd#11474 it shows up as `in`.
     // Remove when support for v2.093.0 is dropped
     static if (removeUnittestLineNumbers(checkInterfaceConformance!(NonOSStruct2, OutputStream)) !=
-        "`vibe.internal.traits.__unittest.NonOSStruct2` does not implement method `write` of type `@safe void(in ubyte[] bytes)` from `vibe.internal.traits.__unittest.OutputStream`")
+        "`vibe.internal.traits.__unittest.NonOSStruct2` does not implement method `write` of type `@safe void(scope const(ubyte)[] bytes)` from `vibe.internal.traits.__unittest.OutputStream`")
     {
         // Fallback to pre-2.092+
         static assert(removeUnittestLineNumbers(checkInterfaceConformance!(NonOSStruct2, OutputStream)) ==

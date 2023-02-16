@@ -732,7 +732,7 @@ struct FileStream {
 		//       be relied upon. For this reason, we MUST use the uninterruptible
 		//       version of asyncAwait here!
 		auto res = asyncAwaitUninterruptible!(FileIOCallback,
-			cb => eventDriver.files.read(m_fd, ctx.ptr, dst, mode, cb)
+			cb => eventDriver.files.read(m_fd, ctx.ptr, () @trusted { return dst; } (), mode, cb)
 		);
 		ctx.ptr += res[2];
 		enforce(res[1] == IOStatus.ok, "Failed to read data from disk.");
@@ -745,13 +745,13 @@ struct FileStream {
 		assert(ret == dst.length, "File.read returned less data than requested for IOMode.all.");
 	}
 
-	size_t write(in ubyte[] bytes, IOMode mode)
+	size_t write(scope const(ubyte)[] bytes, IOMode mode)
 	{
 		// NOTE: cancelWrite is currently not behaving as specified and cannot
 		//       be relied upon. For this reason, we MUST use the uninterruptible
 		//       version of asyncAwait here!
 		auto res = asyncAwaitUninterruptible!(FileIOCallback,
-			cb => eventDriver.files.write(m_fd, ctx.ptr, bytes, mode, cb)
+			cb => eventDriver.files.write(m_fd, ctx.ptr, () @trusted { return bytes; } (), mode, cb)
 		);
 		ctx.ptr += res[2];
 		if (ctx.ptr > ctx.size) ctx.size = ctx.ptr;
@@ -759,12 +759,12 @@ struct FileStream {
 		return res[2];
 	}
 
-	void write(in ubyte[] bytes)
+	void write(scope const(ubyte)[] bytes)
 	{
 		write(bytes, IOMode.all);
 	}
 
-	void write(in char[] bytes)
+	void write(scope const(char)[] bytes)
 	{
 		write(cast(const(ubyte)[])bytes);
 	}

@@ -296,13 +296,15 @@ interface InputStream {
 interface OutputStream {
 	@safe:
 
+	enum outputStreamVersion = 2;
+
 	/** Writes an array of bytes to the stream.
 	*/
-	size_t write(in ubyte[] bytes, IOMode mode) @blocking;
+	size_t write(scope const(ubyte)[] bytes, IOMode mode) @blocking;
 	/// ditto
-	final void write(in ubyte[] bytes) @blocking { auto n = write(bytes, IOMode.all); assert(n == bytes.length); }
+	final void write(scope const(ubyte)[] bytes) @blocking { auto n = write(bytes, IOMode.all); assert(n == bytes.length); }
 	/// ditto
-	final void write(in char[] bytes) @blocking { write(cast(const(ubyte)[])bytes); }
+	final void write(scope const(char)[] bytes) @blocking { write(cast(const(ubyte)[])bytes); }
 
 	/** Flushes the stream and makes sure that all data is being written to the output device.
 	*/
@@ -427,7 +429,7 @@ interface ClosableRandomAccessStream : TruncatableStream {
 	the output of a particular stream is not needed but the stream needs to be drained.
 */
 final class NullOutputStream : OutputStream {
-	size_t write(in ubyte[] bytes, IOMode) { return bytes.length; }
+	size_t write(scope const(ubyte)[] bytes, IOMode) { return bytes.length; }
 	alias write = OutputStream.write;
 	void flush() {}
 	void finalize() {}
