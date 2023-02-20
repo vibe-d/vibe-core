@@ -605,7 +605,9 @@ struct TCPConnection {
 		//logInfo("close %s", cast(int)m_fd);
 		if (m_socket != StreamSocketFD.invalid) {
 			eventDriver.sockets.shutdown(m_socket, true, true);
-			releaseHandle();
+			eventDriver.sockets.releaseRef(m_socket);
+			m_socket = StreamSocketFD.invalid;
+			m_context = null;
 		}
 	}
 
@@ -626,8 +628,9 @@ struct TCPConnection {
 		size_t nbytes;
 
 		// ensure the socket stays alive in case close() gets called concurrently
+		auto sock = m_socket;
 		eventDriver.sockets.addRef(m_socket);
-		scope (exit) releaseHandle();
+		scope (exit) eventDriver.sockets.releaseRef(sock);
 
 		alias waiter = Waitable!(IOCallback,
 			cb => eventDriver.sockets.read(m_socket, m_context.readBuffer.peekDst(), mode, cb),
@@ -829,16 +832,6 @@ struct TCPConnection {
 	}
 	void finalize() {}
 	void write(InputStream)(InputStream stream, ulong nbytes = 0) if (isInputStream!InputStream) { writeDefault(stream, nbytes); }
-
-	private void releaseHandle()
-	nothrow {
-		assert(m_socket != StreamSocketFD.invalid, "Releasing handle of already released socket");
-
-		if (!eventDriver.sockets.releaseRef(m_socket)) {
-			m_socket = StreamSocketFD.invalid;
-			m_context = null;
-		}
-	}
 
 	private void writeDefault(InputStream)(InputStream stream, ulong nbytes = 0)
 		if (isInputStream!InputStream)
