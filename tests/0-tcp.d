@@ -112,7 +112,7 @@ void test1()
 void test2()
 {
 	Task lt;
-	logInfo("Perform test \"disconnect with pending data\"");
+	logInfo("Perform test \"disconnect with pending write data\"");
 	auto l = listenTCP(0, (conn) @safe nothrow {
 		try {
 			lt = Task.getThis();
@@ -144,18 +144,43 @@ void test2()
 	lt.join();
 }
 
-void test()
+void test3()
 {
-	test1();
-	test2();
-	exitEventLoop();
+	Task lt;
+	logInfo("Perform test \"disconnect with pending read data\"");
+	auto l = listenTCP(0, (conn) @safe nothrow {
+		try {
+			lt = Task.getThis();
+			sleep(1.seconds);
+			conn.close();
+			conn = TCPConnection.init;
+		} catch (Exception e) {
+			assert(false, e.msg);
+		}
+	}, "127.0.0.1");
+	scope (exit) l.stopListening;
+
+	ubyte[256] buf;
+	auto conn = connectTCP(l.bindAddress);
+	conn.readTimeout = 10.msecs;
+	try {
+		conn.read(buf);
+		assert(false);
+	} catch (Exception e) {}
+	conn.close();
+	conn = TCPConnection.init;
+
+	sleep(100.msecs);
+
+	assert(lt != Task.init);
+	lt.join();
 }
 
 void main()
 {
-	import std.functional : toDelegate;
-	runTask(toDelegate(&test));
-	runEventLoop();
+	test1();
+	test2();
+	test3();
 }
 
 string readLine(TCPConnection c) @safe
