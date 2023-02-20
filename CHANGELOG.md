@@ -1,3 +1,11 @@
+1.22.7 - 2023-02-20
+===================
+
+- Fixes a crash when concurrently closing and disposing a `TCPConnection` during a read - [pull #338][issue338]
+
+[issue338]: https://github.com/vibe-d/vibe-core/issues/338
+
+
 1.22.6 - 2023-01-23
 ===================
 
