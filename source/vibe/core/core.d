@@ -1316,7 +1316,7 @@ void setTaskCreationCallback(TaskCreationCallback func)
 /**
 	A version string representing the current vibe.d core version
 */
-enum vibeVersionString = "1.22.6";
+enum vibeVersionString = "2.0.0-alpha.1";
 
 
 /**
