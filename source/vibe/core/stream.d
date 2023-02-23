@@ -296,6 +296,8 @@ interface InputStream {
 interface OutputStream {
 	@safe:
 
+	enum outputStreamVersion = 1;
+
 	/** Writes an array of bytes to the stream.
 	*/
 	size_t write(in ubyte[] bytes, IOMode mode) @blocking;
