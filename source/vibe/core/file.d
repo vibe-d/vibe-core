@@ -458,7 +458,8 @@ void listDirectory(NativePath path, DirectoryListMode mode,
 	req.spanMode = mode;
 	req.directoryPredicate = directory_predicate;
 
-	runWorkerTask(ioTaskSettings, &performListDirectory, req);
+	// NOTE: working around bogus "assigning scope variable warning on DMD 2.101.2 here with @trusted
+	runWorkerTask(ioTaskSettings, &performListDirectory, () @trusted { return req; } ());
 
 	ListDirectoryData itm;
 	while (req.channel.tryConsumeOne(itm)) {
