@@ -251,7 +251,7 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 		override void _destroy(scope void[] stor)
 		@trusted nothrow {
 			static if (is(O == struct)) {
-				try destroy(_extract(stor));
+				try destroy(*_extract(stor));
 				catch (Exception e) assert(false, "Destructor has thrown: "~e.msg);
 			}
 		}
@@ -269,10 +269,10 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 			return typeid(O);
 		}
 
-		static ref inout(O) _extract(inout(void)[] stor)
+		static inout(O)* _extract(return inout(void)[] stor)
 		@trusted nothrow pure @nogc {
 			if (stor.length < O.sizeof) assert(false);
-			return *cast(inout(O)*)stor.ptr;
+			return cast(inout(O)*)stor.ptr;
 		}
 
 		mixin methodDefs!0;
