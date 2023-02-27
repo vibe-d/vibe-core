@@ -4,10 +4,10 @@ name: Run all D Tests
 on:
   pull_request:
     branches:
-      - master
+      - 1.x.x
   push:
     branches:
-      - master
+      - 1.x.x
       - github_actions
 
 jobs:
