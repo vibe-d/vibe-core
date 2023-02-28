@@ -1,7 +1,16 @@
+1.23.0 - 2023-02-28
+===================
+
+- Deprecated the use of `GenericPath.Segment` in preparation to the changes coming to 2.0.0 - [pull #341][issue341]
+- Added `OutputStream.outputStreamVersion` (equal to `1`)
+
+[issue341]: https://github.com/vibe-d/vibe-core/issues/341
+
+
 1.22.7 - 2023-02-20
 ===================
 
-- Fixes a crash when concurrently closing and disposing a `TCPConnection` during a read - [pull #338][issue338]
+- (backported) Fixed a crash possibly caused by concurrent closing of a TCP connection that was still being read - [pull #338][issue338]
 
 [issue338]: https://github.com/vibe-d/vibe-core/issues/338
 
