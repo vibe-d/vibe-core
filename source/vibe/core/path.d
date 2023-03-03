@@ -458,7 +458,33 @@ struct GenericPath(F) {
 			type instead of `string`. Use `name.to!string` in that
 			case if you need an actual `string`.
 		*/
-		@property auto name() const nothrow @nogc { return Format.decodeSingleSegment(m_encodedName); }
+		@property auto name()
+		const nothrow @nogc {
+			auto ret = Format.decodeSingleSegment(m_encodedName);
+
+			static if (is(typeof(ret) == string)) return ret;
+			else {
+				static struct R {
+					private typeof(ret) m_value;
+
+					@property bool empty() const { return m_value.empty; }
+					@property R save() const { return R(m_value.save); }
+					@property char front() const { return m_value.front; }
+					@property void popFront() { m_value.popFront(); }
+					@property char back() const { return m_value.back; }
+					@property void popBack() { m_value.popBack(); }
+
+					string toString()
+					const @safe nothrow {
+						import std.conv : to;
+						try return m_value.to!string;
+						catch (Exception e) assert(false, e.msg);
+					}
+				}
+
+				return R(ret);
+			}
+		}
 		/// The encoded representation of the path segment name
 		@property string encodedName() const nothrow @nogc { return m_encodedName; }
 		/// The trailing separator (e.g. `'/'`) or `'\0'`.
@@ -1839,7 +1865,6 @@ struct InetPathFormat {
 
 			private {
 				string m_str;
-				size_t m_index;
 			}
 
 			this(string s)
@@ -1847,25 +1872,41 @@ struct InetPathFormat {
 				m_str = s;
 			}
 
-			@property bool empty() const { return m_index >= m_str.length; }
+			@property bool empty() const { return m_str.length == 0; }
 
 			@property R save() const { return this; }
 
 			@property char front()
 			const {
-				auto ch = m_str[m_index];
+				auto ch = m_str[0];
 				if (ch != '%') return ch;
 
-				auto a = m_str[m_index+1];
-				auto b = m_str[m_index+2];
+				auto a = m_str[1];
+				auto b = m_str[2];
 				return cast(char)(16 * hexDigit(a) + hexDigit(b));
 			}
 
 			@property void popFront()
 			{
 				assert(!empty);
-				if (m_str[m_index] == '%') m_index += 3;
-				else m_index++;
+				if (m_str[0] == '%') m_str = m_str[3 .. $];
+				else m_str = m_str[1 .. $];
+			}
+
+			@property char back()
+			const {
+				if (m_str.length >= 3 && m_str[$-3] == '%') {
+					auto a = m_str[$-2];
+					auto b = m_str[$-1];
+					return cast(char)(16 * hexDigit(a) + hexDigit(b));
+				} else return m_str[$-1];
+			}
+
+			void popBack()
+			{
+				assert(!empty);
+				if (m_str.length >= 3 && m_str[$-3] == '%') m_str = m_str[0 .. $-3];
+				else m_str = m_str[0 .. $-1];
 			}
 		}
 
@@ -1873,11 +1914,16 @@ struct InetPathFormat {
 	}
 
 	unittest {
+		import std.range : retro;
+
 		scope (failure) assert(false);
 
 		assert(decodeSingleSegment("foo").equal("foo"));
 		assert(decodeSingleSegment("fo%20o\\").equal("fo o\\"));
 		assert(decodeSingleSegment("foo%20").equal("foo "));
+		assert(decodeSingleSegment("foo").retro.equal("oof"));
+		assert(decodeSingleSegment("fo%20o\\").retro.equal("\\o of"));
+		assert(decodeSingleSegment("foo%20").retro.equal(" oof"));
 	}
 
 
