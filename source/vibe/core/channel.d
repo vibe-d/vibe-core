@@ -75,8 +75,10 @@ struct Channel(T, size_t buffer_size = 100) {
 		element can be read is only safe in a single-reader scenario. It is
 		generally recommended to use `tryConsumeOne` instead.
 	*/
+	deprecated("Use `tryConsumeOne` instead.")
 	@property bool empty() { return m_impl.empty; }
 	/// ditto
+	deprecated("Use `tryConsumeOne` instead.")
 	@property bool empty() shared { return m_impl.empty; }
 
 	/** Returns the current count of items in the buffer.
@@ -106,8 +108,10 @@ struct Channel(T, size_t buffer_size = 100) {
 		combination of `empty` and `consumeOne` due to being more efficient and
 		also being reliable in a multiple-reader scenario.
 	*/
+	deprecated("Use `tryConsumeOne` instead.")
 	T consumeOne() { return m_impl.consumeOne(); }
 	/// ditto
+	deprecated("Use `tryConsumeOne` instead.")
 	T consumeOne() shared { return m_impl.consumeOne(); }
 
 	/** Attempts to consume a single element.
