@@ -1,4 +1,4 @@
-2.0.0 - 2023-03-
+2.0.0 - 2023-03-04
 ==================
 
 - Fixes all deprecation warnings related to DIP1000/DIP1021 (as of DMD 1.102.1) - [pull #329][issue329], [pull #339][issue339], [pull #340][issue340]
@@ -7,6 +7,7 @@
 - `OutputStream.write` now takes a `scope const` argument instead of `in` - [pull #329][issue329]
 - Added `OutputStream.outputStreamVersion` (equal to `2`)
 - Fixed a crash that could be caused by concurrently closing a TCP connection that was still being read from - [pull #338][issue338]
+- Deprecated `Channel.empty` and `Channel.consumeOne` - [pull #344][issue344]
 
 [issue329]: https://github.com/vibe-d/vibe-core/issues/329
 [issue335]: https://github.com/vibe-d/vibe-core/issues/335
@@ -14,6 +15,7 @@
 [issue339]: https://github.com/vibe-d/vibe-core/issues/339
 [issue340]: https://github.com/vibe-d/vibe-core/issues/340
 [issue342]: https://github.com/vibe-d/vibe-core/issues/342
+[issue344]: https://github.com/vibe-d/vibe-core/issues/344
 
 
 1.23.0 - 2023-02-28
