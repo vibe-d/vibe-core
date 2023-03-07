@@ -387,7 +387,7 @@ nothrow {
 		if (!outch.tryConsumeOne(fi))
 			assert(false);
 	}
-	assert(outch.empty);
+	assert(outch.bufferFill == 0);
 
 	return ret;
 }
@@ -469,7 +469,7 @@ void listDirectory(NativePath path, DirectoryListMode mode,
 		if (!del(itm.info)) {
 			req.channel.close();
 			// makes sure that the directory handle is closed before returning
-			while (!req.channel.empty) req.channel.tryConsumeOne(itm);
+			while (req.channel.tryConsumeOne(itm)) {}
 			break;
 		}
 	}
