@@ -634,6 +634,8 @@ struct FileStream {
 		CTX* m_ctx;
 	}
 
+scope:
+
 	private this(FileFD fd, NativePath path, FileMode mode)
 	nothrow {
 		assert(fd != FileFD.invalid, "Constructing FileStream from invalid file descriptor.");
@@ -663,13 +665,13 @@ struct FileStream {
 	@property int fd() const nothrow { return cast(int)m_fd; }
 
 	/// The path of the file.
-	@property NativePath path() const nothrow { return ctx.path; }
+	@property NativePath path() const nothrow { return m_ctx.path; }
 
 	/// Determines if the file stream is still open
 	@property bool isOpen() const nothrow { return m_fd != FileFD.invalid; }
-	@property ulong size() const nothrow { return ctx.size; }
-	@property bool readable() const nothrow { return ctx.mode != FileMode.append; }
-	@property bool writable() const nothrow { return ctx.mode != FileMode.read; }
+	@property ulong size() const nothrow { return m_ctx.size; }
+	@property bool readable() const nothrow { return m_ctx.mode != FileMode.append; }
+	@property bool writable() const nothrow { return m_ctx.mode != FileMode.read; }
 
 	bool opCast(T)() if (is (T == bool)) { return m_fd != FileFD.invalid; }
 
@@ -680,15 +682,15 @@ struct FileStream {
 
 	void seek(ulong offset)
 	{
-		enforce(ctx.mode != FileMode.append, "File opened for appending, not random access. Cannot seek.");
-		ctx.ptr = offset;
+		enforce(m_ctx.mode != FileMode.append, "File opened for appending, not random access. Cannot seek.");
+		m_ctx.ptr = offset;
 	}
 
-	ulong tell() nothrow { return ctx.ptr; }
+	ulong tell() nothrow { return m_ctx.ptr; }
 
 	void truncate(ulong size)
 	{
-		enforce(ctx.mode != FileMode.append, "File opened for appending, not random access. Cannot truncate.");
+		enforce(m_ctx.mode != FileMode.append, "File opened for appending, not random access. Cannot truncate.");
 
 		auto res = asyncAwaitUninterruptible!(FileIOCallback,
 			cb => eventDriver.files.truncate(m_fd, size, cb)
@@ -714,11 +716,11 @@ struct FileStream {
 			throw new Exception("Failed to close file");
 	}
 
-	@property bool empty() const { assert(this.readable); return ctx.ptr >= ctx.size; }
+	@property bool empty() const { assert(this.readable); return m_ctx.ptr >= m_ctx.size; }
 	@property ulong leastSize()
 	const {
 		assert(this.readable);
-		return ctx.ptr < ctx.size ? ctx.size - ctx.ptr : 0;
+		return m_ctx.ptr < m_ctx.size ? m_ctx.size - m_ctx.ptr : 0;
 	}
 	@property bool dataAvailableForRead() { return true; }
 
@@ -733,9 +735,9 @@ struct FileStream {
 		//       be relied upon. For this reason, we MUST use the uninterruptible
 		//       version of asyncAwait here!
 		auto res = asyncAwaitUninterruptible!(FileIOCallback,
-			cb => eventDriver.files.read(m_fd, ctx.ptr, () @trusted { return dst; } (), mode, cb)
+			cb => eventDriver.files.read(m_fd, m_ctx.ptr, () @trusted { return dst; } (), mode, cb)
 		);
-		ctx.ptr += res[2];
+		m_ctx.ptr += res[2];
 		enforce(res[1] == IOStatus.ok, "Failed to read data from disk.");
 		return res[2];
 	}
@@ -752,10 +754,10 @@ struct FileStream {
 		//       be relied upon. For this reason, we MUST use the uninterruptible
 		//       version of asyncAwait here!
 		auto res = asyncAwaitUninterruptible!(FileIOCallback,
-			cb => eventDriver.files.write(m_fd, ctx.ptr, () @trusted { return bytes; } (), mode, cb)
+			cb => eventDriver.files.write(m_fd, m_ctx.ptr, () @trusted { return bytes; } (), mode, cb)
 		);
-		ctx.ptr += res[2];
-		if (ctx.ptr > ctx.size) ctx.size = ctx.ptr;
+		m_ctx.ptr += res[2];
+		if (m_ctx.ptr > m_ctx.size) m_ctx.size = m_ctx.ptr;
 		enforce(res[1] == IOStatus.ok, "Failed to write data to disk.");
 		return res[2];
 	}
@@ -785,8 +787,6 @@ struct FileStream {
 	{
 		flush();
 	}
-
-	private inout(CTX)* ctx() inout nothrow { return m_ctx; }
 }
 
 mixin validateClosableRandomAccessStream!FileStream;

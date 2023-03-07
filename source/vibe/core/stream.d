@@ -35,7 +35,7 @@ public import eventcore.driver : IOMode;
 		The actual number of bytes written is returned. If `nbytes` is given
 		and not equal to `ulong.max`, íts value will be returned.
 */
-ulong pipe(InputStream, OutputStream)(InputStream source, OutputStream sink,
+ulong pipe(InputStream, OutputStream)(scope InputStream source, scope OutputStream sink,
 	ulong nbytes, PipeMode mode = PipeMode.sequential) @blocking @trusted
 	if (isOutputStream!OutputStream && isInputStream!InputStream)
 {
@@ -173,7 +173,7 @@ ulong pipe(InputStream, OutputStream)(InputStream source, OutputStream sink,
 	}
 }
 /// ditto
-ulong pipe(InputStream, OutputStream)(InputStream source, OutputStream sink,
+ulong pipe(InputStream, OutputStream)(scope InputStream source, scope OutputStream sink,
 	PipeMode mode = PipeMode.sequential) @blocking
 	if (isOutputStream!OutputStream && isInputStream!InputStream)
 {
