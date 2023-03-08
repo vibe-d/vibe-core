@@ -1,5 +1,14 @@
+2.0.1 - 2023-03-08
+==================
+
+- Fixes `GenericPath.Segment.toString` - [pull #346][issue346]
+
+[issue346]: https://github.com/vibe-d/vibe-core/issues/346
+
+
 2.0.0 - 2023-03-04
 ==================
+
 
 - Fixes all deprecation warnings related to DIP1000/DIP1021 (as of DMD 1.102.1) - [pull #329][issue329], [pull #339][issue339], [pull #340][issue340]
 - Replaces `GenericPath.Segment` with `GenericPath.Segment2` from 1.x.x - [pull #336][issue336], [pull #342][issue342]
