@@ -312,7 +312,7 @@ struct GenericPath(F) {
 					string toString()
 					const @safe nothrow {
 						import std.conv : to;
-						try return m_value.to!string;
+						try return m_value.save.to!string;
 						catch (Exception e) assert(false, e.msg);
 					}
 				}
@@ -320,6 +320,17 @@ struct GenericPath(F) {
 				return R(ret);
 			}
 		}
+
+		unittest {
+			import std.conv : to;
+			auto path = InetPath("/foo%20bar");
+			assert(path.head.encodedName == "foo%20bar");
+			assert(path.head.name.toString() == "foo bar");
+			assert(path.head.name.to!string == "foo bar");
+			assert(path.head.name.equal("foo bar"));
+		}
+
+
 		/// The encoded representation of the path segment name
 		@property string encodedName() const nothrow @nogc { return m_encodedName; }
 		/// The trailing separator (e.g. `'/'`) or `'\0'`.
