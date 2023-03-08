@@ -1,3 +1,9 @@
+1.24.0 - 2023-03-08
+===================
+
+- `GenericPath.Segment2.name` returns a bi-directional range and now has a `toString()` method
+
+
 1.23.0 - 2023-02-28
 ===================
 
