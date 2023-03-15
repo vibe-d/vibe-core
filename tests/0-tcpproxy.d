@@ -96,9 +96,9 @@ void runTest()
 
 	// test server
 	logInfo("Test protocol implementation on server");
-	testProtocol(connectTCP(l2.bindAddress), false);
+	testProtocol(connectTCP(l1.bindAddress), false);
 	logInfo("Test protocol implementation on server with forced disconnect");
-	testProtocol(connectTCP(l2.bindAddress), true);
+	testProtocol(connectTCP(l1.bindAddress), true);
 
 	// test proxy
 	logInfo("Test protocol implementation on proxy");
