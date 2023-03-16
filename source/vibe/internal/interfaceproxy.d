@@ -53,18 +53,15 @@ private final class InterfaceProxyClass(I, O) : I
 
 		private static string impl()
 		{
-			import std.format : format;
 			string ret;
 			foreach (idx, F; Overloads) {
 				alias R = ReturnType!F;
 				enum attribs = functionAttributeString!F(false);
 				static if (__traits(isVirtualMethod, F)) {
 					static if (is(R == void))
-						ret ~= q{override %s void %s(ParameterTypeTuple!(Overloads[%s]) params) { m_obj.%s(params); }}
-							.format(attribs, mem, idx, mem);
+						ret ~= "override "~attribs~" void "~mem~"(ParameterTypeTuple!(Overloads["~idx.stringof~"]) params) { m_obj."~mem~"(params); }";
 					else
-						ret ~= q{override %s ReturnType!(Overloads[%s]) %s(ParameterTypeTuple!(Overloads[%s]) params) { return m_obj.%s(params); }}
-							.format(attribs, idx, mem, idx, mem);
+						ret ~= "override "~attribs~" ReturnType!(Overloads["~idx.stringof~"]) "~mem~"(ParameterTypeTuple!(Overloads["~idx.stringof~"]) params) { return m_obj."~mem~"(params); }";
 				}
 			}
 			return ret;
@@ -187,13 +184,11 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 
 		private static string impl()
 		{
-			import std.format : format;
 			string ret;
 			foreach (idx, F; Overloads) {
 				enum attribs = functionAttributeString!F(false);
 				enum is_prop = functionAttributes!F & FunctionAttribute.property;
-				ret ~= q{%s ReturnType!(Overloads[%s]) %s(%s) { return m_intf.%s(m_value, %s); }}
-					.format(attribs, idx, member, parameterDecls!(F, idx), member, parameterNames!F);
+				ret ~= attribs~" ReturnType!(Overloads["~idx.stringof~"]) "~member~"("~parameterDecls!(F, idx)~") { return m_intf."~member~"(m_value, "~parameterNames!F~"); }";
 			}
 			return ret;
 		}
@@ -225,13 +220,11 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 
 			private static string impl()
 			{
-				import std.format : format;
 				string ret;
 				foreach (idx, F; Overloads) {
 					enum attribs = functionAttributeString!F(false);
 					enum vtype = functionAttributeThisType!F("void[]");
-					ret ~= q{ReturnType!(Overloads[%s]) %s(scope %s obj, %s) %s;}
-						.format(idx, mem, vtype, parameterDecls!(F, idx), attribs);
+					ret ~= "ReturnType!(Overloads["~idx.stringof~"]) "~mem~"(scope "~vtype~" obj, "~parameterDecls!(F, idx)~") "~attribs~";";
 				}
 				return ret;
 			}
@@ -291,7 +284,6 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 
 			private static string impl()
 			{
-				import std.format : format;
 				string ret;
 				foreach (idx, F; Overloads) {
 					alias R = ReturnType!F;
@@ -300,11 +292,9 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 					enum vtype = functionAttributeThisType!F("void[]");
 
 					static if (is(R == void))
-						ret ~= q{override void %s(scope %s obj, %s) %s { _extract(obj).%s(%s); }}
-							.format(mem, vtype, parameterDecls!(F, idx), attribs, mem, parameterNames!F);
+						ret ~= "override void "~mem~"(scope "~vtype~" obj, "~parameterDecls!(F, idx)~") "~attribs~" { _extract(obj)."~mem~"("~parameterNames!F~"); }";
 					else
-						ret ~= q{override ReturnType!(Overloads[%s]) %s(scope %s obj, %s) %s { return _extract(obj).%s(%s); }}
-							.format(idx, mem, vtype, parameterDecls!(F, idx), attribs, mem, parameterNames!F);
+						ret ~= "override ReturnType!(Overloads["~idx.stringof~"]) "~mem~"(scope "~vtype~" obj, "~parameterDecls!(F, idx)~") "~attribs~" { return _extract(obj)."~mem~"("~parameterNames!F~"); }";
 				}
 				return ret;
 			}
@@ -322,7 +312,6 @@ unittest {
 
 private string parameterDecls(alias F, size_t idx)()
 {
-	import std.format : format;
 	import std.traits : ParameterTypeTuple, ParameterStorageClass, ParameterStorageClassTuple;
 
 	string ret;
@@ -333,20 +322,19 @@ private string parameterDecls(alias F, size_t idx)()
 		static if (PST[i] & ParameterStorageClass.out_) ret ~= "out ";
 		static if (PST[i] & ParameterStorageClass.ref_) ret ~= "ref ";
 		static if (PST[i] & ParameterStorageClass.lazy_) ret ~= "lazy ";
-		ret ~= format("ParameterTypeTuple!(Overloads[%s])[%s] param_%s", idx, i, i);
+		ret ~= "ParameterTypeTuple!(Overloads["~idx.stringof~"])["~i.stringof~"] param_"~i.stringof;
 	}
 	return ret;
 }
 
 private string parameterNames(alias F)()
 {
-	import std.format : format;
 	import std.traits : ParameterTypeTuple;
 
 	string ret;
 	foreach (i, PT; ParameterTypeTuple!F) {
 		static if (i > 0) ret ~= ", ";
-		ret ~= format("param_%s", i);
+		ret ~= "param_"~i.stringof;
 	}
 	return ret;
 }
