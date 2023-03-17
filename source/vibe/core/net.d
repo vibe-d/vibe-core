@@ -137,6 +137,12 @@ TCPListener listenTCP(ushort port, TCPConnectionDelegate connection_callback, st
 		sopts |= StreamListenOptions.reusePort;
 	else
 		sopts &= ~StreamListenOptions.reusePort;
+	static if (is(typeof(StreamListenOptions.ipTransparent))) {
+		if (options & TCPListenOptions.ipTransparent)
+			sopts |= StreamListenOptions.ipTransparent;
+		else
+			sopts &= ~StreamListenOptions.ipTransparent;
+	}
 	scope addrc = new RefAddress(addr.sockAddr, addr.sockAddrLen);
 	auto sock = eventDriver.sockets.listenStream(addrc, sopts,
 		(StreamListenSocketFD ls, StreamSocketFD s, scope RefAddress addr) @safe nothrow {
@@ -1173,6 +1179,9 @@ enum TCPListenOptions {
 	reusePort = 1<<2,
 	/// Enable address reuse
 	reuseAddress = 1<<3,
+	/// Enable IP transparent socket option
+	/// Does nothing on other OS than Linux
+	ipTransparent = 1<<4,
 	///
 	defaults = reuseAddress
 }
