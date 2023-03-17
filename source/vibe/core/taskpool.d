@@ -214,8 +214,8 @@ shared final class TaskPool {
 		runTask_unsafe(settings, &taskFun, ch, func, args);
 
 		Task ret;
-		try ret = ch.consumeOne();
-		catch (Exception e) assert(false, "Failed to reveice task handle: " ~ e.msg);
+		if (!ch.tryConsumeOne(ret))
+			assert(false, "Channel closed without passing a task handle!?");
 		ch.close();
 		return ret;
 	}
