@@ -310,7 +310,9 @@ private final class ChannelImpl(T, size_t buffer_size) {
 	}
 }
 
-@safe unittest { // test basic operation and non-copyable struct compatiblity
+deprecated @safe unittest { // test basic operation and non-copyable struct compatiblity
+	import std.exception : assertThrown;
+
 	static struct S {
 		int i;
 		@disable this(this);
@@ -321,6 +323,27 @@ private final class ChannelImpl(T, size_t buffer_size) {
 	assert(ch.consumeOne().i == 1);
 	ch.put(S(4));
 	ch.put(S(5));
+	ch.close();
+	assert(!ch.empty);
+	assert(ch.consumeOne() == S(4));
+	assert(!ch.empty);
+	assert(ch.consumeOne() == S(5));
+	assert(ch.empty);
+	assertThrown(ch.consumeOne());
+}
+
+@safe unittest { // test basic operation and non-copyable struct compatiblity
+	static struct S {
+		int i;
+		@disable this(this);
+	}
+
+	auto ch = createChannel!S;
+	S v;
+	ch.put(S(1));
+	assert(ch.tryConsumeOne(v) && v == S(1));
+	ch.put(S(4));
+	ch.put(S(5));
 	{
 		FixedRingBuffer!(S, 100) buf;
 		ch.consumeAll(buf);
@@ -329,23 +352,27 @@ private final class ChannelImpl(T, size_t buffer_size) {
 		assert(buf[1].i == 5);
 	}
 	ch.put(S(2));
-	assert(!ch.empty);
 	ch.close();
-	assert(!ch.empty);
-	S v;
-	assert(ch.tryConsumeOne(v));
-	assert(v.i == 2);
-	assert(ch.empty);
+	assert(ch.tryConsumeOne(v) && v.i == 2);
 	assert(!ch.tryConsumeOne(v));
 }
 
-@safe unittest { // make sure shared(Channel!T) can also be used
+deprecated @safe unittest { // make sure shared(Channel!T) can also be used
 	shared ch = createChannel!int;
 	ch.put(1);
 	assert(!ch.empty);
 	assert(ch.consumeOne == 1);
 	ch.close();
 	assert(ch.empty);
+}
+
+@safe unittest { // make sure shared(Channel!T) can also be used
+	shared ch = createChannel!int;
+	ch.put(1);
+	int v;
+	assert(ch.tryConsumeOne(v) && v == 1);
+	ch.close();
+	assert(!ch.tryConsumeOne(v));
 }
 
 @safe unittest { // ensure nothrow'ness for throwing struct
@@ -364,7 +391,7 @@ private final class ChannelImpl(T, size_t buffer_size) {
 		assert(ch.consumeAll(sb));
 		assert(sb.length == 1);
 		ch.close();
-		assert(ch.empty);
+		assert(!ch.tryConsumeOne(s));
 	} ();
 }
 
