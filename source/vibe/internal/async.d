@@ -220,7 +220,6 @@ private alias CBDel(alias Waitable) = Waitable.Callback;
 
 private string generateParamDecls(Fun)(string ptypes_name = "PTypes")
 {
-	import std.format : format;
 	import std.traits : ParameterTypeTuple, ParameterStorageClass, ParameterStorageClassTuple;
 
 	if (!__ctfe) assert(false);
@@ -234,20 +233,19 @@ private string generateParamDecls(Fun)(string ptypes_name = "PTypes")
 		static if (SClasses[i] & ParameterStorageClass.scope_) ret ~= "scope ";
 		static if (SClasses[i] & ParameterStorageClass.out_) ret ~= "out ";
 		static if (SClasses[i] & ParameterStorageClass.ref_) ret ~= "ref ";
-		ret ~= format("%s[%s] param_%s", ptypes_name, i, i);
+		ret ~= ptypes_name~"["~i.stringof~"] param_"~i.stringof;
 	}
 	return ret;
 }
 
 private string generateParamNames(Fun)()
 {
-	import std.format : format;
 	if (!__ctfe) assert(false);
 
 	string ret;
 	foreach (i, T; ParameterTypeTuple!Fun) {
 		static if (i > 0) ret ~= ", ";
-		ret ~= format("param_%s", i);
+		ret ~= "param_"~i.stringof;
 	}
 	return ret;
 }
