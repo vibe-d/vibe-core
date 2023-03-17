@@ -1,3 +1,17 @@
+2.1.0 - 2023-03-17
+==================
+
+- Improved compilation speed both for vibe-core and its dependencies - [pull #350][issue350], [pull #353][issue353]
+- `openFile` now doesn't bock the calling thread if eventcore 0.9.4 or newer is used - [pull #351][issue351]
+- Added `FileMode.create` - [pull #351][issue351]
+- Added `TCPListenOptions.ipTransparent` (by Adam Williams aka Tusanga) - [pull #349][issue349]
+
+[issue349]: https://github.com/vibe-d/vibe-core/issues/issue349
+[issue350]: https://github.com/vibe-d/vibe-core/issues/issue350
+[issue351]: https://github.com/vibe-d/vibe-core/issues/issue351
+[issue353]: https://github.com/vibe-d/vibe-core/issues/issue353
+
+
 2.0.1 - 2023-03-08
 ==================
 
