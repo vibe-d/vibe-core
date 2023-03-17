@@ -43,9 +43,22 @@ version(Posix){
 */
 FileStream openFile(NativePath path, FileMode mode = FileMode.read)
 {
-	auto fil = eventDriver.files.open(path.toNativeString(), cast(FileOpenMode)mode);
-	enforce(fil != FileFD.invalid, "Failed to open file '"~path.toNativeString~"'");
-	return FileStream(fil, path, mode);
+	static if (is(FileOpenCallback)) {
+		auto res = asyncAwaitUninterruptible!(FileOpenCallback,
+			cb => eventDriver.files.open(path.toNativeString(), cast(FileOpenMode)mode, cb)
+		);
+
+		if (res[0] == FileFD.invalid) {
+			import std.conv : to;
+			throw new Exception("Failed to open file '"~path.toNativeString~"': "~res[1].to!string);
+		}
+
+		return FileStream(res[0], path, mode);
+	} else {
+		auto fil = eventDriver.files.open(path.toNativeString(), cast(FileOpenMode)mode);
+		enforce(fil != FileFD.invalid, "Failed to open file '"~path.toNativeString~"'");
+		return FileStream(fil, path, mode);
+	}
 }
 /// ditto
 FileStream openFile(string path, FileMode mode = FileMode.read)
