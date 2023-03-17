@@ -103,7 +103,6 @@ void asyncAwaitAny(bool interruptible, Waitables...)(string func = __FUNCTION__)
 {
 	import std.meta : staticMap;
 	import std.algorithm.searching : any;
-	import std.format : format;
 	import std.meta : AliasSeq;
 	import std.traits : ReturnType;
 
@@ -116,52 +115,40 @@ void asyncAwaitAny(bool interruptible, Waitables...)(string func = __FUNCTION__)
 
 	debug(VibeAsyncLog) logDebugV("Performing %s async operations in %s", Waitables.length, func);
 
-	static string waitableCode()
-	{
-		string ret;
-		foreach (i, W; Waitables) {
-			alias PTypes = ParameterTypeTuple!(CBDel!W);
-			ret ~= q{
-				alias PT%1$s = ParameterTypeTuple!(Waitables[%1$s].Callback);
-				scope callback_%1$s = (%2$s) @safe nothrow {
-					// NOTE: this triggers DigitalMars/optlink#18
-					//() @trusted { logDebugV("siw %%x", &still_inside); } ();
-					debug(VibeAsyncLog) logDebugV("Waitable %%s in %%s fired (istask=%%s).", %1$s, func, t != Task.init);
-					assert(still_inside, "Notification fired after asyncAwait had already returned!");
-					fired[%1$s] = true;
-					any_fired = true;
-					Waitables[%1$s].done(%3$s);
-					if (t != Task.init) {
-						version (VibeHighEventPriority) switchToTask(t);
-						else switchToTask(t, TaskSwitchPriority.normal);
-					}
-				};
-
-				debug(VibeAsyncLog) logDebugV("Starting operation %%s", %1$s);
-				alias WR%1$s = typeof(Waitables[%1$s].wait(() @trusted { return callback_%1$s; } ()));
-				static if (is(WR%1$s == void)) Waitables[%1$s].wait(() @trusted { return callback_%1$s; } ());
-				else auto wr%1$s = Waitables[%1$s].wait(() @trusted { return callback_%1$s; } ());
-
-				scope (exit) {
-					if (!fired[%1$s]) {
-						debug(VibeAsyncLog) logDebugV("Cancelling operation %%s", %1$s);
-						static if (is(WR%1$s == void)) Waitables[%1$s].cancel(() @trusted { return callback_%1$s; } ());
-						else Waitables[%1$s].cancel(() @trusted { return callback_%1$s; } (), wr%1$s);
-						any_fired = true;
-						fired[%1$s] = true;
-					}
-				}
-
-				if (any_fired) {
-					debug(VibeAsyncLog) logDebugV("Returning to %%s without waiting.", func);
-					return;
-				}
-			}.format(i, generateParamDecls!(CBDel!W)(format("PT%s", i)), generateParamNames!(CBDel!W));
-		}
-		return ret;
+	static foreach (i, W; Waitables) {
+		mixin("alias PT"~i.stringof~" = ParameterTypeTuple!(Waitables["~i.stringof~"].Callback);\n"
+			~ "scope callback_"~i.stringof~" = ("~generateParamDecls!(CBDel!W)("PT"~i.stringof)~") @safe nothrow {\n"
+			~ "	// NOTE: this triggers DigitalMars/optlink#18\n"
+			~ "	//() @trusted { logDebugV(\"siw %%x\", &still_inside); } ();\n"
+			~ "	debug(VibeAsyncLog) logDebugV(\"Waitable %%s in %%s fired (istask=%%s).\", "~i.stringof~", func, t != Task.init);\n"
+			~ "	assert(still_inside, \"Notification fired after asyncAwait had already returned!\");\n"
+			~ "	fired["~i.stringof~"] = true;\n"
+			~ "	any_fired = true;\n"
+			~ "	Waitables["~i.stringof~"].done("~generateParamNames!(CBDel!W)~");\n"
+			~ "	if (t != Task.init) {\n"
+			~ "		version (VibeHighEventPriority) switchToTask(t);\n"
+			~ "		else switchToTask(t, TaskSwitchPriority.normal);\n"
+			~ "	}\n"
+			~ "};\n"
+			~ "debug(VibeAsyncLog) logDebugV(\"Starting operation %%s\", "~i.stringof~");\n"
+			~ "alias WR"~i.stringof~" = typeof(Waitables["~i.stringof~"].wait(() @trusted { return callback_"~i.stringof~"; } ()));\n"
+			~ "static if (is(WR"~i.stringof~" == void)) Waitables["~i.stringof~"].wait(() @trusted { return callback_"~i.stringof~"; } ());\n"
+			~ "else auto wr"~i.stringof~" = Waitables["~i.stringof~"].wait(() @trusted { return callback_"~i.stringof~"; } ());\n"
+			~ "scope (exit) {\n"
+			~ "	if (!fired["~i.stringof~"]) {\n"
+			~ "		debug(VibeAsyncLog) logDebugV(\"Cancelling operation %%s\", "~i.stringof~");\n"
+			~ "		static if (is(WR"~i.stringof~" == void)) Waitables["~i.stringof~"].cancel(() @trusted { return callback_"~i.stringof~"; } ());\n"
+			~ "		else Waitables["~i.stringof~"].cancel(() @trusted { return callback_"~i.stringof~"; } (), wr"~i.stringof~");\n"
+			~ "		any_fired = true;\n"
+			~ "		fired["~i.stringof~"] = true;\n"
+			~ "	}\n"
+			~ "}\n"
+			~ "if (any_fired) {\n"
+			~ "	debug(VibeAsyncLog) logDebugV(\"Returning to %%s without waiting.\", func);\n"
+			~ "	return;\n"
+			~ "}\n"
+		);
 	}
-
-	mixin(waitableCode());
 
 	debug(VibeAsyncLog) logDebugV("Need to wait in %s (%s)...", func, interruptible ? "interruptible" : "uninterruptible");
 
@@ -233,7 +220,6 @@ private alias CBDel(alias Waitable) = Waitable.Callback;
 
 private string generateParamDecls(Fun)(string ptypes_name = "PTypes")
 {
-	import std.format : format;
 	import std.traits : ParameterTypeTuple, ParameterStorageClass, ParameterStorageClassTuple;
 
 	if (!__ctfe) assert(false);
@@ -247,20 +233,19 @@ private string generateParamDecls(Fun)(string ptypes_name = "PTypes")
 		static if (SClasses[i] & ParameterStorageClass.scope_) ret ~= "scope ";
 		static if (SClasses[i] & ParameterStorageClass.out_) ret ~= "out ";
 		static if (SClasses[i] & ParameterStorageClass.ref_) ret ~= "ref ";
-		ret ~= format("%s[%s] param_%s", ptypes_name, i, i);
+		ret ~= ptypes_name~"["~i.stringof~"] param_"~i.stringof;
 	}
 	return ret;
 }
 
 private string generateParamNames(Fun)()
 {
-	import std.format : format;
 	if (!__ctfe) assert(false);
 
 	string ret;
 	foreach (i, T; ParameterTypeTuple!Fun) {
 		static if (i > 0) ret ~= ", ";
-		ret ~= format("param_%s", i);
+		ret ~= "param_"~i.stringof;
 	}
 	return ret;
 }
