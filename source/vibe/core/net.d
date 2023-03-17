@@ -137,7 +137,7 @@ TCPListener listenTCP(ushort port, TCPConnectionDelegate connection_callback, st
 		sopts |= StreamListenOptions.reusePort;
 	else
 		sopts &= ~StreamListenOptions.reusePort;
-	version(linux) {
+	static if (is(typeof(StreamListenOptions.ipTransparent))) {
 		if (options & TCPListenOptions.ipTransparent)
 			sopts |= StreamListenOptions.ipTransparent;
 		else
