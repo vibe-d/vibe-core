@@ -602,6 +602,14 @@ struct FileInfo {
 	bool hidden;
 }
 
+
+// backwards compatibility with eventcore 0.9.3 and below
+template _createFileModeValue() {
+	static if (is(typeof(FileOpenMode.create)))
+		private enum _createFileModeValue = FileOpenMode.create;
+	else private enum _createFileModeValue = FileOpenMode.read;
+}
+
 /**
 	Specifies how a file is manipulated on disk.
 */
@@ -610,6 +618,12 @@ enum FileMode {
 	read = FileOpenMode.read,
 	/// The file is opened for read-write random access.
 	readWrite = FileOpenMode.readWrite,
+	/** Create the file and open read/write, fails if already existing
+
+		Note that eventcore 0.9.24 or up is required, older versions will fall
+		back to `FileMode.read`.
+	*/
+	create = _createFileModeValue!(),
 	/// The file is truncated if it exists or created otherwise and then opened for read-write access.
 	createTrunc = FileOpenMode.createTrunc,
 	/// The file is opened for appending data to it and created if it does not exist.
