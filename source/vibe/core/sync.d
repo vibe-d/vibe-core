@@ -57,6 +57,12 @@ ScopedMutexLock!M scopedMutexLock(M)(M mutex, LockMode mode = LockMode.lock)
 {
 	return ScopedMutexLock!M(mutex, mode);
 }
+/// ditto
+ScopedMutexLock!(shared(M)) scopedMutexLock(M)(shared(M) mutex, LockMode mode = LockMode.lock)
+	if (is(M : Mutex) || is(M : Lockable))
+{
+	return ScopedMutexLock!(shared(M))(mutex, mode);
+}
 
 ///
 unittest {
@@ -85,6 +91,9 @@ unittest {
 	scopedMutexLock(new Mutex);
 	scopedMutexLock(new TaskMutex);
 	scopedMutexLock(new InterruptibleTaskMutex);
+	scopedMutexLock(new shared Mutex);
+	scopedMutexLock(new shared TaskMutex);
+	scopedMutexLock(new shared InterruptibleTaskMutex);
 }
 
 enum LockMode {
@@ -103,7 +112,7 @@ interface Lockable {
 /** RAII lock for the Mutex class.
 */
 struct ScopedMutexLock(M)
-	if (is(M : Mutex) || is(M : Lockable))
+	if (is(shared(M) : shared(Mutex)) || is(shared(M) : shared(Lockable)))
 {
 	@disable this(this);
 	private {
