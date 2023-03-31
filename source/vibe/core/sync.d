@@ -57,6 +57,12 @@ ScopedMutexLock!M scopedMutexLock(M)(M mutex, LockMode mode = LockMode.lock)
 {
 	return ScopedMutexLock!M(mutex, mode);
 }
+/// ditto
+ScopedMutexLock!(shared(M)) scopedMutexLock(M)(shared(M) mutex, LockMode mode = LockMode.lock)
+	if (is(M : Mutex) || is(M : Lockable))
+{
+	return ScopedMutexLock!(shared(M))(mutex, mode);
+}
 
 ///
 unittest {
@@ -85,6 +91,9 @@ unittest {
 	scopedMutexLock(new Mutex);
 	scopedMutexLock(new TaskMutex);
 	scopedMutexLock(new InterruptibleTaskMutex);
+	scopedMutexLock(new shared Mutex);
+	scopedMutexLock(new shared TaskMutex);
+	scopedMutexLock(new shared InterruptibleTaskMutex);
 }
 
 enum LockMode {
@@ -103,7 +112,7 @@ interface Lockable {
 /** RAII lock for the Mutex class.
 */
 struct ScopedMutexLock(M)
-	if (is(M : Mutex) || is(M : Lockable))
+	if (is(shared(M) : shared(Mutex)) || is(shared(M) : shared(Lockable)))
 {
 	@disable this(this);
 	private {
@@ -333,8 +342,9 @@ final class LocalTaskSemaphore
 */
 final class TaskMutex : core.sync.mutex.Mutex, Lockable {
 @safe:
-	private TaskMutexImpl!false m_impl;
+	private shared(TaskMutexImpl!false) m_impl;
 
+	// non-shared compatibility API
 	this(Object o) nothrow { m_impl.setup(); super(o); }
 	this() nothrow { m_impl.setup(); }
 
@@ -342,6 +352,15 @@ final class TaskMutex : core.sync.mutex.Mutex, Lockable {
 	override void lock() nothrow { m_impl.lock(); }
 	override void unlock() nothrow { m_impl.unlock(); }
 	bool lock(Duration timeout) nothrow { return m_impl.lock(timeout); }
+
+	// new shared API
+	this(Object o) shared nothrow { m_impl.setup(); super(o); }
+	this() shared nothrow { m_impl.setup(); }
+
+	override bool tryLock() shared nothrow { return m_impl.tryLock(); }
+	override void lock() shared nothrow { m_impl.lock(); }
+	override void unlock() shared nothrow { m_impl.unlock(); }
+	bool lock(Duration timeout) shared nothrow { return m_impl.lock(timeout); }
 }
 
 unittest {
@@ -431,8 +450,9 @@ unittest {
 final class InterruptibleTaskMutex : Lockable {
 @safe:
 
-	private TaskMutexImpl!true m_impl;
+	private shared(TaskMutexImpl!true) m_impl;
 
+	// non-shared compatibility API
 	this()
 	{
 		m_impl.setup();
@@ -444,6 +464,19 @@ final class InterruptibleTaskMutex : Lockable {
 	bool tryLock() nothrow { return m_impl.tryLock(); }
 	void lock() { m_impl.lock(); }
 	void unlock() nothrow { m_impl.unlock(); }
+
+	// new shared API
+	this()
+	shared {
+		m_impl.setup();
+
+		// detects invalid usage within synchronized(...)
+		() @trusted { this.__monitor = cast(void*)&NoUseMonitor.instance(); } ();
+	}
+
+	bool tryLock() shared nothrow { return m_impl.tryLock(); }
+	void lock() shared { m_impl.lock(); }
+	void unlock() shared nothrow { m_impl.unlock(); }
 }
 
 unittest {
@@ -472,14 +505,23 @@ unittest {
 final class RecursiveTaskMutex : core.sync.mutex.Mutex, Lockable {
 @safe:
 
-	private RecursiveTaskMutexImpl!false m_impl;
+	private shared(RecursiveTaskMutexImpl!false) m_impl;
 
+	// non-shared compatibility API
 	this(Object o) { m_impl.setup(); super(o); }
 	this() { m_impl.setup(); }
 
 	override bool tryLock() nothrow { return m_impl.tryLock(); }
 	override void lock() { m_impl.lock(); }
 	override void unlock() nothrow { m_impl.unlock(); }
+
+	// new shared API
+	this(Object o) shared { m_impl.setup(); super(o); }
+	this() shared { m_impl.setup(); }
+
+	override bool tryLock() shared nothrow { return m_impl.tryLock(); }
+	override void lock() shared { m_impl.lock(); }
+	override void unlock() shared nothrow { m_impl.unlock(); }
 }
 
 unittest {
@@ -498,7 +540,7 @@ unittest {
 */
 final class InterruptibleRecursiveTaskMutex : Lockable {
 @safe:
-	private RecursiveTaskMutexImpl!true m_impl;
+	private shared(RecursiveTaskMutexImpl!true) m_impl;
 
 	this()
 	{
@@ -511,6 +553,18 @@ final class InterruptibleRecursiveTaskMutex : Lockable {
 	bool tryLock() nothrow { return m_impl.tryLock(); }
 	void lock() { m_impl.lock(); }
 	void unlock() nothrow { m_impl.unlock(); }
+
+	this()
+	shared {
+		m_impl.setup();
+
+		// detects invalid usage within synchronized(...)
+		() @trusted { this.__monitor = cast(void*)&NoUseMonitor.instance(); } ();
+	}
+
+	bool tryLock() shared nothrow { return m_impl.tryLock(); }
+	void lock() shared { m_impl.lock(); }
+	void unlock() shared nothrow { m_impl.unlock(); }
 }
 
 unittest {
@@ -684,26 +738,55 @@ private void runMutexUnitTests(M)()
 final class TaskCondition : core.sync.condition.Condition {
 @safe:
 
-	private TaskConditionImpl!(false, Mutex) m_impl;
+	private shared(TaskConditionImpl!(false, Mutex)) m_impl;
 
+	// non-shared compatibility API
 	this(core.sync.mutex.Mutex mtx)
 	nothrow {
 		assert(mtx.classinfo is Mutex.classinfo || mtx.classinfo is TaskMutex.classinfo,
 			"TaskCondition can only be used with Mutex or TaskMutex");
 
-		m_impl.setup(mtx);
+		m_impl.setup(() @trusted { return cast(shared)mtx; } ());
 		super(mtx);
 	}
-	override @property Mutex mutex() nothrow { return m_impl.mutex; }
+	override @property Mutex mutex() nothrow { return () @trusted { return cast(Mutex)m_impl.mutex; } (); }
 	override void wait() nothrow { m_impl.wait(); }
 	override bool wait(Duration timeout) nothrow { return m_impl.wait(timeout); }
 	override void notify() nothrow { m_impl.notify(); }
 	override void notifyAll() nothrow  { m_impl.notifyAll(); }
+
+	// new shared API
+	static if (__VERSION__ >= 2093) {
+		this(shared(core.sync.mutex.Mutex) mtx)
+		shared nothrow {
+			assert(mtx.classinfo is Mutex.classinfo || mtx.classinfo is TaskMutex.classinfo,
+				"TaskCondition can only be used with Mutex or TaskMutex");
+
+			m_impl.setup(mtx);
+			super(mtx);
+		}
+
+		shared override @property shared(Mutex) mutex() nothrow { return m_impl.mutex; }
+		shared override void wait() nothrow { m_impl.wait(); }
+		shared override bool wait(Duration timeout) nothrow { return m_impl.wait(timeout); }
+		shared override void notify() nothrow { m_impl.notify(); }
+		shared override void notifyAll() nothrow  { m_impl.notifyAll(); }
+	} else {
+		shared @property shared(Mutex) mutex() nothrow { return m_impl.mutex; }
+		shared void wait() nothrow { m_impl.wait(); }
+		shared bool wait(Duration timeout) nothrow { return m_impl.wait(timeout); }
+		shared void notify() nothrow { m_impl.notify(); }
+		shared void notifyAll() nothrow  { m_impl.notifyAll(); }
+	}
 }
 
 unittest {
 	new TaskCondition(new Mutex);
 	new TaskCondition(new TaskMutex);
+	static if (__VERSION__ >= 2093) {
+		new shared TaskCondition(new shared Mutex);
+		new shared TaskCondition(new shared TaskMutex);
+	}
 }
 
 
@@ -772,9 +855,26 @@ unittest {
 final class InterruptibleTaskCondition {
 @safe:
 
-	private TaskConditionImpl!(true, Lockable) m_impl;
+	private shared(TaskConditionImpl!(true, Lockable)) m_impl;
 
+	// non-shared compatibility API
 	this(M)(M mutex)
+		if (is(M : Mutex) || is (M : Lockable))
+	{
+		static if (is(M : Lockable))
+			m_impl.setup(() @trusted { return cast(shared)mutex; } ());
+		else
+			m_impl.setupForMutex(() @trusted { return cast(shared)mutex; } ());
+	}
+
+	@property Lockable mutex() { return () @trusted { return cast(Lockable)m_impl.mutex; } (); }
+	void wait() { m_impl.wait(); }
+	bool wait(Duration timeout) { return m_impl.wait(timeout); }
+	void notify() nothrow { m_impl.notify(); }
+	void notifyAll() nothrow { m_impl.notifyAll(); }
+
+	// new shared API
+	this(M)(shared(M) mutex) shared
 		if (is(M : Mutex) || is (M : Lockable))
 	{
 		static if (is(M : Lockable))
@@ -783,17 +883,20 @@ final class InterruptibleTaskCondition {
 			m_impl.setupForMutex(mutex);
 	}
 
-	@property Lockable mutex() { return m_impl.mutex; }
-	void wait() { m_impl.wait(); }
-	bool wait(Duration timeout) { return m_impl.wait(timeout); }
-	void notify() nothrow { m_impl.notify(); }
-	void notifyAll() nothrow { m_impl.notifyAll(); }
+	@property shared(Lockable) mutex() shared { return m_impl.mutex; }
+	void wait() shared { m_impl.wait(); }
+	bool wait(Duration timeout) shared { return m_impl.wait(timeout); }
+	void notify() shared nothrow { m_impl.notify(); }
+	void notifyAll() shared nothrow { m_impl.notifyAll(); }
 }
 
 unittest {
 	new InterruptibleTaskCondition(new Mutex);
 	new InterruptibleTaskCondition(new TaskMutex);
 	new InterruptibleTaskCondition(new InterruptibleTaskMutex);
+	new shared InterruptibleTaskCondition(new shared Mutex);
+	new shared InterruptibleTaskCondition(new shared TaskMutex);
+	new shared InterruptibleTaskCondition(new shared InterruptibleTaskMutex);
 }
 
 
@@ -1557,6 +1660,8 @@ private struct TaskMutexImpl(bool INTERRUPTIBLE) {
 		debug Task m_owner;
 	}
 
+	shared:
+
 	void setup()
 	{
 		m_signal.initialize();
@@ -1609,25 +1714,30 @@ private struct TaskMutexImpl(bool INTERRUPTIBLE) {
 
 private struct RecursiveTaskMutexImpl(bool INTERRUPTIBLE) {
 	import std.stdio;
-	private {
-		core.sync.mutex.Mutex m_mutex;
+	private static struct State {
 		Task m_owner;
 		size_t m_recCount = 0;
+	}
+
+	private {
+		Monitor!(State, shared(core.sync.mutex.Mutex)) m_state;
 		shared(uint) m_waiters = 0;
 		shared(ManualEvent) m_signal;
-		@property bool m_locked() const { return m_recCount > 0; }
+		@property bool m_locked() const shared { return m_state.lock().m_recCount > 0; }
 	}
+
+	shared:
 
 	void setup()
 	{
-		m_mutex = new core.sync.mutex.Mutex;
+		m_state = createMonitor!State(new shared core.sync.mutex.Mutex);
 		m_signal.initialize();
 	}
 
 	@trusted bool tryLock()
 	nothrow {
 		auto self = Task.getThis();
-		return m_mutex.performLocked!({
+		with (m_state.lock()) {
 			if (!m_owner) {
 				assert(m_recCount == 0);
 				m_recCount = 1;
@@ -1638,7 +1748,7 @@ private struct RecursiveTaskMutexImpl(bool INTERRUPTIBLE) {
 				return true;
 			}
 			return false;
-		});
+		}
 	}
 
 	@trusted void lock()
@@ -1657,14 +1767,14 @@ private struct RecursiveTaskMutexImpl(bool INTERRUPTIBLE) {
 	@trusted void unlock()
 	{
 		auto self = Task.getThis();
-		m_mutex.performLocked!({
+		with (m_state.lock()) {
 			assert(m_owner == self);
 			assert(m_recCount > 0);
 			m_recCount--;
 			if (m_recCount == 0) {
 				m_owner = Task.init;
 			}
-		});
+		}
 		debug(VibeMutexLog) logTrace("mutex %s unlock %s", cast(void*)&this, atomicLoad(m_waiters));
 		if (atomicLoad(m_waiters) > 0)
 			m_signal.emit();
@@ -1673,38 +1783,43 @@ private struct RecursiveTaskMutexImpl(bool INTERRUPTIBLE) {
 
 private struct TaskConditionImpl(bool INTERRUPTIBLE, LOCKABLE) {
 	private {
-		LOCKABLE m_mutex;
+		shared(LOCKABLE) m_mutex;
 		static if (is(LOCKABLE == Mutex))
-			TaskMutex m_taskMutex;
+			shared(TaskMutex) m_taskMutex;
 		shared(ManualEvent) m_signal;
 	}
 
 	static if (is(LOCKABLE == Lockable)) {
 		final class MutexWrapper : Lockable {
-			private core.sync.mutex.Mutex m_mutex;
-			this(core.sync.mutex.Mutex mtx) { m_mutex = mtx; }
+			private shared(core.sync.mutex.Mutex) m_mutex;
+			this(shared(core.sync.mutex.Mutex) mtx) shared { m_mutex = mtx; }
 			@trusted void lock() { m_mutex.lock(); }
 			@trusted void unlock() { m_mutex.unlock(); }
 			@trusted bool tryLock() { return m_mutex.tryLock(); }
+			@trusted void lock() shared { m_mutex.lock(); }
+			@trusted void unlock() shared nothrow { m_mutex.unlock_nothrow(); }
+			@trusted bool tryLock() shared nothrow { return m_mutex.tryLock_nothrow(); }
 		}
 
-		void setupForMutex(core.sync.mutex.Mutex mtx)
-		{
-			setup(new MutexWrapper(mtx));
+		void setupForMutex(shared(core.sync.mutex.Mutex) mtx)
+		shared {
+			setup(new shared MutexWrapper(mtx));
 		}
 	}
 
 	@disable this(this);
 
-	void setup(LOCKABLE mtx)
+	shared:
+
+	void setup(shared(LOCKABLE) mtx)
 	{
 		m_mutex = mtx;
 		static if (is(typeof(m_taskMutex)))
-			m_taskMutex = cast(TaskMutex)mtx;
+			m_taskMutex = cast(shared(TaskMutex))mtx;
 		m_signal.initialize();
 	}
 
-	@property LOCKABLE mutex() { return m_mutex; }
+	@property shared(LOCKABLE) mutex() { return m_mutex; }
 
 	@trusted void wait()
 	{
@@ -1718,12 +1833,16 @@ private struct TaskConditionImpl(bool INTERRUPTIBLE, LOCKABLE) {
 		static if (is(LOCKABLE == Mutex)) {
 			if (m_taskMutex) m_taskMutex.unlock();
 			else m_mutex.unlock_nothrow();
+		} else static if (is(LOCKABLE : Lockable)) {
+			() @trusted { return cast(Lockable)m_mutex; } ().unlock();
 		} else m_mutex.unlock();
 
 		scope(exit) {
 			static if (is(LOCKABLE == Mutex)) {
 				if (m_taskMutex) m_taskMutex.lock();
 				else m_mutex.lock_nothrow();
+			} else static if (is(LOCKABLE : Lockable)) {
+				() @trusted { return cast(Lockable)m_mutex; } ().lock();
 			} else m_mutex.lock();
 		}
 		static if (INTERRUPTIBLE) m_signal.wait(refcount);
@@ -1743,12 +1862,16 @@ private struct TaskConditionImpl(bool INTERRUPTIBLE, LOCKABLE) {
 		static if (is(LOCKABLE == Mutex)) {
 			if (m_taskMutex) m_taskMutex.unlock();
 			else m_mutex.unlock_nothrow();
+		} else static if (is(LOCKABLE : Lockable)) {
+			() @trusted { return cast(Lockable)m_mutex; } ().unlock();
 		} else m_mutex.unlock();
 
 		scope(exit) {
 			static if (is(LOCKABLE == Mutex)) {
 				if (m_taskMutex) m_taskMutex.lock();
 				else m_mutex.lock_nothrow();
+			} else static if (is(LOCKABLE : Lockable)) {
+				() @trusted { return cast(Lockable)m_mutex; } ().lock();
 			} else m_mutex.lock();
 		}
 

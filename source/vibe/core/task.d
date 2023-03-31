@@ -88,6 +88,7 @@ struct Task {
 	}
 
 	T opCast(T)() const @safe nothrow if (is(T == bool)) { return m_fiber !is null; }
+	T opCast(T)() const shared @safe nothrow if (is(T == bool)) { return m_fiber !is null; }
 
 	void join() @trusted { if (m_fiber) m_fiber.join!true(m_taskCounter); }
 	void joinUninterruptible() @trusted nothrow { if (m_fiber) m_fiber.join!false(m_taskCounter); }
@@ -135,6 +136,9 @@ struct Task {
 				return m_fiber is other.m_fiber && m_taskCounter == other.m_taskCounter;
 			}});
 	bool opEquals(in Task other) const @safe nothrow {
+		return m_fiber is other.m_fiber && m_taskCounter == other.m_taskCounter;
+	}
+	bool opEquals(shared(Task) other) const shared @safe nothrow {
 		return m_fiber is other.m_fiber && m_taskCounter == other.m_taskCounter;
 	}
 }
