@@ -1,3 +1,11 @@
+2.2.0 - 2023-03-31
+==================
+
+- Made most synchronization primitives (e.g. `TaskMutex`) constructible/usable as `shared` - [pull #354][issue354]
+
+[issue354]: https://github.com/vibe-d/vibe-core/issues/issue354
+
+
 2.1.0 - 2023-03-17
 ==================
 
