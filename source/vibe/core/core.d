@@ -1259,10 +1259,12 @@ void disableDefaultSignalHandlers()
 	This function is useful for services run as root to give up on the privileges that
 	they only need for initialization (such as listening on ports <= 1024 or opening
 	system log files).
+	
+	Function returns false if not root and true if root and either setUID was executed or no username/groupname were specified.
 */
-void lowerPrivileges(string uname, string gname)
+bool lowerPrivileges(string uname, string gname)
 @safe {
-	if (!isRoot()) return;
+	if (!isRoot()) return false;
 	if (uname != "" || gname != "") {
 		static bool tryParse(T)(string s, out T n)
 		{
@@ -1275,13 +1277,21 @@ void lowerPrivileges(string uname, string gname)
 		if (uname != "" && !tryParse(uname, uid)) uid = getUID(uname);
 		if (gname != "" && !tryParse(gname, gid)) gid = getGID(gname);
 		setUID(uid, gid);
-	} else logWarn("Vibe was run as root, and no user/group has been specified for privilege lowering. Running with full permissions.");
+		return true;
+	} 
+	else {
+		logWarn("Vibe was run as root, and no user/group has been specified for privilege lowering. Running with full permissions.");
+		return true;
+	}
 }
 
 // ditto
-void lowerPrivileges()
+/**
+	Sets the effective user and group ID to the ones configured for privilege lowering using the username/groupname from configuration file /etc/vibe/vibe.conf.
+*/
+bool lowerPrivileges()
 @safe {
-	lowerPrivileges(s_privilegeLoweringUserName, s_privilegeLoweringGroupName);
+	return lowerPrivileges(s_privilegeLoweringUserName, s_privilegeLoweringGroupName);
 }
 
 
