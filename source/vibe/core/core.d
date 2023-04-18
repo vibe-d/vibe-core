@@ -1259,7 +1259,7 @@ void disableDefaultSignalHandlers()
 	This function is useful for services run as root to give up on the privileges that
 	they only need for initialization (such as listening on ports <= 1024 or opening
 	system log files).
-	
+
 	Function returns false if not root and true if root and either setUID was executed or no username/groupname were specified.
 */
 bool lowerPrivileges(string uname, string gname)
@@ -1278,7 +1278,7 @@ bool lowerPrivileges(string uname, string gname)
 		if (gname != "" && !tryParse(gname, gid)) gid = getGID(gname);
 		setUID(uid, gid);
 		return true;
-	} 
+	}
 	else {
 		logWarn("Vibe was run as root, and no user/group has been specified for privilege lowering. Running with full permissions.");
 		return true;
