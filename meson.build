@@ -36,17 +36,21 @@ src = files(
 
 allocator_dep = dependency('stdx-allocator')
 eventcore_dep = dependency('eventcore')
-#~ eventcore_dep = subproject('eventcore').get_variable('eventcore_dep')
+
+vibe_core_dependencies = [allocator_dep, eventcore_dep]
+vibe_core_include_dirs = include_directories('source')
 
 vibe_core_lib = library(
 	'vibe-core',
     sources: src,
-    include_directories: include_directories('source'),
-    dependencies: [allocator_dep, eventcore_dep],
+    include_directories: vibe_core_include_dirs,
+    dependencies: vibe_core_dependencies,
 )
 
 vibe_core_dep = declare_dependency(
     link_with: vibe_core_lib,
+    include_directories: vibe_core_include_dirs,
+    dependencies: vibe_core_dependencies,
 )
 
 meson.override_dependency('vibe-core', vibe_core_dep)
