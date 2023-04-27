@@ -2,7 +2,6 @@ project(
     'vibe-core',
     'd',
     license: 'MIT',
-    version: '1.22.4'
 )
 
 src = files(
