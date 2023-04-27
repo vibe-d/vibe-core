@@ -50,6 +50,7 @@ vibe_core_dep = declare_dependency(
     link_with: vibe_core_lib,
     include_directories: vibe_core_include_dirs,
     dependencies: vibe_core_dependencies,
+    d_module_versions: ['Have_vibe_core'],
 )
 
 meson.override_dependency('vibe-core', vibe_core_dep)
