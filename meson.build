@@ -40,7 +40,7 @@ vibe_core_dependencies = [allocator_dep, eventcore_dep]
 vibe_core_include_dirs = include_directories('source')
 
 vibe_core_lib = library(
-	'vibe-core',
+    'vibe-core',
     sources: src,
     include_directories: vibe_core_include_dirs,
     dependencies: vibe_core_dependencies,
