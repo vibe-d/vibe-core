@@ -417,6 +417,9 @@ interface ClosableRandomAccessStream : TruncatableStream {
 
 		Closing a stream implies a call to `finalize`, so that it doesn't need
 		to be called explicitly.
+
+		Note that in general no method calls other than checking the `isOpen`
+		property may be used after calling `close()` on a stream instance.
 	*/
 	void close() @blocking;
 }
