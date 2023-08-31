@@ -109,7 +109,7 @@ struct AllocAppender(ArrayType : E[], E) {
 		m_remaining = m_remaining[1 .. $];
 	}
 
-	void put(ArrayType arr)
+	void put(scope ArrayType arr)
 	@safe {
 		if (m_remaining.length < arr.length) grow(arr.length);
 		m_remaining[0 .. arr.length] = arr[];
@@ -117,7 +117,7 @@ struct AllocAppender(ArrayType : E[], E) {
 	}
 
 	static if( !hasAliasing!E ){
-		void put(in ElemType[] arr) @trusted {
+		void put(scope const(ElemType)[] arr) @trusted {
 			put(cast(ArrayType)arr);
 		}
 	}
