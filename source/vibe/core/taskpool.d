@@ -289,8 +289,12 @@ shared final class TaskPool {
 		}
 		runTaskDist(settings, &call, ch, func, args);
 
-		foreach (i; 0 .. this.threadCount)
-			on_handle(ch.consumeOne());
+		foreach (i; 0 .. this.threadCount) {
+			Task t;
+			if (!ch.tryConsumeOne(t))
+				assert(false, "Worker thread failed to report task handle");
+			on_handle(t);
+		}
 
 		ch.close();
 	}
