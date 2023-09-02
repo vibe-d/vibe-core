@@ -129,16 +129,13 @@ struct Task {
 		return app.data;
 	}
 
-	// Remove me when `-preview=in` becomes the default
-	static if (is(typeof(mixin(q{(in ref int a) => a}))))
-		mixin(q{
-			bool opEquals(in ref Task other) const @safe nothrow {
-				return m_fiber is other.m_fiber && m_taskCounter == other.m_taskCounter;
-			}});
-	bool opEquals(in Task other) const @safe nothrow {
+	bool opEquals(scope ref const(Task) other) const @safe nothrow {
 		return m_fiber is other.m_fiber && m_taskCounter == other.m_taskCounter;
 	}
-	bool opEquals(shared(Task) other) const shared @safe nothrow {
+	bool opEquals(scope const(Task) other) const @safe nothrow {
+		return m_fiber is other.m_fiber && m_taskCounter == other.m_taskCounter;
+	}
+	bool opEquals(scope shared(const(Task)) other) const shared @safe nothrow {
 		return m_fiber is other.m_fiber && m_taskCounter == other.m_taskCounter;
 	}
 }
