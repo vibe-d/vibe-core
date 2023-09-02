@@ -114,17 +114,17 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 	{
 	}
 
-	~this() @safe
+	~this() @safe scope
 	{
 		clear();
 	}
 
-	this(this) @safe
+	this(this) @safe scope
 	{
 		if (m_intf) m_intf._postblit(m_value);
 	}
 
-	void clear() @safe nothrow
+	void clear() @safe nothrow scope
 	{
 		if (m_intf) {
 			m_intf._destroy(m_value);
@@ -200,9 +200,9 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 		import std.meta : AliasSeq;
 		import std.traits : FunctionAttribute, MemberFunctionsTuple, ReturnType, ParameterTypeTuple, functionAttributes;
 
-		void _destroy(scope void[] stor) @safe nothrow;
-		void _postblit(scope void[] stor) @safe nothrow;
-		TypeInfo _typeInfo() @safe nothrow;
+		void _destroy(scope void[] stor) @safe nothrow scope;
+		void _postblit(scope void[] stor) @safe nothrow scope;
+		TypeInfo _typeInfo() @safe nothrow scope;
 
 		mixin methodDecls!0;
 
@@ -242,7 +242,7 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 		}
 
 		override void _destroy(scope void[] stor)
-		@trusted nothrow {
+		@trusted nothrow scope {
 			static if (is(O == struct)) {
 				try destroy(*_extract(stor));
 				catch (Exception e) assert(false, "Destructor has thrown: "~e.msg);
@@ -250,7 +250,7 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 		}
 
 		override void _postblit(scope void[] stor)
-		@trusted nothrow {
+		@trusted nothrow scope {
 			static if (is(O == struct)) {
 				try typeid(O).postblit(stor.ptr);
 				catch (Exception e) assert(false, "Postblit contructor has thrown: "~e.msg);
@@ -258,7 +258,7 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 		}
 
 		override TypeInfo _typeInfo()
-		@safe nothrow {
+		@safe nothrow scope {
 			return typeid(O);
 		}
 
