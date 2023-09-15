@@ -1,3 +1,13 @@
+2.2.1 - 2023-09-15
+==================
+
+- Tested up to DMD 2.105.0/LDC 1.34.0
+- Fixes a number of warnings related to `scope`, `in ref` and deprecated APIs - [pull #357][issue357], [pull #358][issue358]
+
+[issue357]: https://github.com/vibe-d/vibe-core/issues/issue357
+[issue358]: https://github.com/vibe-d/vibe-core/issues/issue358
+
+
 2.2.0 - 2023-03-31
 ==================
 
