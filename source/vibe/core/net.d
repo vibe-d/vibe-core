@@ -789,9 +789,16 @@ struct TCPConnection {
 		size_t nbytes = 0;
 		m_context.readTimeout.loopWithTimeout!((remaining) {
 			if (m_context.readBuffer.length == 0) {
-				if (mode == IOMode.immediate || mode == IOMode.once && nbytes > 0)
+				if (mode == IOMode.immediate || (mode == IOMode.once && nbytes > 0))
 					return true;
-				enforce(waitForData(remaining), "Reached end of stream while reading data.");
+				auto ret = waitForDataEx(remaining);
+				if(ret  == WaitForDataStatus.timeout) {
+					// should throw ReadTimeoutException
+					return true;
+				} else if(ret == WaitForDataStatus.noMoreData){
+					// MayBe client/server close the connect;
+					throw new Exception("Reached end of stream while reading data.");
+				}
 			}
 			assert(m_context.readBuffer.length > 0);
 			auto l = min(dst.length, m_context.readBuffer.length);
