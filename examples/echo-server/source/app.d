@@ -1,7 +1,8 @@
 import vibe.core.core : runApplication;
 import vibe.core.log;
-import vibe.core.net : listenTCP;
+import vibe.core.net;
 import vibe.core.stream : pipe;
+
 
 void main()
 {
@@ -18,3 +19,4 @@ void main()
 
 	runApplication();
 }
+
