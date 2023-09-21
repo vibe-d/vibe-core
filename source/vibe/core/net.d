@@ -794,7 +794,7 @@ struct TCPConnection {
 				auto ret = waitForDataEx(remaining);
 				if(ret  == WaitForDataStatus.timeout) {
 					// should throw ReadTimeoutException
-					return true;
+					return false;
 				} else if(ret == WaitForDataStatus.noMoreData){
 					// MayBe client/server close the connect;
 					throw new Exception("Reached end of stream while reading data.");
@@ -806,7 +806,7 @@ struct TCPConnection {
 			dst = dst[l .. $];
 			nbytes += l;
 			return dst.length == 0;
-		}, ReadTimeoutException);
+		}, ReadTimeoutException)("Read Operation timed out.");
 		return nbytes;
 	}
 

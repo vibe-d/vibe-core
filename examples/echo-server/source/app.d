@@ -15,7 +15,7 @@ version(READ_WRITE)
 	
 	scope const(ubyte[]) readTcpOnce(ref TCPConnection stream,scope ubyte[] dst){
 		ubyte[] ret = null;
-        collectException!ReadTimeoutException({
+        auto e = collectException!ReadTimeoutException({
 			import eventcore.driver : IOMode;
 			auto len = stream.read(dst, IOMode.once);
 			if(len == 0)
@@ -23,6 +23,8 @@ version(READ_WRITE)
 			else
 				return dst[0..len];
         }(),ret);
+		if(e)
+			collectException({writeln(e.msg);}());
         return ret;
 	}
 
