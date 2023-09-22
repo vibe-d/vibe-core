@@ -10,9 +10,6 @@ version(READ_WRITE)
 	import std.datetime;
 	import std.stdio;
 	
-	
-	
-	
 	scope const(ubyte[]) readTcpOnce(ref TCPConnection stream,scope ubyte[] dst){
 		ubyte[] ret = null;
         auto e = collectException!ReadTimeoutException({
@@ -50,7 +47,7 @@ version(READ_WRITE)
 		auto listeners = listenTCP(7000,  (conn) @safe nothrow {handleTcp(conn);});
 
 		// closes the listening sockets
-		scope (exit)
+		scope (exit) 
 			foreach (l; listeners)
 				l.stopListening();
 

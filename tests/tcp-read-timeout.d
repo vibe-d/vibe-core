@@ -84,9 +84,7 @@ void main()
             client.write("end");
             sleep(dur!"msecs"(800));
         }());
-        
         exitEventLoop();
-        // writeln("connect tcp ----2222 exit tt 2-!");
     });
     runEventLoop();
 }
