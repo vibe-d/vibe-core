@@ -3,13 +3,11 @@ import vibe.core.log;
 import vibe.core.net;
 import vibe.core.stream : pipe;
 
-
 version(READ_WRITE)
 {
 	import std.exception;
 	import std.datetime;
 	import std.stdio;
-	
 	scope const(ubyte[]) readTcpOnce(ref TCPConnection stream,scope ubyte[] dst){
 		ubyte[] ret = null;
         auto e = collectException!ReadTimeoutException({
@@ -47,9 +45,10 @@ version(READ_WRITE)
 		auto listeners = listenTCP(7000,  (conn) @safe nothrow {handleTcp(conn);});
 
 		// closes the listening sockets
-		scope (exit) 
+		scope (exit){
 			foreach (l; listeners)
 				l.stopListening();
+		}
 
 		runApplication();
 	}
@@ -63,10 +62,10 @@ version(READ_WRITE)
 		});
 
 		// closes the listening sockets
-		scope (exit)
+		scope (exit) {
 			foreach (l; listeners)
 				l.stopListening();
-
+		}
 		runApplication();
 	}
 }
