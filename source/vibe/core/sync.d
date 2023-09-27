@@ -1139,7 +1139,7 @@ struct ManualEvent {
 
 	private void initialize()
 	shared nothrow {
-		m_waiters = createMonitor!(ManualEvent.Waiters)(new shared Mutex);
+		m_waiters.initialize(new shared Mutex);
 	}
 
 	deprecated("ManualEvent is always non-null!")
@@ -1434,10 +1434,63 @@ unittest {
 	}).join();
 }
 
-package shared struct Monitor(T, M)
+
+/** Creates a new monitor primitive for type `T`.
+*/
+shared(Monitor!(T, M)) createMonitor(T, M)(M mutex)
+@trusted {
+	shared(Monitor!(T, M)) ret;
+	ret.initialize(cast(shared)mutex);
+	return ret;
+}
+
+///
+unittest {
+	import core.thread : Thread;
+	import std.algorithm.iteration : sum;
+	import vibe.core.core : runWorkerTaskH;
+
+	shared items = createMonitor!(int[])(new Mutex);
+
+	// Run 64 tasks with read-modify-write operations that would
+	// quickly lead to race-conditions if performed unprotected
+	Task[64] tasks;
+	foreach (i; 0 .. tasks.length) {
+		tasks[i] = runWorkerTaskH((shared(Monitor!(int[], Mutex))* itms) nothrow {
+			// The monitor ensures that all access to the data
+			// is protected by the mutex
+			auto litems = itms.lock();
+			auto newentry = sum(litems[]) + 1;
+			Thread.sleep(10.msecs);
+			litems ~= newentry;
+		}, &items);
+	}
+
+	// finish up all tasks
+	foreach (t; tasks) t.joinUninterruptible();
+
+	// verify that the results are as expected
+	auto litms = items.lock();
+	assert(litms.length == tasks.length);
+	foreach (idx, i; litms)
+		assert(i == sum(litms[0 .. idx]) + 1);
+}
+
+
+/** Synchronization primitive to ensure accessing a piece of data is always
+	protected by a locked mutex.
+
+	This struct ensures through its API that the encapsulated data cannot be
+	accessed without the associated mutex being locked. It should always be
+	preferred over manually locking a mutex and casting away `shared`.
+
+	See_also: `createMonitor`
+*/
+shared struct Monitor(T, M)
 {
 	alias Mutex = M;
 	alias Data = T;
+
 	private {
 		Mutex mutex;
 		Data data;
@@ -1453,8 +1506,15 @@ package shared struct Monitor(T, M)
 				else (cast(Mutex)m.mutex).unlock();
 			} ();
 		}
-		ref inout(Data) get() inout @trusted { return *cast(inout(Data)*)&m.data; }
+		ref inout(Data) get() inout return @trusted { return *cast(inout(Data)*)&m.data; }
 		alias get this;
+	}
+
+	@disable this(this);
+
+	private void initialize(shared(Mutex) m)
+	{
+		this.mutex = m;
 	}
 
 	Locked lock() {
@@ -1474,14 +1534,6 @@ package shared struct Monitor(T, M)
 		} ();
 		return const(Locked)(() @trusted { return &this; } ());
 	}
-}
-
-
-package shared(Monitor!(T, M)) createMonitor(T, M)(M mutex)
-@trusted {
-	shared(Monitor!(T, M)) ret;
-	ret.mutex = cast(shared)mutex;
-	return ret;
 }
 
 
@@ -1730,7 +1782,7 @@ private struct RecursiveTaskMutexImpl(bool INTERRUPTIBLE) {
 
 	void setup()
 	{
-		m_state = createMonitor!State(new shared core.sync.mutex.Mutex);
+		m_state.initialize(new shared core.sync.mutex.Mutex);
 		m_signal.initialize();
 	}
 
