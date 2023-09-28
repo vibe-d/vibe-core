@@ -784,7 +784,7 @@ public void setupWorkerThreads(uint num = 0)
 	`runWorkerTaskDist`.
 */
 @property shared(TaskPool) workerTaskPool()
-{
+@safe nothrow {
 	setupWorkerThreads();
 	return st_workerPool;
 }
@@ -795,8 +795,8 @@ public void setupWorkerThreads(uint num = 0)
 
 	This number includes virtual cores on hyper-threading enabled CPUs.
 */
-public @property uint logicalProcessorCount()
-{
+@property uint logicalProcessorCount()
+@safe nothrow {
 	import std.parallelism : totalCPUs;
 	return totalCPUs;
 }
