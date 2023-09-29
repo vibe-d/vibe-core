@@ -215,7 +215,7 @@ in {
 }
 
 /// Dittor
-private auto internalEmplace(T, Args...)(void[] chunk, auto ref Args args)
+private auto internalEmplace(T, Args...)(void[] chunk, auto ref Args args) nothrow
 	if (!is(T == class))
 in {
 	import std.string, std.format;
