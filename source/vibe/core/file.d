@@ -349,7 +349,7 @@ FileInfo getFileInfo(string path)
 FileInfoResult[] getFileInfo(const(NativePath)[] paths)
 nothrow {
 	import vibe.core.channel : Channel, ChannelConfig, ChannelPriority, createChannel;
-	import vibe.core.core : runTask, runWorkerTask;
+	import vibe.core.core : runTask, ioWorkerTaskPool;
 
 	if (!paths.length) return null;
 
@@ -383,7 +383,7 @@ nothrow {
 		outch.close();
 	}
 
-	try runWorkerTask(&getInfos, inch, outch);
+	try ioWorkerTaskPool.runTask(&getInfos, inch, outch);
 	catch (Exception e) assert(false, e.msg);
 
 	runTask(() nothrow {
@@ -460,7 +460,7 @@ void listDirectory(NativePath path, DirectoryListMode mode,
 	scope bool function(ref const FileInfo) @safe nothrow directory_predicate = null)
 {
 	import vibe.core.channel : ChannelConfig, ChannelPriority, createChannel;
-	import vibe.core.core : runWorkerTask;
+	import vibe.core.core : ioWorkerTaskPool;
 
 	ChannelConfig cc;
 	cc.priority = ChannelPriority.overhead;
@@ -472,7 +472,7 @@ void listDirectory(NativePath path, DirectoryListMode mode,
 	req.directoryPredicate = directory_predicate;
 
 	// NOTE: working around bogus "assigning scope variable warning on DMD 2.101.2 here with @trusted
-	runWorkerTask(ioTaskSettings, &performListDirectory, () @trusted { return req; } ());
+	ioWorkerTaskPool.runTask(ioTaskSettings, &performListDirectory, () @trusted { return req; } ());
 
 	ListDirectoryData itm;
 	while (req.channel.tryConsumeOne(itm)) {
@@ -1032,7 +1032,7 @@ private auto performInWorker(C, ARGS...)(C callable, auto ref ARGS args)
 		import vibe.core.concurrency : asyncWork;
 		return asyncWork(callable, args).getResult();
 	} else {
-		import vibe.core.core : runWorkerTask;
+		import vibe.core.core : ioWorkerTaskPool;
 		import core.atomic : atomicFence;
 		import std.concurrency : Tid, send, receiveOnly, thisTid;
 
@@ -1040,7 +1040,7 @@ private auto performInWorker(C, ARGS...)(C callable, auto ref ARGS args)
 
 		alias RET = typeof(callable(args));
 		shared(RET) ret;
-		runWorkerTask(ioTaskSettings, (shared(RET)* r, Tid caller, C c, ref ARGS a) nothrow {
+		ioWorkerTaskPool.runTask(ioTaskSettings, (shared(RET)* r, Tid caller, C c, ref ARGS a) nothrow {
 			*() @trusted { return cast(RET*)r; } () = c(a);
 			// Just as a precaution, because ManualEvent is not well defined in
 			// terms of fence semantics

@@ -774,6 +774,9 @@ public void setupWorkerThreads(uint num = 0)
 
 		if (!st_workerPool)
 			st_workerPool = new shared TaskPool(num);
+
+		if (!st_ioWorkerPool)
+			st_ioWorkerPool = new shared TaskPool(3);
 	} ();
 }
 
@@ -787,6 +790,13 @@ public void setupWorkerThreads(uint num = 0)
 @safe nothrow {
 	setupWorkerThreads();
 	return st_workerPool;
+}
+
+
+package @property shared(TaskPool) ioWorkerTaskPool()
+@safe nothrow {
+	setupWorkerThreads();
+	return st_ioWorkerPool;
 }
 
 
@@ -1676,6 +1686,7 @@ private {
 
 	__gshared core.sync.mutex.Mutex st_threadsMutex;
 	shared TaskPool st_workerPool;
+	shared TaskPool st_ioWorkerPool;
 	shared ManualEvent st_threadsSignal;
 	__gshared ThreadContext[] st_threads;
 	__gshared Condition st_threadShutdownCondition;
@@ -1865,6 +1876,16 @@ nothrow {
 
 	if (tpool) {
 		logDiagnostic("Still waiting for worker threads to exit.");
+		tpool.terminate();
+	}
+
+	tpool = null;
+
+	try synchronized (st_threadsMutex) swap(tpool, st_ioWorkerPool);
+	catch (Exception e) assert(false, e.msg);
+
+	if (tpool) {
+		logDiagnostic("Still waiting for I/O worker threads to exit.");
 		tpool.terminate();
 	}
 }
