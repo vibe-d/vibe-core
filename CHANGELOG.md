@@ -1,3 +1,17 @@
+2.3.0 - 2023-09-29
+==================
+
+- Added `Monitor` primitive for statically checked mutex protection of data - [pull #360][issue360]
+- Thread based I/O functions, such as directory listing, are now executed in a dedicated thread pool - [pull #361][issue362]
+- `workerTaskPool` and `logicalProcessorCount` are now `nothrow` - [pull #361][issue361]
+- Fixed `async()` erroneously running in a worker thread for non-isolated return types - [pull #363][issue363]
+
+[issue360]: https://github.com/vibe-d/vibe-core/issues/issue360
+[issue361]: https://github.com/vibe-d/vibe-core/issues/issue361
+[issue362]: https://github.com/vibe-d/vibe-core/issues/issue362
+[issue363]: https://github.com/vibe-d/vibe-core/issues/issue363
+
+
 2.2.1 - 2023-09-15
 ==================
 
