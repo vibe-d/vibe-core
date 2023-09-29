@@ -1161,7 +1161,7 @@ Future!(ReturnType!CALLABLE) async(CALLABLE, ARGS...)(CALLABLE callable, ARGS ar
 		try dst.get[0] = cast(shared(RET))callable(args);
 		catch (Exception e) dst.get[1] = e.msg.length ? e.msg : "Asynchronous operation failed";
 	}
-	static if (isWeaklyIsolated!CALLABLE && isWeaklyIsolated!ARGS) {
+	static if (isWeaklyIsolated!CALLABLE && isWeaklyIsolated!ARGS && isWeaklyIsolated!RET) {
 		ret.m_task = runWorkerTaskH(&compute, ret.m_result, callable, args);
 	} else {
 		ret.m_task = runTask(toDelegate(&compute), ret.m_result, callable, args);
