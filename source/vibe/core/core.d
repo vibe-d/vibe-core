@@ -841,7 +841,7 @@ void yield()
 		scope (exit) in_yield = false;
 
 		// Let yielded tasks execute
-		assert(TaskFiber.getThis().m_yieldLockCount == 0, "May not yield within an active yieldLock()!");
+		TaskFiber.getThis().yieldLockCheck();
 		() @safe nothrow { performIdleProcessingOnce(true); } ();
 	}
 }
@@ -878,7 +878,7 @@ void hibernate(scope void delegate() @safe nothrow on_interrupt = null)
 @safe nothrow {
 	auto t = Task.getThis();
 	if (t == Task.init) {
-		assert(TaskFiber.getThis().m_yieldLockCount == 0, "May not yield within an active yieldLock!");
+		TaskFiber.getThis().yieldLockCheck();
 		runEventLoopOnce();
 	} else {
 		auto tf = () @trusted { return t.taskFiber; } ();
@@ -909,7 +909,7 @@ void hibernate(scope void delegate() @safe nothrow on_interrupt = null)
 */
 void switchToTask(Task t)
 @safe nothrow {
-	auto defer = TaskFiber.getThis().m_yieldLockCount > 0;
+	auto defer = TaskFiber.getThis().isInYieldLock();
 	s_scheduler.switchTo(t, defer ? TaskSwitchPriority.prioritized : TaskSwitchPriority.immediate);
 }
 /// ditto
@@ -1547,50 +1547,56 @@ private struct TimerCallbackHandler(CALLABLE) {
 
 	Multiple yield locks can appear in nested scopes.
 */
-auto yieldLock()
+auto yieldLock(string file = __FILE__, int line = __LINE__)
 @safe nothrow {
 	static struct YieldLock {
 	@safe nothrow:
-		private bool m_initialized;
+		private {
+			TaskFiber m_fiber;
+		}
 
-		private this(bool) { m_initialized = true; inc(); }
+		private this(TaskFiber fiber) {
+			m_fiber = fiber;
+			inc();
+		}
 		@disable this(this);
-		~this() { if (m_initialized) dec(); }
+		~this() { if (m_fiber) dec(); }
 
 		private void inc()
 		{
-			TaskFiber.getThis().m_yieldLockCount++;
+			m_fiber.acquireYieldLock();
 		}
 
 		private void dec()
 		{
-			assert(TaskFiber.getThis().m_yieldLockCount > 0);
-			TaskFiber.getThis().m_yieldLockCount--;
+			m_fiber.releaseYieldLock();
 		}
 	}
 
-	return YieldLock(true);
+	auto fiber = TaskFiber.getThis();
+	fiber.setYieldLockContext(file, line);
+	return YieldLock(fiber);
 }
 
 unittest {
 	auto tf = TaskFiber.getThis();
-	assert(tf.m_yieldLockCount == 0);
+	assert(!tf.isInYieldLock());
 	{
 		auto lock = yieldLock();
-		assert(tf.m_yieldLockCount == 1);
+		assert(tf.isInYieldLock());
 		{
 			auto lock2 = yieldLock();
-			assert(tf.m_yieldLockCount == 2);
+			assert(tf.isInYieldLock());
 		}
-		assert(tf.m_yieldLockCount == 1);
+		assert(tf.isInYieldLock());
 	}
-	assert(tf.m_yieldLockCount == 0);
+	assert(!tf.isInYieldLock());
 
 	{
 		typeof(yieldLock()) l;
-		assert(tf.m_yieldLockCount == 0);
+		assert(!tf.isInYieldLock());
 	}
-	assert(tf.m_yieldLockCount == 0);
+	assert(!tf.isInYieldLock());
 }
 
 debug (VibeRunningTasks) {

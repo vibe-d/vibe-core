@@ -361,7 +361,9 @@ final package class TaskFiber : Fiber {
 		BitArray m_flsInit;
 		void[] m_fls;
 
-		package int m_yieldLockCount;
+		int m_yieldLockCount;
+		string m_yieldLockFile;
+		int m_yieldLockLine;
 
 		static TaskFiber ms_globalDummyFiber;
 		static FLSInfo[] ms_flsInfo;
@@ -661,6 +663,40 @@ final package class TaskFiber : Fiber {
 			clearInterruptFlag();
 			throw new InterruptException;
 		}
+	}
+
+	package void setYieldLockContext(string file, int line)
+	@safe nothrow @nogc {
+		// only record the outermost lock
+		if (m_yieldLockCount > 0) return;
+		m_yieldLockFile = file;
+		m_yieldLockLine = line;
+	}
+
+	package void acquireYieldLock()
+	@safe nothrow @nogc {
+		m_yieldLockCount++;
+	}
+
+	package void releaseYieldLock()
+	@safe nothrow @nogc {
+		assert(m_yieldLockCount > 0);
+		if (!--m_yieldLockCount) {
+			m_yieldLockFile = null;
+			m_yieldLockLine = -1;
+		}
+	}
+
+	package void yieldLockCheck()
+	@safe nothrow {
+		if (m_yieldLockCount > 0 && m_yieldLockFile.length)
+			logError("Yield lock violation for lock at %s:%s", m_yieldLockFile, m_yieldLockLine);
+		assert(m_yieldLockCount == 0, "May not yield while in an active yieldLock()!");
+	}
+
+	package bool isInYieldLock()
+	const @safe nothrow @nogc {
+		return m_yieldLockCount > 0;
 	}
 
 	private void clearInterruptFlag()
@@ -1113,7 +1149,7 @@ package struct TaskScheduler {
 			}
 		} ();
 
-		assert(() @trusted { return task.taskFiber; } ().m_yieldLockCount == 0, "May not yield while in an active yieldLock()!");
+		() @trusted { return task.taskFiber; } ().yieldLockCheck();
 		debug if (TaskFiber.ms_taskEventCallback) () @trusted { TaskFiber.ms_taskEventCallback(TaskEvent.yield, task); } ();
 		static if (__VERSION__ >= 2090) {
 			import core.memory : GC;
