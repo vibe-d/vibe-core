@@ -1,4 +1,4 @@
-[![vibe.d](https://vibed.org/images/logo-and-title.png)](https://vibed.org)
+[![vibe.d](https://vibed.org/images/title-new.png)](https://vibed.org)
 
 vibe.d core package
 ===================
