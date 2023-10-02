@@ -800,8 +800,7 @@ package @property shared(TaskPool) ioWorkerTaskPool()
 }
 
 
-/**
-	Determines the number of logical processors in the system.
+/** Determines the number of logical processors in the system.
 
 	This number includes virtual cores on hyper-threading enabled CPUs.
 */
@@ -812,8 +811,7 @@ package @property shared(TaskPool) ioWorkerTaskPool()
 }
 
 
-/**
-	Suspends the execution of the calling task to let other tasks and events be
+/** Suspends the execution of the calling task to let other tasks and events be
 	handled.
 
 	Calling this function in short intervals is recommended if long CPU
@@ -823,6 +821,8 @@ package @property shared(TaskPool) ioWorkerTaskPool()
 	Throws:
 		May throw an `InterruptException` if `Task.interrupt()` gets called on
 		the calling task.
+
+	See_also: `yieldUninterruptible`
 */
 void yield()
 @safe {
@@ -859,6 +859,35 @@ unittest {
 
 	t.join();
 	assert(ti == 10);
+}
+
+
+/** Suspends the execution of the calling task to let other tasks and events be
+	handled.
+
+	This version of `yield` will not react to calls to `Task.interrupt` and will
+	not throw any exceptions.
+
+	See_also: `yield`
+*/
+void yieldUninterruptible()
+@safe nothrow {
+	auto t = Task.getThis();
+	if (t != Task.init) {
+		auto tf = () @trusted { return t.taskFiber; } ();
+		s_scheduler.yieldUninterruptible();
+	} else {
+		// avoid recursive event processing, which could result in an infinite
+		// recursion
+		static bool in_yield = false;
+		if (in_yield) return;
+		in_yield = true;
+		scope (exit) in_yield = false;
+
+		// Let yielded tasks execute
+		TaskFiber.getThis().yieldLockCheck();
+		() @safe nothrow { performIdleProcessingOnce(true); } ();
+	}
 }
 
 
