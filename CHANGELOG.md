@@ -1,3 +1,14 @@
+2.4.0 - 2023-10-01
+==================
+
+- Added `yieldUninterruptible` - [pull #364][issue364]
+- Improved debugging `yieldLock` violations - [pull #364][issue364]
+- Now depends on `vibe-container` instead of having to rely on private container implementations - [pull #365][issue365]
+
+[issue364]: https://github.com/vibe-d/vibe-core/issues/issue364
+[issue365]: https://github.com/vibe-d/vibe-core/issues/issue365
+
+
 2.3.0 - 2023-09-29
 ==================
 
