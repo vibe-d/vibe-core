@@ -1,11 +1,6 @@
 name "echo-server"
 description "A simple echo protocol server implementation"
 dependency "vibe-core"  path="../../"
-configuration "default" {
-    targetType "executable"
-}
-configuration "no-pipe" {
-    targetType "executable"
-	versions "READ_WRITE"
-}
+targetType "executable"
+
 
