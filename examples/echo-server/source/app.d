@@ -13,12 +13,10 @@ void main()
 	});
 
 	// closes the listening sockets
-	scope (exit) 
+	scope (exit)
 		foreach (l; listeners)
 			l.stopListening();
 
 	runApplication();
 }
-
-
 
