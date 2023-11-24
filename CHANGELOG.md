@@ -1,3 +1,16 @@
+2.5.0 - 2023-11-24
+==================
+
+- Added `TaskSemaphore`, along with `createTaskSemaphore` and `createLocalTaskSemaphore` - [pull #368][issue368], [pull #369][issue369]
+- Fixed `TCPConnection.read` to throw a `ReadTimeoutException` (by dushibaiyu) - [pull #359][issue359], [pull #366][issue366]
+- Fixed the bahavior of `LocalTaskSemaphore` and made the `priority` argument a type signed - [pull #369][issue369]
+
+[issue359]: https://github.com/vibe-d/vibe-core/issues/issue359
+[issue366]: https://github.com/vibe-d/vibe-core/issues/issue366
+[issue368]: https://github.com/vibe-d/vibe-core/issues/issue368
+[issue369]: https://github.com/vibe-d/vibe-core/issues/issue369
+
+
 2.4.0 - 2023-10-01
 ==================
 
