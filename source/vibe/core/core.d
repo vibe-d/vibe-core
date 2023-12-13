@@ -773,10 +773,10 @@ public void setupWorkerThreads(uint num = 0)
 		scope (exit) st_threadsMutex.unlock_nothrow();
 
 		if (!st_workerPool)
-			st_workerPool = new shared TaskPool(num);
+			st_workerPool = new shared TaskPool(num, "vibe-worker");
 
 		if (!st_ioWorkerPool)
-			st_ioWorkerPool = new shared TaskPool(3);
+			st_ioWorkerPool = new shared TaskPool(3, "vibe-io");
 	} ();
 }
 
