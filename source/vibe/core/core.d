@@ -1845,6 +1845,8 @@ shared static this()
 
 shared static ~this()
 {
+	destroy(st_threadsSignal);
+
 	shutdownDriver();
 
 	size_t tasks_left = s_scheduler.scheduledTaskCount;
@@ -1887,6 +1889,13 @@ static ~this()
 		shutdownWorkerPool();
 	}
 
+	foreach (f; s_availableFibers) {
+		f.shutdown();
+		destroy(f);
+	}
+
+	ManualEvent.freeThreadResources();
+
 	synchronized (st_threadsMutex) {
 		auto idx = st_threads.countUntil!(c => c.thread is thisthr);
 		assert(idx >= 0, "No more threads registered");
@@ -1927,11 +1936,6 @@ nothrow {
 
 private void shutdownDriver()
 {
-	if (ManualEvent.ms_threadEvent != EventID.init) {
-		eventDriver.events.releaseRef(ManualEvent.ms_threadEvent);
-		ManualEvent.ms_threadEvent = EventID.init;
-	}
-
 	static if (is(typeof(tryGetEventDriver()))) {
 		// avoid creating an event driver on threads that don't actually have one
 		if (auto drv = tryGetEventDriver())
