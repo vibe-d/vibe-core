@@ -37,7 +37,7 @@ shared final class TaskPool {
 		Params:
 			thread_count = The number of worker threads to create
 	*/
-	this(size_t thread_count = logicalProcessorCount())
+	this(size_t thread_count = logicalProcessorCount(), string thread_name_prefix = "vibe")
 	@safe nothrow {
 		import std.format : format;
 
@@ -52,7 +52,7 @@ shared final class TaskPool {
 				WorkerThread thr;
 				() @trusted nothrow {
 					thr = new WorkerThread(this);
-					try thr.name = format("vibe-%s", i);
+					try thr.name = format("%s-%s", thread_name_prefix, i);
 					catch (Exception e) logException(e, "Failed to set worker thread name");
 					thr.start();
 				} ();
