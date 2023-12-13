@@ -188,7 +188,9 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 			foreach (idx, F; Overloads) {
 				enum attribs = functionAttributeString!F(false);
 				enum is_prop = functionAttributes!F & FunctionAttribute.property;
-				ret ~= attribs~" ReturnType!(Overloads["~idx.stringof~"]) "~member~"("~parameterDecls!(F, idx)~") { return m_intf."~member~"(m_value, "~parameterNames!F~"); }";
+				ret ~= attribs~" ReturnType!(Overloads["~idx.stringof~"]) "~member~"("~parameterDecls!(F, idx)~")"
+					~ "{ assert(!!m_intf, \"Accessing null \"~I.stringof~\" interface proxy\");"
+					~ "return m_intf."~member~"(m_value, "~parameterNames!F~"); }";
 			}
 			return ret;
 		}
