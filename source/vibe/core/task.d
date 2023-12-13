@@ -297,6 +297,7 @@ enum TaskEvent {
 	preStart,  /// Just about to invoke the fiber which starts execution
 	postStart, /// After the fiber has returned for the first time (by yield or exit)
 	start,     /// Just about to start execution
+	schedule,  /// Scheduled for execution
 	yield,     /// Temporarily paused
 	resume,    /// Resumed from a prior yield
 	end,       /// Ended normally
@@ -998,6 +999,8 @@ package struct TaskScheduler {
 		auto thist = Task.getThis();
 
 		if (t == thist) return;
+
+		debug if (TaskFiber.ms_taskEventCallback) () @trusted { TaskFiber.ms_taskEventCallback(TaskEvent.schedule, t); } ();
 
 		auto thisthr = thist ? thist.thread : () @trusted { return Thread.getThis(); } ();
 		assert(t.thread is thisthr, "Cannot switch to a task that lives in a different thread.");
