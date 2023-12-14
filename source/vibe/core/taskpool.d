@@ -37,7 +37,7 @@ shared final class TaskPool {
 		Params:
 			thread_count = The number of worker threads to create
 	*/
-	this(size_t thread_count = logicalProcessorCount())
+	this(size_t thread_count = logicalProcessorCount(), string thread_name_prefix = "vibe")
 	@safe nothrow {
 		import std.format : format;
 
@@ -52,7 +52,7 @@ shared final class TaskPool {
 				WorkerThread thr;
 				() @trusted nothrow {
 					thr = new WorkerThread(this);
-					try thr.name = format("vibe-%s", i);
+					try thr.name = format("%s-%s", thread_name_prefix, i);
 					catch (Exception e) logException(e, "Failed to set worker thread name");
 					thr.start();
 				} ();
@@ -95,6 +95,8 @@ shared final class TaskPool {
 
 		size_t cnt = m_state.lock.queue.length;
 		if (cnt > 0) logWarn("There were still %d worker tasks pending at exit.", cnt);
+
+		destroy(m_signal);
 	}
 
 	/** Instructs all worker threads to terminate as soon as all tasks have
@@ -209,6 +211,7 @@ shared final class TaskPool {
 		static void taskFun(Channel!Task ch, FT func, ARGS args) {
 			try ch.put(Task.getThis());
 			catch (Exception e) assert(false, e.msg);
+			ch = Channel!Task.init;
 			mixin(callWithMove!ARGS("func", "args"));
 		}
 		runTask_unsafe(settings, &taskFun, ch, func, args);

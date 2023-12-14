@@ -62,7 +62,10 @@ enum ChannelPriority {
 struct Channel(T, size_t buffer_size = 100) {
 	enum bufferSize = buffer_size;
 
-	private shared ChannelImpl!(T, buffer_size) m_impl;
+	private shared(ChannelImpl!(T, buffer_size)) m_impl;
+
+	this(this) @safe { if (m_impl) m_impl.addRef(); }
+	~this() @safe { if (m_impl) m_impl.releaseRef(); }
 
 	/** Determines whether there is more data to read in a single-reader scenario.
 
@@ -160,6 +163,7 @@ private final class ChannelImpl(T, size_t buffer_size) {
 		FixedRingBuffer!(T, buffer_size) m_items;
 		bool m_closed = false;
 		ChannelConfig m_config;
+		int m_refCount = 1;
 	}
 
 	this(ChannelConfig config)
@@ -167,6 +171,25 @@ private final class ChannelImpl(T, size_t buffer_size) {
 		m_mutex = cast(shared)new Mutex;
 		m_condition = cast(shared)new TaskCondition(cast(Mutex)m_mutex);
 		m_config = config;
+	}
+
+	private void addRef()
+	@safe nothrow shared {
+		m_mutex.lock_nothrow();
+		scope (exit) m_mutex.unlock_nothrow();
+		auto thisus = () @trusted { return cast(ChannelImpl)this; } ();
+		thisus.m_refCount++;
+	}
+
+	private void releaseRef()
+	@safe nothrow shared {
+		m_mutex.lock_nothrow();
+		scope (exit) m_mutex.unlock_nothrow();
+		auto thisus = () @trusted { return cast(ChannelImpl)this; } ();
+		if (--thisus.m_refCount == 0) {
+			try () @trusted { destroy(m_condition); } ();
+			catch (Exception e) assert(false);
+		}
 	}
 
 	@property bool empty()

@@ -1139,9 +1139,6 @@ struct LocalManualEvent {
 		Waiter m_waiter;
 	}
 
-	// thread destructor in vibe.core.core will decrement the ref. count
-	package static EventID ms_threadEvent;
-
 	private void initialize()
 	nothrow {
 		import vibe.internal.allocator : Mallocator, makeGCSafe;
@@ -1345,13 +1342,10 @@ struct ManualEvent {
 		int m_emitCount;
 		static struct Waiters {
 			StackSList!ThreadWaiter active; // actively waiting
-			StackSList!ThreadWaiter free; // free-list of reusable waiter structs
 		}
 		Monitor!(Waiters, shared(Mutex)) m_waiters;
+		static StackSList!ThreadWaiter s_free; // free-list of reusable waiter structs for the calling thread
 	}
-
-	// thread destructor in vibe.core.core will decrement the ref. count
-	package static EventID ms_threadEvent;
 
 	enum EmitMode {
 		single,
@@ -1363,6 +1357,15 @@ struct ManualEvent {
 	private void initialize()
 	shared nothrow {
 		m_waiters.initialize(new shared Mutex);
+	}
+
+	package static void freeThreadResources()
+	{
+		s_free.filter((w) @trusted {
+			try destroy(w);
+			catch (Exception e) assert(false, e.msg);
+			return false;
+		});
 	}
 
 	deprecated("ManualEvent is always non-null!")
@@ -1483,11 +1486,6 @@ struct ManualEvent {
 
 		() @trusted { logTrace("wait shared %s", cast(void*)&this); } ();
 
-		if (ms_threadEvent is EventID.invalid) {
-			ms_threadEvent = eventDriver.events.create();
-			assert(ms_threadEvent != EventID.invalid, "Failed to create event!");
-		}
-
 		MonoTime target_timeout, now;
 		if (timeout != Duration.max) {
 			try now = MonoTime.currTime();
@@ -1499,7 +1497,7 @@ struct ManualEvent {
 
 		acquireThreadWaiter((scope ThreadWaiter w) {
 			while (ec - emit_count <= 0) {
-				w.wait!interruptible(timeout != Duration.max ? target_timeout - now : Duration.max, ms_threadEvent, () => (this.emitCount - emit_count) > 0);
+				w.wait!interruptible(timeout != Duration.max ? target_timeout - now : Duration.max, w.m_event, () => (this.emitCount - emit_count) > 0);
 				ec = this.emitCount;
 
 				if (timeout != Duration.max) {
@@ -1515,8 +1513,6 @@ struct ManualEvent {
 
 	private void acquireThreadWaiter(DEL)(scope DEL del)
 	shared {
-		import vibe.internal.allocator : processAllocator, makeGCSafe;
-
 		ThreadWaiter w;
 		auto drv = eventDriver;
 
@@ -1531,25 +1527,14 @@ struct ManualEvent {
 			});
 
 			if (!w) {
-				free.filter((fw) {
-					if (fw.m_driver is drv) {
-						w = fw;
-						w.addRef();
-						return false;
-					}
-					return true;
-				});
-
-				if (!w) {
-					() @trusted {
-						try {
-							w = processAllocator.makeGCSafe!ThreadWaiter;
-							w.m_driver = drv;
-							w.m_event = ms_threadEvent;
-						} catch (Exception e) {
-							assert(false, "Failed to allocate thread waiter.");
-						}
-					} ();
+				if (!s_free.empty) {
+					w = s_free.first;
+					s_free.remove(w);
+					assert(w.m_refCount == 0);
+					assert(w.m_driver is drv);
+					w.addRef();
+				} else {
+					w = new ThreadWaiter;
 				}
 
 				assert(w.m_refCount == 1);
@@ -1570,9 +1555,10 @@ struct ManualEvent {
 			with (m_waiters.lock) {
 				auto rmvd = active.remove(w);
 				assert(rmvd, "Waiter not in active queue anymore!?");
-				free.add(w);
-				// TODO: cap size of m_freeWaiters
 			}
+			assert(w.m_refCount == 0);
+			s_free.add(w);
+			// TODO: cap size of m_freeWaiters
 		}
 	}
 }
@@ -1761,7 +1747,7 @@ shared struct Monitor(T, M)
 
 
 private final class ThreadLocalWaiter(bool EVENT_TRIGGERED) {
-	import vibe.internal.list : CircularDList;
+	import vibe.internal.list : CircularDList, StackSList;
 
 	private {
 		static struct TaskWaiter {
@@ -1777,7 +1763,7 @@ private final class ThreadLocalWaiter(bool EVENT_TRIGGERED) {
 		}
 
 		static if (EVENT_TRIGGERED) {
-			package(vibe) ThreadLocalWaiter next; // queue of other waiters of the same thread
+			package(vibe) ThreadLocalWaiter next; // queue of other waiters in the active/free list of the manual event
 			NativeEventDriver m_driver;
 			EventID m_event = EventID.invalid;
 		} else {
@@ -1792,6 +1778,11 @@ private final class ThreadLocalWaiter(bool EVENT_TRIGGERED) {
 	this()
 	{
 		m_waiters = CircularDList!(TaskWaiter*)(() @trusted { return &m_pivot; } ());
+		static if (EVENT_TRIGGERED) {
+			m_driver = eventDriver;
+			m_event = m_driver.events.create();
+			assert(m_event != EventID.invalid, "Failed to create event!");
+		}
 	}
 
 	static if (EVENT_TRIGGERED) {
@@ -1799,8 +1790,15 @@ private final class ThreadLocalWaiter(bool EVENT_TRIGGERED) {
 		{
 			import vibe.core.internal.release : releaseHandle;
 
-			if (m_event != EventID.invalid)
-				releaseHandle!"events"(m_event, () @trusted { return cast(shared)m_driver; } ());
+			if (m_event != EventID.invalid) {
+				import core.stdc.stdlib : abort;
+				if (m_driver !is eventDriver) {
+					abort();
+					assert(false, "ThreadWaiter destroyed in foreign thread");
+				}
+				m_driver.events.releaseRef(m_event);
+				m_event = EventID.invalid;
+			}
 		}
 	}
 
