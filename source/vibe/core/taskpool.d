@@ -95,6 +95,8 @@ shared final class TaskPool {
 
 		size_t cnt = m_state.lock.queue.length;
 		if (cnt > 0) logWarn("There were still %d worker tasks pending at exit.", cnt);
+
+		destroy(m_signal);
 	}
 
 	/** Instructs all worker threads to terminate as soon as all tasks have
@@ -209,6 +211,7 @@ shared final class TaskPool {
 		static void taskFun(Channel!Task ch, FT func, ARGS args) {
 			try ch.put(Task.getThis());
 			catch (Exception e) assert(false, e.msg);
+			ch = Channel!Task.init;
 			mixin(callWithMove!ARGS("func", "args"));
 		}
 		runTask_unsafe(settings, &taskFun, ch, func, args);
