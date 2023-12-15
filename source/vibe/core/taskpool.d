@@ -313,7 +313,10 @@ shared final class TaskPool {
 			"Cannot convert arguments '"~ARGS.stringof~"' to function arguments '"~FARGS.stringof~"'.");
 
 		m_state.lock.queue.put(settings, callable, args);
-		m_signal.emitSingle();
+		// NOTE: we need to notify all threads here in order to guarantee proper distribution of
+		//       tasks, as currently the eventcore event implementation does not result in a fair
+		//       scheduling
+		m_signal.emit();
 	}
 
 	private void runTaskDist_unsafe(CALLABLE, ARGS...)(TaskSettings settings, ref CALLABLE callable, ARGS args) // NOTE: no ref for args, to disallow non-copyable types!
