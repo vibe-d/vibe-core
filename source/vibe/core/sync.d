@@ -17,7 +17,7 @@
 */
 module vibe.core.sync;
 
-import vibe.core.log : logDebugV, logTrace, logInfo;
+import vibe.core.log;
 import vibe.core.task;
 
 import core.atomic;
@@ -1789,12 +1789,16 @@ private final class ThreadLocalWaiter(bool EVENT_TRIGGERED) {
 		~this()
 		{
 			import vibe.core.internal.release : releaseHandle;
+			import core.memory : GC;
+			import core.stdc.stdlib : abort;
 
 			if (m_event != EventID.invalid) {
-				import core.stdc.stdlib : abort;
 				if (m_driver !is eventDriver) {
-					abort();
-					assert(false, "ThreadWaiter destroyed in foreign thread");
+					logError("ThreadWaiter destroyed in foreign thread");
+					// handle GC finalization at process exit gracefully, as
+					// this can happen when tasks/threads have not been properly
+					// shut down before application exit
+					if (!GC.inFinalizer()) abort();
 				}
 				m_driver.events.releaseRef(m_event);
 				m_event = EventID.invalid;
