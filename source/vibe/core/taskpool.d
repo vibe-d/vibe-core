@@ -155,12 +155,7 @@ shared final class TaskPool {
 	{
 		foreach (T; ARGS) static assert(isWeaklyIsolated!T, "Argument type "~T.stringof~" is not safe to pass between threads.");
 
-		// workaround for runWorkerTaskH to work when called outside of a task
-		if (Task.getThis() == Task.init) {
-			Task ret;
-			.runTask((FT func, ARGS args) nothrow { ret = doRunTaskH(TaskSettings.init, func, args); }, func, args).joinUninterruptible();
-			return ret;
-		} else return doRunTaskH(TaskSettings.init, func, args);
+		return doRunTaskH(TaskSettings.init, func, args);
 	}
 	/// ditto
 	Task runTaskH(alias method, T, ARGS...)(shared(T) object, auto ref ARGS args)
@@ -177,12 +172,7 @@ shared final class TaskPool {
 	{
 		foreach (T; ARGS) static assert(isWeaklyIsolated!T, "Argument type "~T.stringof~" is not safe to pass between threads.");
 
-		// workaround for runWorkerTaskH to work when called outside of a task
-		if (Task.getThis() == Task.init) {
-			Task ret;
-			.runTask((TaskSettings settings, FT func, ARGS args) nothrow { ret = doRunTaskH(settings, func, args); }, settings, func, args).joinUninterruptible();
-			return ret;
-		} else return doRunTaskH(settings, func, args);
+		return doRunTaskH(settings, func, args);
 	}
 	/// ditto
 	Task runTaskH(alias method, T, ARGS...)(TaskSettings settings, shared(T) object, auto ref ARGS args)
