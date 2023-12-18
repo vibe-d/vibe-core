@@ -191,6 +191,7 @@ shared final class TaskPool {
 	{
 		import std.typecons : Typedef;
 		import vibe.core.channel : Channel, createChannel;
+		import vibe.core.task : needsMove;
 
 		foreach (T; ARGS) static assert(isWeaklyIsolated!T, "Argument type "~T.stringof~" is not safe to pass between threads.");
 
@@ -198,12 +199,34 @@ shared final class TaskPool {
 
 		auto ch = createChannel!Task();
 
-		static void taskFun(Channel!Task ch, FT func, ARGS args) {
-			try ch.put(Task.getThis());
-			catch (Exception e) assert(false, e.msg);
-			ch = Channel!Task.init;
-			mixin(callWithMove!ARGS("func", "args"));
+		static string argdefs()
+		{
+			string ret;
+			foreach (i, A; ARGS) {
+				if (i > 0) ret ~= ", ";
+				if (!needsMove!A) ret ~= "ref ";
+				ret ~= "ARGS["~i.stringof~"] arg_"~i.stringof;
+			}
+			return ret;
 		}
+
+		static string argvals()
+		{
+			string ret;
+			foreach (i, A; ARGS) {
+				if (i > 0) ret ~= ", ";
+				ret ~= "arg_"~i.stringof;
+				if (needsMove!A) ret ~= ".move";
+			}
+			return ret;
+		}
+
+		mixin("static void taskFun(Channel!Task ch, FT func, " ~ argdefs() ~ ") {"
+			~ "	try ch.put(Task.getThis());"
+			~ "	catch (Exception e) assert(false, e.msg);"
+			~ "	ch = Channel!Task.init;"
+			~ "	func("~argvals()~");"
+			~ "}");
 		runTask_unsafe(settings, &taskFun, ch, func, args);
 
 		Task ret;

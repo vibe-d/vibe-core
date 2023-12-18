@@ -458,6 +458,38 @@ unittest { // ensure task.running is true directly after runTask
 	assert(hit);
 }
 
+unittest {
+	import core.atomic : atomicOp;
+
+	static struct S {
+		shared(int)* rc;
+		this(this) @safe nothrow { if (rc) atomicOp!"+="(*rc, 1); }
+		~this() @safe nothrow { if (rc) atomicOp!"-="(*rc, 1); }
+	}
+
+	S s;
+	s.rc = new int;
+	*s.rc = 1;
+
+	runTask((ref S sc) {
+		auto rc = sc.rc;
+		assert(*rc == 2);
+		sc = S.init;
+		assert(*rc == 1);
+	}, s).joinUninterruptible();
+
+	assert(*s.rc == 1);
+
+	runWorkerTaskH((ref S sc) {
+		auto rc = sc.rc;
+		assert(*rc == 2);
+		sc = S.init;
+		assert(*rc == 1);
+	}, s).joinUninterruptible();
+
+	assert(*s.rc == 1);
+}
+
 
 /**
 	Runs a new asynchronous task in a worker thread.

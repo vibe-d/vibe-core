@@ -1369,7 +1369,7 @@ package string callWithMove(ARGS...)(string func, string args)
 	return ret ~ ");";
 }
 
-private template needsMove(T)
+package template needsMove(T)
 {
 	template isCopyable(T)
 	{
