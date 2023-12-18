@@ -1784,9 +1784,8 @@ package @property ref TaskScheduler taskScheduler() @safe nothrow @nogc { return
 package void recycleFiber(TaskFiber fiber)
 @safe nothrow {
 	if (s_availableFibers.length >= s_maxRecycledFibers) {
-		auto fl = s_availableFibers.front;
-		s_availableFibers.popFront();
-		fl.shutdown();
+		fiber.shutdown();
+		return;
 	}
 
 	if (s_availableFibers.full)
