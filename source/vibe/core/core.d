@@ -1793,6 +1793,21 @@ package bool recycleFiber(TaskFiber fiber)
 	return true;
 }
 
+@safe nothrow unittest { // check fiber recycling and recycling overflow
+	auto tasks = new Task[](s_maxRecycledFibers+1);
+	foreach (i; 0 .. 2) {
+		int nrunning = 0;
+		bool all_running = false;
+		foreach (ref t; tasks) t = runTask({
+			if (++nrunning == tasks.length) all_running = true;
+			while (!all_running)
+				yieldUninterruptible();
+			nrunning--;
+		});
+		foreach (t; tasks) t.joinUninterruptible();
+	}
+}
+
 private void setupSignalHandlers()
 @trusted nothrow {
 	scope (failure) assert(false); // _d_monitorexit is not nothrow
