@@ -1717,9 +1717,37 @@ package(vibe) void performIdleProcessing(bool force_process_events = false)
 	} else s_ignoreIdleForGC = false;
 }
 
+
+void collectCallstack()
+@trusted nothrow {
+	debug (VibeCoreCollectCallstacks) {
+		import core.time;
+		import std.algorithm;
+		import std.array;
+
+		static MonoTime last_step;
+		static ulong[string] callstacks;
+
+		try throw new Exception("");
+		catch (Exception e) try callstacks[e.info.toString]++;
+		catch (Exception e) {}
+
+		if (last_step == MonoTime.init) last_step = MonoTime.currTime;
+		else if (MonoTime.currTime - last_step >= 10.seconds) {
+			auto list = callstacks.byKeyValue.array;
+			list.sort!((a, b) => a.value > b.value);
+			/*logInfo("CALLSTACKS:");
+			foreach (cs; list)
+				logInfo("  %s: %(\n  %s%)", cs.value, cs.key.splitter('\n'));*/
+			last_step = MonoTime.currTime;
+		}
+	}
+}
+
 private bool performIdleProcessingOnce(bool process_events)
 @safe nothrow {
 	if (process_events) {
+collectCallstack();
 		auto er = eventDriver.core.processEvents(0.seconds);
 		if (er.among!(ExitReason.exited, ExitReason.outOfWaiters) && s_scheduler.scheduledTaskCount == 0) {
 			if (s_eventLoopRunning) {
@@ -1780,6 +1808,7 @@ private bool getExitFlag()
 
 package @property bool isEventLoopRunning() @safe nothrow @nogc { return s_eventLoopRunning; }
 package @property ref TaskScheduler taskScheduler() @safe nothrow @nogc { return s_scheduler; }
+package @property bool isMainThread() @safe nothrow @nogc { return s_isMainThread; }
 
 package void recycleFiber(TaskFiber fiber)
 @safe nothrow {

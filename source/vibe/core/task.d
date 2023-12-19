@@ -366,6 +366,8 @@ final package class TaskFiber : Fiber {
 		string m_yieldLockFile;
 		int m_yieldLockLine;
 
+		debug (VibeTaskHog) MonoTime m_executionStart;
+
 		static TaskFiber ms_globalDummyFiber;
 		static FLSInfo[] ms_flsInfo;
 		static size_t ms_flsFill = 0; // thread-local
@@ -448,14 +450,16 @@ final package class TaskFiber : Fiber {
 					debug if (ms_taskEventCallback) ms_taskEventCallback(TaskEvent.start, handle);
 					if (!isEventLoopRunning) {
 						debug (VibeTaskLog) logTrace("Event loop not running at task start - yielding.");
+						debug (VibeTaskHog) m_executionStart = MonoTime.currTime;
 						taskScheduler.yieldUninterruptible();
 						debug (VibeTaskLog) logTrace("Initial resume of task.");
 					}
 
 					debug (VibeRunningTasks) s_runningTasks[this] = "initial";
-
+					debug (VibeTaskHog) m_executionStart = MonoTime.currTime;
 					task.call();
 					debug if (ms_taskEventCallback) ms_taskEventCallback(TaskEvent.end, handle);
+					debug (VibeTaskHog) checkExecutionTime();
 
 					debug if (() @trusted { return (cast(shared)this); } ().getTaskStatus().interrupt)
 						logDebugV("Task exited while an interrupt was in flight.");
@@ -712,6 +716,24 @@ final package class TaskFiber : Fiber {
 				break;
 		}
 	}
+
+	debug (VibeTaskHog) {
+		private void checkExecutionTime()
+		@safe nothrow {
+			import vibe.core.core : isMainThread;
+
+			if (!isMainThread) return;
+			auto now = MonoTime.currTime;
+			if (now - m_executionStart > 200.msecs) {
+				try throw new Exception("");
+				catch (Exception e) {
+					import std.conv : to;
+					try logException(e, "Long execution without yielding: " ~ (now - m_executionStart).to!string);
+					catch (Exception e) assert(false, e.msg);
+				}
+			}
+		}
+	}
 }
 
 
@@ -879,18 +901,24 @@ package struct TaskScheduler {
 					but there were no pending events present.)
 			)
 	*/
-	ExitReason process()
+	ExitReason process(bool no_extra_event_processing = false)
 	{
 		assert(TaskFiber.getThis().m_yieldLockCount == 0, "May not process events within an active yieldLock()!");
 
+		ExitReason er = ExitReason.timeout;
 		bool any_events = false;
 		while (true) {
 			debug (VibeTaskLog) logTrace("Scheduling before peeking new events...");
 			// process pending tasks
 			bool any_tasks_processed = schedule() != ScheduleStatus.idle;
 
+			if (!any_tasks_processed && no_extra_event_processing)
+				return er;
+
 			debug (VibeTaskLog) logTrace("Processing pending events...");
-			ExitReason er = eventDriver.core.processEvents(0.seconds);
+import vibe.core.core : collectCallstack;
+collectCallstack();
+			er = eventDriver.core.processEvents(0.seconds);
 			debug (VibeTaskLog) logTrace("Done: %s", er);
 
 			final switch (er) {
@@ -933,13 +961,16 @@ package struct TaskScheduler {
 	*/
 	ExitReason waitAndProcess(Duration timeout=Duration.max)
 	{
-		// first, process tasks without blocking
-		auto er = process();
+		// first, process tasks without blocking, also process any
+		// pending events
+		auto er = process(false);
 
 		final switch (er) {
-			case ExitReason.exited, ExitReason.outOfWaiters: return er;
-			case ExitReason.idle: return ExitReason.idle;
-			case ExitReason.timeout: break;
+			case ExitReason.idle:
+			case ExitReason.exited: return er;
+			case ExitReason.outOfWaiters:
+			case ExitReason.timeout:
+				break;
 		}
 
 		// if the first run didn't process any events, block and
@@ -960,7 +991,7 @@ package struct TaskScheduler {
 		}
 
 		// finally, make sure that all scheduled tasks are run
-		er = process();
+		er = process(true);
 		if (er == ExitReason.timeout) return ExitReason.idle;
 		else return er;
 	}
@@ -1164,7 +1195,9 @@ package struct TaskScheduler {
 				abort();
 			}
 		}
+		debug (VibeTaskHog) () @trusted { return task.taskFiber; } ().checkExecutionTime();
 		() @trusted { Fiber.yield(); } ();
+		debug (VibeTaskHog) () @trusted { return task.taskFiber; } ().m_executionStart = MonoTime.currTime;
 		debug if (TaskFiber.ms_taskEventCallback) () @trusted { TaskFiber.ms_taskEventCallback(TaskEvent.resume, task); } ();
 		assert(!task.m_fiber.m_queue, "Task is still scheduled after resumption.");
 	}
