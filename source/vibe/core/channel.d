@@ -155,6 +155,7 @@ struct Channel(T, size_t buffer_size = 100) {
 
 private final class ChannelImpl(T, size_t buffer_size) {
 	import vibe.core.concurrency : isWeaklyIsolated;
+	import vibe.internal.allocator : Mallocator, makeGCSafe, disposeGCSafe;
 	static assert(isWeaklyIsolated!T, "Channel data type "~T.stringof~" is not safe to pass between threads.");
 
 	private {
@@ -168,8 +169,8 @@ private final class ChannelImpl(T, size_t buffer_size) {
 
 	this(ChannelConfig config)
 	shared @trusted nothrow {
-		m_mutex = cast(shared)new Mutex;
-		m_condition = cast(shared)new TaskCondition(cast(Mutex)m_mutex);
+		m_mutex = cast(shared)Mallocator.instance.makeGCSafe!Mutex();
+		m_condition = cast(shared)Mallocator.instance.makeGCSafe!TaskCondition(cast()m_mutex);
 		m_config = config;
 	}
 
@@ -183,11 +184,20 @@ private final class ChannelImpl(T, size_t buffer_size) {
 
 	private void releaseRef()
 	@safe nothrow shared {
-		m_mutex.lock_nothrow();
-		scope (exit) m_mutex.unlock_nothrow();
-		auto thisus = () @trusted { return cast(ChannelImpl)this; } ();
-		if (--thisus.m_refCount == 0) {
-			try () @trusted { destroy(m_condition); } ();
+		bool destroy = false;
+		{
+			m_mutex.lock_nothrow();
+			scope (exit) m_mutex.unlock_nothrow();
+			auto thisus = () @trusted { return cast(ChannelImpl)this; } ();
+			if (--thisus.m_refCount == 0)
+				destroy = true;
+		}
+
+		if (destroy) {
+			try () @trusted {
+				Mallocator.instance.disposeGCSafe(m_condition);
+				Mallocator.instance.disposeGCSafe(m_mutex);
+			} ();
 			catch (Exception e) assert(false);
 		}
 	}

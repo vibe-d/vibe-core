@@ -204,7 +204,7 @@ void moveFile(NativePath from, NativePath to, bool copy_fallback = false)
 /// ditto
 void moveFile(string from, string to, bool copy_fallback = false)
 {
-	auto fail = performInWorker((string from, string to) {
+	auto fail = performInIOWorker((string from, string to) {
 		try {
 			std.file.rename(from, to);
 		} catch (Exception e) {
@@ -287,7 +287,7 @@ void removeFile(NativePath path)
 /// ditto
 void removeFile(string path)
 {
-	auto fail = performInWorker((string path) {
+	auto fail = performInIOWorker((string path) {
 		try {
 			std.file.remove(path);
 		} catch (Exception e) {
@@ -309,7 +309,7 @@ bool existsFile(NativePath path) nothrow
 /// ditto
 bool existsFile(string path) nothrow
 {
-	try return performInWorker((string p) => std.file.exists(p), path);
+	try return performInIOWorker((string p) => std.file.exists(p), path);
 	catch (Exception e) {
 		logDebug("Failed to determine file existence for '%s': %s", path, e.msg);
 		return false;
@@ -329,7 +329,7 @@ FileInfo getFileInfo(string path)
 {
 	import std.typecons : tuple;
 
-	auto ret = performInWorker((string p) {
+	auto ret = performInIOWorker((string p) {
 		try {
 			auto ent = DirEntry(p);
 			return tuple(makeFileInfo(ent), "");
@@ -428,7 +428,7 @@ void createDirectory(NativePath path, Flag!"recursive" recursive)
 /// ditto
 void createDirectory(string path, Flag!"recursive" recursive = No.recursive)
 {
-	auto fail = performInWorker((string p, bool rec) {
+	auto fail = performInIOWorker((string p, bool rec) {
 		try {
 			if (rec) mkdirRecurse(p);
 			else mkdir(p);
@@ -472,7 +472,7 @@ void listDirectory(NativePath path, DirectoryListMode mode,
 	req.directoryPredicate = directory_predicate;
 
 	// NOTE: working around bogus "assigning scope variable warning on DMD 2.101.2 here with @trusted
-	ioWorkerTaskPool.runTask(ioTaskSettings, &performListDirectory, () @trusted { return req; } ());
+	ioWorkerTaskPool.runTask(&performListDirectory, () @trusted { return req; } ());
 
 	ListDirectoryData itm;
 	while (req.channel.tryConsumeOne(itm)) {
@@ -1026,32 +1026,11 @@ unittest {
 }
 
 
-private auto performInWorker(C, ARGS...)(C callable, auto ref ARGS args)
+private auto performInIOWorker(C, ARGS...)(C callable, auto ref ARGS args)
 {
-	version (none) {
-		import vibe.core.concurrency : asyncWork;
-		return asyncWork(callable, args).getResult();
-	} else {
-		import vibe.core.core : ioWorkerTaskPool;
-		import core.atomic : atomicFence;
-		import std.concurrency : Tid, send, receiveOnly, thisTid;
-
-		struct R {}
-
-		alias RET = typeof(callable(args));
-		shared(RET) ret;
-		ioWorkerTaskPool.runTask(ioTaskSettings, (shared(RET)* r, Tid caller, C c, ref ARGS a) nothrow {
-			*() @trusted { return cast(RET*)r; } () = c(a);
-			// Just as a precaution, because ManualEvent is not well defined in
-			// terms of fence semantics
-			atomicFence();
-			try caller.send(R.init);
-			catch (Exception e) assert(false, e.msg);
-		}, () @trusted { return &ret; } (), thisTid, callable, args);
-		() @trusted { receiveOnly!R(); } ();
-		atomicFence();
-		return ret;
-	}
+	import vibe.core.concurrency : performInWorker;
+	import vibe.core.core : ioWorkerTaskPool;
+	return performInWorker(ioWorkerTaskPool, callable, args);
 }
 
 private void performListDirectory(ListDirectoryRequest req)
@@ -1260,8 +1239,6 @@ version (Posix) {
 			enum AT_SYMLINK_NOFOLLOW = 0x0100;
 	}
 }
-
-private immutable TaskSettings ioTaskSettings = { priority: 20 * Task.basePriority };
 
 private struct ListDirectoryData {
 	FileInfo info;

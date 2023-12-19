@@ -458,6 +458,38 @@ unittest { // ensure task.running is true directly after runTask
 	assert(hit);
 }
 
+unittest {
+	import core.atomic : atomicOp;
+
+	static struct S {
+		shared(int)* rc;
+		this(this) @safe nothrow { if (rc) atomicOp!"+="(*rc, 1); }
+		~this() @safe nothrow { if (rc) atomicOp!"-="(*rc, 1); }
+	}
+
+	S s;
+	s.rc = new int;
+	*s.rc = 1;
+
+	runTask((ref S sc) {
+		auto rc = sc.rc;
+		assert(*rc == 2);
+		sc = S.init;
+		assert(*rc == 1);
+	}, s).joinUninterruptible();
+
+	assert(*s.rc == 1);
+
+	runWorkerTaskH((ref S sc) {
+		auto rc = sc.rc;
+		assert(*rc == 2);
+		sc = S.init;
+		assert(*rc == 1);
+	}, s).joinUninterruptible();
+
+	assert(*s.rc == 1);
+}
+
 
 /**
 	Runs a new asynchronous task in a worker thread.
@@ -1752,13 +1784,8 @@ package @property ref TaskScheduler taskScheduler() @safe nothrow @nogc { return
 package void recycleFiber(TaskFiber fiber)
 @safe nothrow {
 	if (s_availableFibers.length >= s_maxRecycledFibers) {
-		auto fl = s_availableFibers.front;
-		s_availableFibers.popFront();
-		fl.shutdown();
-		() @trusted {
-			try destroy(fl);
-			catch (Exception e) logWarn("Failed to destroy fiber: %s", e.msg);
-		} ();
+		fiber.shutdown();
+		return;
 	}
 
 	if (s_availableFibers.full)
@@ -1889,10 +1916,8 @@ static ~this()
 		shutdownWorkerPool();
 	}
 
-	foreach (f; s_availableFibers) {
+	foreach (f; s_availableFibers)
 		f.shutdown();
-		destroy(f);
-	}
 
 	ManualEvent.freeThreadResources();
 
