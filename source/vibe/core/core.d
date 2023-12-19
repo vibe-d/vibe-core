@@ -1755,10 +1755,6 @@ package void recycleFiber(TaskFiber fiber)
 		auto fl = s_availableFibers.front;
 		s_availableFibers.popFront();
 		fl.shutdown();
-		() @trusted {
-			try destroy(fl);
-			catch (Exception e) logWarn("Failed to destroy fiber: %s", e.msg);
-		} ();
 	}
 
 	if (s_availableFibers.full)
@@ -1889,10 +1885,8 @@ static ~this()
 		shutdownWorkerPool();
 	}
 
-	foreach (f; s_availableFibers) {
+	foreach (f; s_availableFibers)
 		f.shutdown();
-		destroy(f);
-	}
 
 	ManualEvent.freeThreadResources();
 
