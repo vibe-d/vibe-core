@@ -509,7 +509,8 @@ final package class TaskFiber : Fiber {
 				debug assert(Thread.getThis() is m_thread, "Fiber moved between threads!?");
 
 				// make the fiber available for the next task
-				recycleFiber(this);
+				if (!recycleFiber(this))
+					return;
 			}
 		} catch (UncaughtException th) {
 			th.logException("CoreTaskFiber was terminated unexpectedly");
@@ -555,7 +556,7 @@ final package class TaskFiber : Fiber {
 				try call(Fiber.Rethrow.no);
 				catch (Exception e) assert(false, e.msg);
 			} ();
-		}
+	}
 
 	/** Blocks until the task has ended.
 	*/

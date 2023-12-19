@@ -1781,17 +1781,31 @@ private bool getExitFlag()
 package @property bool isEventLoopRunning() @safe nothrow @nogc { return s_eventLoopRunning; }
 package @property ref TaskScheduler taskScheduler() @safe nothrow @nogc { return s_scheduler; }
 
-package void recycleFiber(TaskFiber fiber)
+package bool recycleFiber(TaskFiber fiber)
 @safe nothrow {
-	if (s_availableFibers.length >= s_maxRecycledFibers) {
-		fiber.shutdown();
-		return;
-	}
+	if (s_availableFibers.length >= s_maxRecycledFibers)
+		return false;
 
 	if (s_availableFibers.full)
 		s_availableFibers.capacity = 2 * s_availableFibers.capacity;
 
 	s_availableFibers.put(fiber);
+	return true;
+}
+
+@safe nothrow unittest { // check fiber recycling and recycling overflow
+	auto tasks = new Task[](s_maxRecycledFibers+1);
+	foreach (i; 0 .. 2) {
+		int nrunning = 0;
+		bool all_running = false;
+		foreach (ref t; tasks) t = runTask({
+			if (++nrunning == tasks.length) all_running = true;
+			while (!all_running)
+				yieldUninterruptible();
+			nrunning--;
+		});
+		foreach (t; tasks) t.joinUninterruptible();
+	}
 }
 
 private void setupSignalHandlers()
