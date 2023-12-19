@@ -1,3 +1,11 @@
+2.7.1 - 2023-12-19
+==================
+
+- Fixed a regression introduced in 2.7.1 that caused a crash after using more than 100 concurrent fibers in a single thread - [issue376][pull #376]
+
+[issue376]: https://github.com/vibe-d/vibe-core/issues/issue376
+
+
 2.7.0 - 2023-12-19
 ==================
 
