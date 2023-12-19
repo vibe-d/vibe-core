@@ -1,3 +1,20 @@
+2.7.0 - 2023-12-19
+==================
+
+- Added `PipeConfig` for advanced `pipe()` behavior configuration - [issue371][pull #371]
+- Added `vibe.core.concurrency.performInWorker` - [issue374][pull #374]
+- Removed an assertion that failed at process exit when leaking `ManualEvent`/`TaskCondition` to the GC - [issue373][pull #373]
+- Fixed a potential crash at process shutdown when leaking a `Channel!T` to the GC - [issue374][pull #374]
+- Fixed uneven scheduling of worker tasks - [issue372][pull #372]
+- Fixed a regression introduced by 2.6.0 causing rare crashes at process exit - [issue374][pull #374]
+- Fixed an issue where hidden argument ownership in `runWorkerTaskH` resulted in a resource leak - [issue374][pull #374]
+
+[issue371]: https://github.com/vibe-d/vibe-core/issues/issue371
+[issue372]: https://github.com/vibe-d/vibe-core/issues/issue372
+[issue373]: https://github.com/vibe-d/vibe-core/issues/issue373
+[issue374]: https://github.com/vibe-d/vibe-core/issues/issue374
+
+
 2.6.0 - 2023-12-14
 ==================
 
