@@ -475,6 +475,13 @@ void listDirectory(NativePath path, DirectoryListMode mode,
 	ioWorkerTaskPool.runTask(&performListDirectory, () @trusted { return req; } ());
 
 	ListDirectoryData itm;
+
+	scope (exit) {
+		// makes sure that the directory handle is closed before returning
+		req.channel.close();
+		while (!req.channel.empty) req.channel.tryConsumeOne(itm);
+	}
+
 	while (req.channel.tryConsumeOne(itm)) {
 		if (itm.error.length)
 			throw new Exception(itm.error);
@@ -1068,6 +1075,7 @@ private void performListDirectory(ListDirectoryRequest req)
 				null, 2/*FIND_FIRST_EX_LARGE_FETCH*/);
 			wenforce(fh != INVALID_HANDLE_VALUE, path.toString);
 			scope (exit) FindClose(fh);
+
 			do {
 				// skip non-directories if requested
 				if (dirs_only && !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
