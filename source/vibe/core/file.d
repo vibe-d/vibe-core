@@ -475,6 +475,13 @@ void listDirectory(NativePath path, DirectoryListMode mode,
 	ioWorkerTaskPool.runTask(&performListDirectory, () @trusted { return req; } ());
 
 	ListDirectoryData itm;
+
+	scope (exit) {
+		// makes sure that the directory handle is closed before returning
+		req.channel.close();
+		while (!req.channel.empty) req.channel.tryConsumeOne(itm);
+	}
+
 	while (req.channel.tryConsumeOne(itm)) {
 		if (itm.error.length)
 			throw new Exception(itm.error);
