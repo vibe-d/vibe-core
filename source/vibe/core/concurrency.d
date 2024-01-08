@@ -1272,7 +1272,8 @@ ReturnType!CALLABLE performInWorker(CALLABLE, ARGS...)
 	static struct CTX {
 		CALLABLE callable;
 		ARGS args;
-		ReturnType!CALLABLE result;
+		static if (!is(ReturnType!CALLABLE == void))
+			ReturnType!CALLABLE result;
 		shared(Mutex) mutex;
 		shared(TaskCondition) condition;
 		bool done;
@@ -1287,10 +1288,13 @@ ReturnType!CALLABLE performInWorker(CALLABLE, ARGS...)
 	// start worker task
 	pool.runTask((shared(CTX)* ctx_) nothrow {
 		auto ctx = () @trusted { return cast(CTX*)ctx_; } ();
-		auto res = ctx.callable(ctx.args);
+		static if (!is(ReturnType!CALLABLE == void))
+			auto res = ctx.callable(ctx.args);
+		else ctx.callable(ctx.args);
 		{
 			auto l = scopedMutexLock(ctx.mutex);
-			ctx.result = res;
+			static if (!is(ReturnType!CALLABLE == void))
+				ctx.result = res;
 			ctx.done = true;
 			ctx.condition.notifyAll();
 		}
@@ -1314,7 +1318,8 @@ ReturnType!CALLABLE performInWorker(CALLABLE, ARGS...)
 		GC.free(cast(void*)ctx.mutex);
 	} ();
 
-	return ctx.result;
+	static if (!is(ReturnType!CALLABLE == void))
+		return ctx.result;
 }
 
 ///
@@ -1354,6 +1359,29 @@ ReturnType!CALLABLE performInWorker(CALLABLE, ARGS...)
 
 	// make sure our background task also finishes
 	t.join();
+}
+
+@safe unittest {
+	import vibe.core.core : runTask, sleepUninterruptible;
+	import vibe.core.log : logInfo;
+
+	auto tms = MonoTime.currTime();
+
+	// perform some heavy CPU work in a worker thread, while the background task
+	// continues to run unaffected
+	performInWorker((long start_value) {
+		auto tm = MonoTime.currTime;
+		long res = start_value;
+		// simulate some CPU workload for 50 ms
+		while (MonoTime.currTime - tm < 50.msecs) {
+			res++;
+			res *= res;
+			if (!res) res++;
+		}
+	}, 1234);
+
+	// ensure performInWorker only returns after the workload has been processed
+	assert(MonoTime.currTime - tms >= 50.msecs);
 }
 
 
