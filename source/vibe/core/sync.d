@@ -1354,6 +1354,13 @@ struct ManualEvent {
 
 	@disable this(this);
 
+	private bool canBeFreed()
+	shared nothrow {
+		import core.memory : GC;
+		if (GC.inFinalizer) return true;
+		return m_waiters.lock.active.empty;
+	}
+
 	private void initialize()
 	shared nothrow {
 		m_waiters.initialize(new shared Mutex);
@@ -1934,7 +1941,7 @@ private struct TaskMutexImpl(bool INTERRUPTIBLE) {
 		shared(bool) m_locked = false;
 		shared(uint) m_waiters = 0;
 		shared(ManualEvent) m_signal;
-		debug Task m_owner;
+		debug align(16) shared Task m_owner;
 	}
 
 	shared:
@@ -1947,7 +1954,10 @@ private struct TaskMutexImpl(bool INTERRUPTIBLE) {
 	@trusted bool tryLock()
 	nothrow {
 		if (cas(&m_locked, false, true)) {
-			debug m_owner = Task.getThis();
+			debug {
+				auto swapped = cas(&m_owner, Task.init, Task.getThis());
+				assert(swapped);
+			}
 			debug(VibeMutexLog) logTrace("mutex %s lock %s", cast(void*)&this, atomicLoad(m_waiters));
 			return true;
 		}
@@ -1957,7 +1967,11 @@ private struct TaskMutexImpl(bool INTERRUPTIBLE) {
 	@trusted bool lock(Duration timeout = Duration.max)
 	{
 		if (tryLock()) return true;
-		debug assert(m_owner == Task() || m_owner != Task.getThis(), "Recursive mutex lock.");
+		debug {
+			auto thist = Task.getThis();
+			auto owner = atomicLoad(m_owner);
+			assert(owner == Task.init || owner != thist, "Recursive mutex lock.");
+		}
 		atomicOp!"+="(m_waiters, 1);
 		debug(VibeMutexLog) logTrace("mutex %s wait %s", cast(void*)&this, atomicLoad(m_waiters));
 		scope(exit) atomicOp!"-="(m_waiters, 1);
@@ -1979,8 +1993,9 @@ private struct TaskMutexImpl(bool INTERRUPTIBLE) {
 	{
 		assert(m_locked);
 		debug {
-			assert(m_owner == Task.getThis());
-			m_owner = Task();
+			auto thist = Task.getThis();
+			auto swapped = cas(&m_owner, thist, Task());
+			assert(swapped);
 		}
 		atomicStore!(MemoryOrder.rel)(m_locked, false);
 		debug(VibeMutexLog) logTrace("mutex %s unlock %s", cast(void*)&this, atomicLoad(m_waiters));
@@ -2085,6 +2100,12 @@ private struct TaskConditionImpl(bool INTERRUPTIBLE, LOCKABLE) {
 	}
 
 	@disable this(this);
+
+	~this()
+	nothrow {
+		assert(m_signal.canBeFreed());
+		destroy(m_signal);
+	}
 
 	shared:
 
