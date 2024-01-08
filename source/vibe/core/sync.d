@@ -1354,6 +1354,13 @@ struct ManualEvent {
 
 	@disable this(this);
 
+	private bool canBeFreed()
+	shared nothrow {
+		import core.memory : GC;
+		if (GC.inFinalizer) return true;
+		return m_waiters.lock.active.empty;
+	}
+
 	private void initialize()
 	shared nothrow {
 		m_waiters.initialize(new shared Mutex);
@@ -1934,7 +1941,7 @@ private struct TaskMutexImpl(bool INTERRUPTIBLE) {
 		shared(bool) m_locked = false;
 		shared(uint) m_waiters = 0;
 		shared(ManualEvent) m_signal;
-		debug shared Task m_owner;
+		debug align(16) shared Task m_owner;
 	}
 
 	shared:
@@ -2093,6 +2100,12 @@ private struct TaskConditionImpl(bool INTERRUPTIBLE, LOCKABLE) {
 	}
 
 	@disable this(this);
+
+	~this()
+	nothrow {
+		assert(m_signal.canBeFreed());
+		destroy(m_signal);
+	}
 
 	shared:
 
