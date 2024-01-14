@@ -48,7 +48,7 @@ ulong pipe(InputStream, OutputStream)(scope InputStream source, scope OutputStre
 	ulong nbytes, PipeConfig config) @blocking @trusted
 	if (isOutputStream!OutputStream && isInputStream!InputStream)
 {
-	import vibe.internal.allocator : theAllocator, makeArray, dispose;
+	import vibe.internal.allocator : Mallocator, makeArray, dispose;
 	import vibe.core.core : runTask;
 	import vibe.core.sync : LocalManualEvent, createManualEvent;
 	import vibe.core.task : InterruptException;
@@ -58,8 +58,8 @@ ulong pipe(InputStream, OutputStream)(scope InputStream source, scope OutputStre
 	final switch (config.mode) {
 		case PipeMode.sequential:
 			{
-				scope buffer = cast(ubyte[]) theAllocator.allocate(config.initialBufferSize);
-				scope (exit) theAllocator.dispose(buffer);
+				scope buffer = cast(ubyte[]) Mallocator.instance.allocate(config.initialBufferSize);
+				scope (exit) Mallocator.instance.dispose(buffer);
 
 				ulong ret = 0;
 
@@ -148,8 +148,8 @@ ulong pipe(InputStream, OutputStream)(scope InputStream source, scope OutputStre
 					}
 				}
 
-				scope buffer = cast(ubyte[]) theAllocator.allocate(bufcount * bufsize);
-				scope (exit) theAllocator.dispose(buffer);
+				scope buffer = cast(ubyte[]) Mallocator.instance.allocate(bufcount * bufsize);
+				scope (exit) Mallocator.instance.dispose(buffer);
 
 				ConcurrentPipeState state;
 				state.initialBufferSize = config.initialBufferSize;
