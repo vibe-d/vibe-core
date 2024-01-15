@@ -1,3 +1,13 @@
+2.7.2 - 2024-01-15
+==================
+
+- `performInWorker` now compiles for callbacks returning `void` - [pull #377][issue377]
+- Fixed a possible assertion failure in `TaskMutex` caused by a race condition in debug mode - [pull #378][issue378]
+- `pipe` now avoids using the GC for buffer allocations in order to avoid pseudo memory leaks - [pull #381][issue381]
+
+[issue376]: https://github.com/vibe-d/vibe-core/issues/issue376
+
+
 2.7.1 - 2023-12-19
 ==================
 
