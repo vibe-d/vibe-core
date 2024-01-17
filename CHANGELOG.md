@@ -1,3 +1,9 @@
+2.7.2 - 2024-01-17
+==================
+
+- Fixed a crash that could happen when a `ManualEvent` is still in waiting state at runtime shutdown
+
+
 2.7.2 - 2024-01-15
 ==================
 
