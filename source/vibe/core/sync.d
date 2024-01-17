@@ -1806,8 +1806,7 @@ private final class ThreadLocalWaiter(bool EVENT_TRIGGERED) {
 					// this can happen when tasks/threads have not been properly
 					// shut down before application exit
 					if (!GC.inFinalizer()) abort();
-				}
-				m_driver.events.releaseRef(m_event);
+				} else m_driver.events.releaseRef(m_event);
 				m_event = EventID.invalid;
 			}
 		}
