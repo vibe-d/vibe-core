@@ -45,11 +45,11 @@ struct AllocAppender(ArrayType : E[], E) {
 	private {
 		ElemType[] m_data;
 		ElemType[] m_remaining;
-		IAllocator m_alloc;
+		VibeAllocator m_alloc;
 		bool m_allocatedBuffer = false;
 	}
 
-	this(IAllocator alloc, ElemType[] initial_buffer = null)
+	this(VibeAllocator alloc, ElemType[] initial_buffer = null)
 	@safe {
 		m_alloc = alloc;
 		m_data = initial_buffer;
