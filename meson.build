@@ -7,8 +7,8 @@ project(
 
 subdir('source/vibe')
 
-eventcore_dep = subproject('eventcore').get_variable('eventcore_dep')
-stdx_allocator_dep = subproject('stdx-allocator').get_variable('allocator_dep')
+eventcore_dep = dependency('eventcore', fallback : ['eventcore', 'eventcore_dep'])
+stdx_allocator_dep = dependency('stdx-allocator', fallback : ['stdx-allocator', 'allocator_dep'])
 
 vibe_core_dep = declare_dependency(
     dependencies: [
