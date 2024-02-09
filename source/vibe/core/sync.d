@@ -1141,7 +1141,7 @@ struct LocalManualEvent {
 
 	private void initialize()
 	nothrow {
-		import vibe.internal.allocator : Mallocator, makeGCSafe;
+		import vibe.container.internal.utilallocator : Mallocator, makeGCSafe;
 		m_waiter = () @trusted { return Mallocator.instance.makeGCSafe!Waiter; } ();
 	}
 
@@ -1153,7 +1153,7 @@ struct LocalManualEvent {
 
 	~this()
 	nothrow {
-		import vibe.internal.allocator : Mallocator, disposeGCSafe;
+		import vibe.container.internal.utilallocator : Mallocator, disposeGCSafe;
 		if (m_waiter) {
 			if (!m_waiter.releaseRef()) {
 				static if (__VERSION__ < 2087) scope (failure) assert(false);

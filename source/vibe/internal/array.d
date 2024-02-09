@@ -7,7 +7,7 @@
 */
 module vibe.internal.array;
 
-import vibe.internal.allocator;
+import vibe.container.internal.utilallocator;
 
 import std.algorithm;
 import std.range : isInputRange, isOutputRange;

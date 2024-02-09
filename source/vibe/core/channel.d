@@ -155,7 +155,7 @@ struct Channel(T, size_t buffer_size = 100) {
 
 private final class ChannelImpl(T, size_t buffer_size) {
 	import vibe.core.concurrency : isWeaklyIsolated;
-	import vibe.internal.allocator : Mallocator, makeGCSafe, disposeGCSafe;
+	import vibe.container.internal.utilallocator : Mallocator, makeGCSafe, disposeGCSafe;
 	static assert(isWeaklyIsolated!T, "Channel data type "~T.stringof~" is not safe to pass between threads.");
 
 	private {

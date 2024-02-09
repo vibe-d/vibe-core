@@ -10,7 +10,7 @@
 */
 module vibe.internal.freelistref;
 
-import vibe.internal.allocator;
+import vibe.container.internal.utilallocator;
 import vibe.internal.traits : synchronizedIsNothrow;
 
 import core.exception : OutOfMemoryError;

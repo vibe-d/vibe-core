@@ -5,7 +5,7 @@ copyright "Copyright © 2016-2020, Sönke Ludwig"
 license "MIT"
 
 dependency "eventcore" version="~>0.9.27"
-dependency "vibe-container" version="~>1.0"
+dependency "vibe-container" version=">=1.0.2 <2.0.0-0"
 
 targetName "vibe_core"
 
