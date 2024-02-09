@@ -2,7 +2,7 @@ module vibe.internal.interfaceproxy;
 
 import vibe.internal.traits;
 import vibe.internal.freelistref;
-import vibe.internal.allocator;
+import vibe.container.internal.utilallocator;
 import std.algorithm.mutation : move, swap;
 import std.meta : staticMap;
 import std.traits : BaseTypeTuple;

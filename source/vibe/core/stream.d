@@ -48,7 +48,7 @@ ulong pipe(InputStream, OutputStream)(scope InputStream source, scope OutputStre
 	ulong nbytes, PipeConfig config) @blocking @trusted
 	if (isOutputStream!OutputStream && isInputStream!InputStream)
 {
-	import vibe.internal.allocator : Mallocator, makeArray, dispose;
+	import vibe.container.internal.utilallocator : Mallocator, makeArray, dispose;
 	import vibe.core.core : runTask;
 	import vibe.core.sync : LocalManualEvent, createManualEvent;
 	import vibe.core.task : InterruptException;

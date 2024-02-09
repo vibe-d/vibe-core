@@ -809,7 +809,7 @@ string collectOutput(InputStream)(InputStream stream, size_t nbytes = size_t.max
 		output.reserve(nbytes);
 	}
 
-	import vibe.internal.allocator : theAllocator, dispose;
+	import vibe.container.internal.utilallocator : theAllocator, dispose;
 
 	scope buffer = cast(ubyte[]) theAllocator.allocate(64*1024);
 	scope (exit) theAllocator.dispose(buffer);

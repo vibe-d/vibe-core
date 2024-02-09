@@ -850,7 +850,7 @@ struct TCPConnection {
 		if (isInputStream!InputStream)
 	{
 		import std.algorithm.comparison : min;
-		import vibe.internal.allocator : theAllocator, makeArray, dispose;
+		import vibe.container.internal.utilallocator : theAllocator, makeArray, dispose;
 
 		scope buffer = () @trusted { return cast(ubyte[]) theAllocator.allocate(64*1024); }();
 		scope (exit) () @trusted { theAllocator.dispose(buffer); }();
