@@ -241,7 +241,6 @@ struct LockedConnection(Connection) {
 
 	private {
 		ConnectionPool!Connection m_pool;
-		Task m_task;
 		Connection m_conn;
 		debug uint m_magic = 0xB1345AC2;
 	}
@@ -253,15 +252,12 @@ struct LockedConnection(Connection) {
 		assert(!!conn);
 		m_pool = pool;
 		m_conn = conn;
-		m_task = Task.getThis();
 	}
 
 	this(this)
 	{
 		debug assert(m_magic == 0xB1345AC2, "LockedConnection value corrupted.");
 		if (!!m_conn) {
-			auto fthis = Task.getThis();
-			assert(fthis is m_task);
 			m_pool.m_lockCount[m_conn]++;
 			static if (is(typeof(cast(void*)conn)))
 				logTrace("conn %s copy %d", () @trusted { return cast(void*)m_conn; } (), m_pool.m_lockCount[m_conn]);
@@ -272,8 +268,6 @@ struct LockedConnection(Connection) {
 	{
 		debug assert(m_magic == 0xB1345AC2, "LockedConnection value corrupted.");
 		if (!!m_conn) {
-			auto fthis = Task.getThis();
-			assert(fthis is m_task, "Locked connection destroyed in foreign task.");
 			auto plc = m_conn in m_pool.m_lockCount;
 			assert(plc !is null);
 			assert(*plc != 0);
