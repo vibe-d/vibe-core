@@ -1,4 +1,12 @@
-2.7.2 - 2024-01-17
+2.7.4 - 2024-02-12
+==================
+
+- Removed an assertion in `LockedConnection` that could be triggered from valid code - [pull #384][issue384]
+
+[issue384]: https://github.com/vibe-d/vibe-core/issues/issue384
+
+
+2.7.3 - 2024-01-17
 ==================
 
 - Fixed a crash that could happen when a `ManualEvent` is still in waiting state at runtime shutdown
