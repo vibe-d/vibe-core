@@ -302,17 +302,13 @@ struct FixedRingBuffer(T, size_t N = 0, bool INITIALIZE = true) {
 	}
 
 	static if( N == 0 ){
-		bool m_freeOnDestruct;
 		this(size_t capacity) { m_buffer = new T[capacity]; }
 		~this()
 		{
 			if (m_buffer.length > 0) {
-				if (m_freeOnDestruct) deleteCompat(m_buffer);
-				else {
-					static if (hasElaborateDestructor!T) {
-						foreach (i; 0 .. m_fill)
-							destroy(m_buffer[mod(m_start + i)]);
-					}
+				static if (hasElaborateDestructor!T) {
+					foreach (i; 0 .. m_fill)
+						destroy(m_buffer[mod(m_start + i)]);
 				}
 			}
 		}
@@ -329,8 +325,6 @@ struct FixedRingBuffer(T, size_t N = 0, bool INITIALIZE = true) {
 	@property size_t capacity() const { return m_buffer.length; }
 
 	static if( N == 0 ){
-		deprecated @property void freeOnDestruct(bool b) { m_freeOnDestruct = b; }
-
 		/// Resets the capacity to zero and explicitly frees the memory for the buffer.
 		void dispose()
 		{
@@ -346,9 +340,6 @@ struct FixedRingBuffer(T, size_t N = 0, bool INITIALIZE = true) {
 				auto dst = newbuffer;
 				auto newfill = min(m_fill, new_size);
 				read(dst[0 .. newfill]);
-				if (m_freeOnDestruct && m_buffer.length > 0) () @trusted {
-					deleteCompat(m_buffer);
-				} ();
 				m_buffer = newbuffer;
 				m_start = 0;
 				m_fill = newfill;
@@ -358,9 +349,9 @@ struct FixedRingBuffer(T, size_t N = 0, bool INITIALIZE = true) {
 		}
 	}
 
-	@property ref inout(T) front() inout { assert(!empty); return m_buffer[m_start]; }
+	@property ref inout(T) front() inout return { assert(!empty); return m_buffer[m_start]; }
 
-	@property ref inout(T) back() inout { assert(!empty); return m_buffer[mod(m_start+m_fill-1)]; }
+	@property ref inout(T) back() inout return { assert(!empty); return m_buffer[mod(m_start+m_fill-1)]; }
 
 	void clear()
 	{
@@ -446,8 +437,8 @@ struct FixedRingBuffer(T, size_t N = 0, bool INITIALIZE = true) {
 		destroy(m_buffer[mod(m_start+m_fill)]); // TODO: only call destroy for non-POD T
 	}
 
-	inout(T)[] peek() inout { return m_buffer[m_start .. min(m_start+m_fill, m_buffer.length)]; }
-	T[] peekDst() {
+	inout(T)[] peek() inout return { return m_buffer[m_start .. min(m_start+m_fill, m_buffer.length)]; }
+	T[] peekDst() return {
 		if (!m_buffer.length) return null;
 		if( m_start + m_fill < m_buffer.length ) return m_buffer[m_start+m_fill .. $];
 		else return m_buffer[mod(m_start+m_fill) .. m_start];
@@ -513,12 +504,12 @@ struct FixedRingBuffer(T, size_t N = 0, bool INITIALIZE = true) {
 		return 0;
 	}
 
-	ref inout(T) opIndex(size_t idx) inout { assert(idx < length); return m_buffer[mod(m_start+idx)]; }
+	ref inout(T) opIndex(size_t idx) inout return { assert(idx < length); return m_buffer[mod(m_start+idx)]; }
 
-	Range opSlice() { return Range(m_buffer, m_start, m_fill); }
+	Range opSlice() return { return Range(m_buffer, m_start, m_fill); }
 
 	Range opSlice(size_t from, size_t to)
-	{
+	return {
 		assert(from <= to);
 		assert(to <= m_fill);
 		return Range(m_buffer, mod(m_start+from), to-from);
@@ -555,7 +546,7 @@ struct FixedRingBuffer(T, size_t N = 0, bool INITIALIZE = true) {
 
 		@property bool empty() const { return m_length == 0; }
 
-		@property ref inout(T) front() inout { assert(!empty); return m_buffer[m_start]; }
+		@property ref inout(T) front() inout return { assert(!empty); return m_buffer[m_start]; }
 
 		void popFront()
 		{
