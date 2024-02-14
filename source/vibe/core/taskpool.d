@@ -437,12 +437,12 @@ private struct TaskQueue {
 nothrow @safe:
 	// TODO: avoid use of GC
 
-	import vibe.internal.array : FixedRingBuffer;
-	FixedRingBuffer!TaskFuncInfo* m_queue;
+	import vibe.container.ringbuffer : RingBuffer;
+	RingBuffer!TaskFuncInfo* m_queue;
 
 	void setup()
 	{
-		m_queue = new FixedRingBuffer!TaskFuncInfo;
+		m_queue = new RingBuffer!TaskFuncInfo;
 	}
 
 	@property bool empty() const { return m_queue.empty; }
@@ -466,7 +466,7 @@ nothrow @safe:
 
 		if (m_queue.empty) return false;
 		swap(tfi, m_queue.front);
-		m_queue.popFront();
+		m_queue.removeFront();
 		return true;
 	}
 }

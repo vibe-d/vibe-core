@@ -10,6 +10,7 @@ module vibe.core.core;
 public import vibe.core.task;
 
 import eventcore.core;
+import vibe.container.ringbuffer : RingBuffer;
 import vibe.core.args;
 import vibe.core.concurrency;
 import vibe.core.internal.release;
@@ -17,7 +18,6 @@ import vibe.core.log;
 import vibe.core.sync : ManualEvent, createSharedManualEvent;
 import vibe.core.taskpool : TaskPool;
 import vibe.internal.async;
-import vibe.internal.array : FixedRingBuffer;
 //import vibe.utils.array;
 import std.algorithm;
 import std.conv;
@@ -407,7 +407,7 @@ package Task runTask_internal(alias TFI_SETUP)()
 	TaskFiber f;
 	while (!f && !s_availableFibers.empty) {
 		f = s_availableFibers.back;
-		s_availableFibers.popBack();
+		s_availableFibers.removeBack();
 		if (() @trusted nothrow { return f.state; } () != Fiber.State.HOLD) f = null;
 	}
 
@@ -1765,7 +1765,7 @@ private {
 	bool delegate() @safe nothrow s_idleHandler;
 
 	TaskScheduler s_scheduler;
-	FixedRingBuffer!TaskFiber s_availableFibers;
+	RingBuffer!TaskFiber s_availableFibers;
 	size_t s_maxRecycledFibers = 100;
 
 	string s_privilegeLoweringUserName;
