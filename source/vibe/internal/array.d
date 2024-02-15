@@ -185,7 +185,7 @@ struct AllocAppender(ArrayType : E[], E) {
 		reserve(new_size - m_data.length + m_remaining.length);
 	}
 
-	private auto withAlloc(string method, ARGS...)(ARGS args)
+	private auto withAlloc(string method, ARGS...)(auto ref ARGS args)
 	{
 		static if (is(RCIAllocator)) {
 			if (!m_rcAlloc.isNull) return __traits(getMember, m_rcAlloc, method)(args);
@@ -250,6 +250,14 @@ unittest {
 		return 3;
 	});
 	assert(app.data == "foo");
+}
+
+unittest {
+	auto app = AllocAppender!string(theAllocator);
+	app.reserve(3);
+	app.put("foo");
+	app.put("bar");
+	assert(app.data == "foobar");
 }
 
 
