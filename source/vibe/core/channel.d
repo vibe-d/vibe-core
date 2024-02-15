@@ -6,6 +6,7 @@
 */
 module vibe.core.channel;
 
+import vibe.container.ringbuffer : RingBuffer;
 import vibe.core.sync : TaskCondition;
 import vibe.internal.array : FixedRingBuffer;
 
@@ -135,10 +136,20 @@ struct Channel(T, size_t buffer_size = 100) {
 		If the `empty` property is or becomes `true` before data becomes
 		avaiable, `dst` will be left untouched and `false` is returned.
 	*/
+	bool consumeAll(ref RingBuffer!(T, buffer_size) dst)
+		in { assert(dst.empty); }
+		do { return m_impl.consumeAll(dst); }
+	/// ditto
+	bool consumeAll(ref RingBuffer!(T, buffer_size) dst) shared
+		in { assert(dst.empty); }
+		do { return m_impl.consumeAll(dst); }
+	/// ditto
+	deprecated("Pass a reference to `vibe.container.ringbuffer.RingBuffer` instead.")
 	bool consumeAll(ref FixedRingBuffer!(T, buffer_size) dst)
 		in { assert(dst.empty); }
 		do { return m_impl.consumeAll(dst); }
 	/// ditto
+	deprecated("Pass a reference to `vibe.container.ringbuffer.RingBuffer` instead.")
 	bool consumeAll(ref FixedRingBuffer!(T, buffer_size) dst) shared
 		in { assert(dst.empty); }
 		do { return m_impl.consumeAll(dst); }
@@ -161,7 +172,7 @@ private final class ChannelImpl(T, size_t buffer_size) {
 	private {
 		Mutex m_mutex;
 		TaskCondition m_condition;
-		FixedRingBuffer!(T, buffer_size) m_items;
+		RingBuffer!(T, buffer_size) m_items;
 		bool m_closed = false;
 		ChannelConfig m_config;
 		int m_refCount = 1;
@@ -260,7 +271,7 @@ private final class ChannelImpl(T, size_t buffer_size) {
 				need_notify = thisus.m_items.full;
 
 			move(thisus.m_items.front, dst);
-			thisus.m_items.popFront();
+			thisus.m_items.removeFront();
 
 			if (m_config.priority == ChannelPriority.overhead)
 				need_notify = thisus.m_items.empty;
@@ -284,7 +295,19 @@ private final class ChannelImpl(T, size_t buffer_size) {
 		return ret;
 	}
 
+	deprecated
 	bool consumeAll(ref FixedRingBuffer!(T, buffer_size) dst)
+	shared nothrow {
+		RingBuffer!(T, buffer_size) tmp;
+		if (!consumeAll(tmp))
+			return false;
+		dst.clear();
+		foreach (ref el; tmp[])
+			dst.put(el.move);
+		return true;
+	}
+
+	bool consumeAll(ref RingBuffer!(T, buffer_size) dst)
 	shared nothrow {
 		auto thisus = () @trusted { return cast(ChannelImpl)this; } ();
 		bool need_notify = false;
@@ -378,6 +401,31 @@ deprecated @safe unittest { // test basic operation and non-copyable struct comp
 	ch.put(S(4));
 	ch.put(S(5));
 	{
+		RingBuffer!(S, 100) buf;
+		ch.consumeAll(buf);
+		assert(buf.length == 2);
+		assert(buf[0].i == 4);
+		assert(buf[1].i == 5);
+	}
+	ch.put(S(2));
+	ch.close();
+	assert(ch.tryConsumeOne(v) && v.i == 2);
+	assert(!ch.tryConsumeOne(v));
+}
+
+deprecated @safe unittest { // test basic operation and non-copyable struct compatiblity
+	static struct S {
+		int i;
+		@disable this(this);
+	}
+
+	auto ch = createChannel!S;
+	S v;
+	ch.put(S(1));
+	assert(ch.tryConsumeOne(v) && v == S(1));
+	ch.put(S(4));
+	ch.put(S(5));
+	{
 		FixedRingBuffer!(S, 100) buf;
 		ch.consumeAll(buf);
 		assert(buf.length == 2);
@@ -409,6 +457,26 @@ deprecated @safe unittest { // make sure shared(Channel!T) can also be used
 }
 
 @safe unittest { // ensure nothrow'ness for throwing struct
+	static struct S {
+		this(this) { throw new Exception("meh!"); }
+	}
+	auto ch = createChannel!S;
+	ch.put(S.init);
+	ch.put(S.init);
+
+	S s;
+	RingBuffer!(S, 100, true) sb;
+
+	() nothrow {
+		assert(ch.tryConsumeOne(s));
+		assert(ch.consumeAll(sb));
+		assert(sb.length == 1);
+		ch.close();
+		assert(!ch.tryConsumeOne(s));
+	} ();
+}
+
+deprecated @safe unittest { // ensure nothrow'ness for throwing struct
 	static struct S {
 		this(this) { throw new Exception("meh!"); }
 	}
