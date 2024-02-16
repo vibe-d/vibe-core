@@ -36,6 +36,7 @@ shared final class TaskPool {
 
 		Params:
 			thread_count = The number of worker threads to create
+			thread_name_prefix = Optional prefix to use for thread names
 	*/
 	this(size_t thread_count = logicalProcessorCount(), string thread_name_prefix = "vibe")
 	@safe nothrow {

@@ -1242,7 +1242,7 @@ Future!(ReturnType!CALLABLE) asyncWork(CALLABLE, ARGS...)(CALLABLE callable, ARG
 	Params:
 		pool = Optional task pool instance to use, uses the default worker pool by default
 		callable = Function or function-like object to call - must be weakly isolated and `nothrow`
-		args = Arguments to pass to callable - must be weakly isolated
+		arguments = Arguments to pass to callable - must be weakly isolated
 
 	See_also: `isWeaklyIsolated`, `asyncWork`
 */
