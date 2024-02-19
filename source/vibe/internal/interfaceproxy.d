@@ -11,14 +11,14 @@ import std.traits : BaseTypeTuple;
 O asInterface(I, O)(O obj) if (is(I == interface) && is(O : I)) { return obj; }
 InterfaceProxyClass!(I, O) asInterface(I, O)(O obj) if (is(I == interface) && !is(O : I)) { return new InterfaceProxyClass!(I, O)(obj); }
 
-InterfaceProxyClass!(I, O) asInterface(I, O)(O obj, IAllocator allocator)
+InterfaceProxyClass!(I, O) asInterface(I, O, Allocator)(O obj, Allocator allocator)
 @trusted if (is(I == interface) && !is(O : I))
 {
 	alias R = InterfaceProxyClass!(I, O);
 	return allocator.makeGCSafe!R(obj);
 }
 
-void freeInterface(I, O)(InterfaceProxyClass!(I, O) inst, IAllocator allocator)
+void freeInterface(I, O, Allocator)(InterfaceProxyClass!(I, O) inst, Allocator allocator)
 {
 	allocator.disposeGCSafe(inst);
 }
