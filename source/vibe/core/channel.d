@@ -65,8 +65,8 @@ struct Channel(T, size_t buffer_size = 100) {
 
 	private shared(ChannelImpl!(T, buffer_size)) m_impl;
 
-	this(this) @safe { if (m_impl) m_impl.addRef(); }
-	~this() @safe { if (m_impl) m_impl.releaseRef(); }
+	this(this) scope @safe { if (m_impl) m_impl.addRef(); }
+	~this() scope @safe { if (m_impl) m_impl.releaseRef(); }
 
 	/** Determines whether there is more data to read in a single-reader scenario.
 
