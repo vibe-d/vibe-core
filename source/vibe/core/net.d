@@ -549,13 +549,13 @@ struct TCPConnection {
 	}
 
 	this(this)
-	nothrow {
+	scope nothrow {
 		if (m_socket != StreamSocketFD.invalid)
 			eventDriver.sockets.addRef(m_socket);
 	}
 
 	~this()
-	nothrow {
+	scope nothrow {
 		if (m_socket != StreamSocketFD.invalid && m_context && m_context.driver)
 			.releaseHandle!"sockets"(m_socket, m_context.driver);
 	}
@@ -1007,13 +1007,13 @@ struct UDPConnection {
 
 
 	this(this)
-	nothrow {
+	scope nothrow {
 		if (m_socket != DatagramSocketFD.invalid)
 			eventDriver.sockets.addRef(m_socket);
 	}
 
 	~this()
-	nothrow {
+	scope nothrow {
 		if (m_socket != DatagramSocketFD.invalid)
 			releaseHandle!"sockets"(m_socket, m_context.driver);
 	}
