@@ -465,7 +465,7 @@ void listDirectory(NativePath path, DirectoryListMode mode,
 	ChannelConfig cc;
 	cc.priority = ChannelPriority.overhead;
 
-	ListDirectoryRequest req;
+	scope ListDirectoryRequest req;
 	req.path = path;
 	req.channel = createChannel!ListDirectoryData(cc);
 	req.spanMode = mode;
