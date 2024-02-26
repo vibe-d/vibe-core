@@ -175,7 +175,13 @@ FileStream createTempFile(string suffix = null)
 		tmpname ~= suffix;
 		return openFile(tmpname, FileMode.createTrunc);
 	} else {
-		enum pattern ="/tmp/vtmp.XXXXXX";
+		version (iOS) {
+			import std.conv : to;
+			auto tmpstr = NSTemporaryDirectory().UTF8String;
+			string pattern = () @trusted { return tmpstr.to!string; } () ~ "/vtmp.XXXXXX";
+		} else {
+			enum pattern ="/tmp/vtmp.XXXXXX";
+		}
 		scope templ = new char[pattern.length+suffix.length+1];
 		templ[0 .. pattern.length] = pattern;
 		templ[pattern.length .. $-1] = (suffix)[];
@@ -187,6 +193,14 @@ FileStream createTempFile(string suffix = null)
 		return FileStream(efd, NativePath(templ[0 .. $-1].idup), FileMode.createTrunc);
 	}
 }
+
+version (iOS) {
+	private extern(C) NSString NSTemporaryDirectory();
+	private extern extern(Objective-C) class NSString {
+		@property const(char)* UTF8String() @selector("UTF8String");
+	}
+}
+
 
 /**
 	Moves or renames a file.
