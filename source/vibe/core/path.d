@@ -497,6 +497,40 @@ struct GenericPath(F) {
 		return ret;
 	}
 
+	/** Constructs a path from a string which may contain characters that need to be encoded.
+	*/
+	static GenericPath fromUnencodedString(string p) {
+		import std.array : appender;
+		auto dst = appender!string;
+		if (!p.length) {
+			return GenericPath();
+		}
+		string ap = Format.getAbsolutePrefix(p);
+		dst.put(ap);
+		p = p[ap.length..$];
+		while (p.length) {
+			string fn = Format.getFrontNode(p);
+			string efn = Format.isSeparator(fn[$-1])
+				? Format.encodeSegment(fn[0..$-1])
+				: Format.encodeSegment(fn);
+			dst.put(efn);
+			if (Format.isSeparator(fn[$-1])) {
+				dst.put(fn[$-1]);
+			}
+			p = p[fn.length .. $];
+		}
+		return GenericPath(dst[]);
+	}
+
+	///
+	unittest {
+		assert(InetPath.fromUnencodedString("") == InetPath.fromString(""));
+		assert(InetPath.fromUnencodedString("/foo bar") == InetPath.fromString("/foo%20bar"));
+		assert(InetPath.fromUnencodedString("/foo bar/baz") == InetPath.fromString("/foo%20bar/baz"));
+		// As a special case, URL parameters are unmodified.
+		assert(InetPath.fromUnencodedString("/ham/:param") == InetPath.fromString("/ham/:param"));
+	}
+
 	/// Tests if a certain character is a path segment separator.
 	static bool isSeparator(dchar ch) { return ch < 0x80 && Format.isSeparator(cast(char)ch); }
 
@@ -1598,6 +1632,7 @@ struct InetPathFormat {
 	unittest {
 		assert(encodeSegment("foo") == "foo");
 		assert(encodeSegment("foo bar") == "foo%20bar");
+		assert(encodeSegment(":bob") == ":bob");
 	}
 
 	static void encodeSegment(R)(ref R dst, string segment)
