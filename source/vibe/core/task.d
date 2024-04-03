@@ -412,12 +412,45 @@ final package class TaskFiber : Fiber {
 		} catch (Throwable th) {
 			import std.stdio : stderr, writeln;
 			import core.stdc.stdlib : abort;
+			import core.memory : GC;
 			try {
-				stderr.writeln("TaskFiber getting terminated due to an uncaught ", th.classinfo.name);
-				stderr.writeln(th);
+				// On Windows, also show a message box to the user if the
+				// application is interactive and does not have a console
+				// associated
+				version (Windows) {
+					import core.sys.windows.windows : GetConsoleWindow, GetProcessWindowStation,
+						GetUserObjectInformationA, MessageBoxA, MB_ICONERROR, UOI_FLAGS,
+						USEROBJECTFLAGS, WSF_VISIBLE;
+					import std.format : formattedWrite;
+					import vibe.container.internal.appender : BufferOverflowMode, FixedAppender;
+
+					if (!GetConsoleWindow()) {
+						USEROBJECTFLAGS wsf;
+						GetUserObjectInformationA(GetProcessWindowStation(), UOI_FLAGS, &wsf, wsf.sizeof, null);
+						if (wsf.dwFlags & WSF_VISIBLE) {
+							FixedAppender!(char[], 2048, BufferOverflowMode.ignore) msg = void;
+							msg.formattedWrite("%s: %s\r\n\r\n", th.classinfo.name, th.msg);
+							foreach (ln; th.info)
+								msg.formattedWrite("%s\r\n", ln);
+							msg.put('\0');
+							msg.data[msg.data.length-1] = '\0';
+							MessageBoxA(null, msg.data.ptr, "FATAL: Uncaught exception in task fiber", MB_ICONERROR);
+						}
+					}
+				}
+
+				if (GC.inFinalizer) {
+					stderr.writeln("TaskFiber getting terminated due to an uncaught ", th.classinfo.name, ": ", th.msg);
+					foreach (ln; th.info) stderr.writeln(ln);
+				} else {
+					logFatal("TaskFiber getting terminated due to an uncaught %s: %s", th.classinfo.name, th.msg);
+					foreach (ln; th.info) logFatal("%s", ln);
+				}
 			} catch (Exception e) {
-				try stderr.writeln(th.msg);
-				catch (Exception e) {}
+				if (GC.inFinalizer) {
+					try stderr.writeln(th.msg);
+					catch (Exception e) {}
+				} else logFatal("%s", th.msg);
 			}
 			abort();
 		}
