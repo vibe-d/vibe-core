@@ -29,7 +29,7 @@
 
 - Removed an assertion in `LockedConnection` that could be triggered from valid code - [pull #384][issue384]
 
-[issue384]: https://github.com/vibe-d/vibe-core/issues/issue384
+[issue384]: https://github.com/vibe-d/vibe-core/issues/384
 
 
 2.7.3 - 2024-01-17
@@ -45,7 +45,7 @@
 - Fixed a possible assertion failure in `TaskMutex` caused by a race condition in debug mode - [pull #378][issue378]
 - `pipe` now avoids using the GC for buffer allocations in order to avoid pseudo memory leaks - [pull #381][issue381]
 
-[issue376]: https://github.com/vibe-d/vibe-core/issues/issue376
+[issue376]: https://github.com/vibe-d/vibe-core/issues/376
 
 
 2.7.1 - 2023-12-19
@@ -53,7 +53,7 @@
 
 - Fixed a regression introduced in 2.7.1 that caused a crash after using more than 100 concurrent fibers in a single thread - [issue376][pull #376]
 
-[issue376]: https://github.com/vibe-d/vibe-core/issues/issue376
+[issue376]: https://github.com/vibe-d/vibe-core/issues/376
 
 
 2.7.0 - 2023-12-19
@@ -67,10 +67,10 @@
 - Fixed a regression introduced by 2.6.0 causing rare crashes at process exit - [issue374][pull #374]
 - Fixed an issue where hidden argument ownership in `runWorkerTaskH` resulted in a resource leak - [issue374][pull #374]
 
-[issue371]: https://github.com/vibe-d/vibe-core/issues/issue371
-[issue372]: https://github.com/vibe-d/vibe-core/issues/issue372
-[issue373]: https://github.com/vibe-d/vibe-core/issues/issue373
-[issue374]: https://github.com/vibe-d/vibe-core/issues/issue374
+[issue371]: https://github.com/vibe-d/vibe-core/issues/371
+[issue372]: https://github.com/vibe-d/vibe-core/issues/372
+[issue373]: https://github.com/vibe-d/vibe-core/issues/373
+[issue374]: https://github.com/vibe-d/vibe-core/issues/374
 
 
 2.6.0 - 2023-12-14
@@ -80,7 +80,7 @@
 - `TaskPool` now allows to customize thread names - [pull #370][issue370]
 - Added `TaskEvent.schedule` - [pull #370][issue370]
 
-[issue370]: https://github.com/vibe-d/vibe-core/issues/issue370
+[issue370]: https://github.com/vibe-d/vibe-core/issues/370
 
 
 2.5.1 - 2023-11-24
@@ -96,10 +96,10 @@
 - Fixed `TCPConnection.read` to throw a `ReadTimeoutException` (by dushibaiyu) - [pull #359][issue359], [pull #366][issue366]
 - Fixed the behavior of `LocalTaskSemaphore` and made the `priority` argument a type signed - [pull #369][issue369]
 
-[issue359]: https://github.com/vibe-d/vibe-core/issues/issue359
-[issue366]: https://github.com/vibe-d/vibe-core/issues/issue366
-[issue368]: https://github.com/vibe-d/vibe-core/issues/issue368
-[issue369]: https://github.com/vibe-d/vibe-core/issues/issue369
+[issue359]: https://github.com/vibe-d/vibe-core/issues/359
+[issue366]: https://github.com/vibe-d/vibe-core/issues/366
+[issue368]: https://github.com/vibe-d/vibe-core/issues/368
+[issue369]: https://github.com/vibe-d/vibe-core/issues/369
 
 
 2.4.0 - 2023-10-01
@@ -109,8 +109,8 @@
 - Improved debugging `yieldLock` violations - [pull #364][issue364]
 - Now depends on `vibe-container` instead of having to rely on private container implementations - [pull #365][issue365]
 
-[issue364]: https://github.com/vibe-d/vibe-core/issues/issue364
-[issue365]: https://github.com/vibe-d/vibe-core/issues/issue365
+[issue364]: https://github.com/vibe-d/vibe-core/issues/364
+[issue365]: https://github.com/vibe-d/vibe-core/issues/365
 
 
 2.3.0 - 2023-09-29
@@ -121,10 +121,10 @@
 - `workerTaskPool` and `logicalProcessorCount` are now `nothrow` - [pull #361][issue361]
 - Fixed `async()` erroneously running in a worker thread for non-isolated return types - [pull #363][issue363]
 
-[issue360]: https://github.com/vibe-d/vibe-core/issues/issue360
-[issue361]: https://github.com/vibe-d/vibe-core/issues/issue361
-[issue362]: https://github.com/vibe-d/vibe-core/issues/issue362
-[issue363]: https://github.com/vibe-d/vibe-core/issues/issue363
+[issue360]: https://github.com/vibe-d/vibe-core/issues/360
+[issue361]: https://github.com/vibe-d/vibe-core/issues/361
+[issue362]: https://github.com/vibe-d/vibe-core/issues/362
+[issue363]: https://github.com/vibe-d/vibe-core/issues/363
 
 
 2.2.1 - 2023-09-15
@@ -133,8 +133,8 @@
 - Tested up to DMD 2.105.0/LDC 1.34.0
 - Fixes a number of warnings related to `scope`, `in ref` and deprecated APIs - [pull #357][issue357], [pull #358][issue358]
 
-[issue357]: https://github.com/vibe-d/vibe-core/issues/issue357
-[issue358]: https://github.com/vibe-d/vibe-core/issues/issue358
+[issue357]: https://github.com/vibe-d/vibe-core/issues/357
+[issue358]: https://github.com/vibe-d/vibe-core/issues/358
 
 
 2.2.0 - 2023-03-31
@@ -142,7 +142,7 @@
 
 - Made most synchronization primitives (e.g. `TaskMutex`) constructible/usable as `shared` - [pull #354][issue354]
 
-[issue354]: https://github.com/vibe-d/vibe-core/issues/issue354
+[issue354]: https://github.com/vibe-d/vibe-core/issues/354
 
 
 2.1.0 - 2023-03-17
@@ -153,10 +153,10 @@
 - Added `FileMode.create` - [pull #351][issue351]
 - Added `TCPListenOptions.ipTransparent` (by Adam Williams aka Tusanga) - [pull #349][issue349]
 
-[issue349]: https://github.com/vibe-d/vibe-core/issues/issue349
-[issue350]: https://github.com/vibe-d/vibe-core/issues/issue350
-[issue351]: https://github.com/vibe-d/vibe-core/issues/issue351
-[issue353]: https://github.com/vibe-d/vibe-core/issues/issue353
+[issue349]: https://github.com/vibe-d/vibe-core/issues/349
+[issue350]: https://github.com/vibe-d/vibe-core/issues/350
+[issue351]: https://github.com/vibe-d/vibe-core/issues/351
+[issue353]: https://github.com/vibe-d/vibe-core/issues/353
 
 
 2.0.1 - 2023-03-08
