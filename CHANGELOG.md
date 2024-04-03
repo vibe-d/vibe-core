@@ -1,3 +1,17 @@
+2.8.3 - 2024-04-03
+==================
+
+- Fixed some scope related deprecation warnings (by Mathias Lang aka Geod24) - [pull #392][issue392], [pull #393][issue393], [pull #393][issue393]
+- Fixed temporary file creation on iOS - [pull #394][issue394]
+- Uncaught throwables in tasks are now properly logged and generate an error message box on Windows for GUI applications - [pull #397][issue397]
+
+[issue392]: https://github.com/vibe-d/vibe-core/issues/392
+[issue393]: https://github.com/vibe-d/vibe-core/issues/393
+[issue393]: https://github.com/vibe-d/vibe-core/issues/393
+[issue394]: https://github.com/vibe-d/vibe-core/issues/394
+[issue397]: https://github.com/vibe-d/vibe-core/issues/397
+
+
 2.8.2 - 2024-02-19
 ==================
 
