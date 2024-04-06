@@ -429,9 +429,7 @@ final package class TaskFiber : Fiber {
 						GetUserObjectInformationA(GetProcessWindowStation(), UOI_FLAGS, &wsf, wsf.sizeof, null);
 						if (wsf.dwFlags & WSF_VISIBLE) {
 							FixedAppender!(char[], 2048, BufferOverflowMode.ignore) msg = void;
-							msg.formattedWrite("%s: %s\r\n\r\n", th.classinfo.name, th.msg);
-							foreach (ln; th.info)
-								msg.formattedWrite("%s\r\n", ln);
+							msg.formattedWrite("%s: %s", th.classinfo.name, th);
 							msg.put('\0');
 							msg.data[msg.data.length-1] = '\0';
 							MessageBoxA(null, msg.data.ptr, "FATAL: Uncaught exception in task fiber", MB_ICONERROR);
@@ -440,11 +438,11 @@ final package class TaskFiber : Fiber {
 				}
 
 				if (GC.inFinalizer) {
-					stderr.writeln("TaskFiber getting terminated due to an uncaught ", th.classinfo.name, ": ", th.msg);
-					foreach (ln; th.info) stderr.writeln(ln);
+					stderr.write("TaskFiber getting terminated due to an uncaught ", th.classinfo.name, ": ");
+					th.toString((str) { stderr.write(str); });
+					stderr.writeln();
 				} else {
-					logFatal("TaskFiber getting terminated due to an uncaught %s: %s", th.classinfo.name, th.msg);
-					foreach (ln; th.info) logFatal("%s", ln);
+					logFatal("TaskFiber getting terminated due to an uncaught %s: %s", th.classinfo.name, th);
 				}
 			} catch (Exception e) {
 				if (GC.inFinalizer) {
