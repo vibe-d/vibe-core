@@ -1,3 +1,11 @@
+2.8.4 - 2024-04-06
+==================
+
+- Adds file/line number information to uncaught throwable diagnostic output - [pull #398][issue398]
+
+[issue398]: https://github.com/vibe-d/vibe-core/issues/398
+
+
 2.8.3 - 2024-04-03
 ==================
 
