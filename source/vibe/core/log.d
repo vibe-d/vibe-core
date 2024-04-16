@@ -941,8 +941,12 @@ private void doLog(S, T...)(LogLevel level, string mod, string func, string file
     nothrow
 {
 	try {
-		static if(T.length != 0)
-			auto args_copy = args;
+		static if(T.length != 0) {
+			if (!getLoggers().any!(l => l.minLevel <= level))
+				return;
+
+			T args_copy = args;
+		}
 
 		foreach (l; getLoggers())
 			if (l.minLevel <= level) { // WARNING: TYPE SYSTEM HOLE: accessing field of shared class!
@@ -955,6 +959,13 @@ private void doLog(S, T...)(LogLevel level, string mod, string func, string file
 				rng.finalize();
 			}
 	} catch(Exception e) debug assert(false, e.msg);
+}
+
+unittest { // ensure arguments are evaluated lazily
+	int i = 0;
+	setLogLevel(LogLevel.info);
+	logDebug("not visible: %s", i++);
+	assert(i == 0);
 }
 
 private struct LogOutputRange {
