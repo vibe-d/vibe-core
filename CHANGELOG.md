@@ -1,3 +1,13 @@
+2.8.5 - 2024-06-18
+==================
+
+- Fixes log arguments not being evaluated when no logger is logging the message - [pull #399][issue399]
+- Fixes `relativeTo` to work with `const` arguments - [pull #400][issue400]
+
+[issue399]: https://github.com/vibe-d/vibe-core/issues/399
+[issue400]: https://github.com/vibe-d/vibe-core/issues/400
+
+
 2.8.4 - 2024-04-06
 ==================
 
