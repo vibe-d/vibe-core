@@ -25,7 +25,7 @@ import std.utf : byChar;
 
 	See_also: `relativeToWeb`
 */
-Path relativeTo(Path)(Path path, Path base_path) @safe
+Path relativeTo(Path)(in Path path, in Path base_path) @safe
 	if (isInstanceOf!(GenericPath, Path))
 {
 	import std.array : array, replicate;
@@ -141,6 +141,13 @@ unittest {
 		assert(p1.relativeTo(p2).toString() == "");
 		assert(p2.relativeTo(p2).toString() == "./");
 	}
+
+    {
+        immutable PosixPath p1 = PosixPath("/foo/bar");
+        immutable PosixPath p2 = PosixPath("/foo");
+        immutable PosixPath result = p1.relativeTo(p2);
+        assert(result == PosixPath("bar"));
+    }
 }
 
 nothrow unittest {
