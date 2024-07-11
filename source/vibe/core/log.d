@@ -911,7 +911,7 @@ package void initializeLogModule()
 				stdoutlogger.useColors = true;
 		}
 		stdoutlogger.minLevel = LogLevel.info;
-		stdoutlogger.format = FileLogger.Format.plain;
+		stdoutlogger.infoFormat = FileLogger.Format.plain;
 		ss_stdoutLogger = cast(shared)stdoutlogger;
 
 		registerLogger(ss_stdoutLogger);
