@@ -971,7 +971,7 @@ template isStronglyIsolated(T...)
 		else static if (isDynamicArray!(T[0])) enum bool isStronglyIsolated = is(typeof(T[0].init[0]) == immutable);
 		else static if (isAssociativeArray!(T[0])) enum bool isStronglyIsolated = false; // TODO: be less strict here
 		else static if (isSomeFunction!(T[0])) enum bool isStronglyIsolated = true; // functions are immutable
-		else static if (isPointer!(T[0])) enum bool isStronglyIsolated = is(typeof(*T[0].init) == immutable);
+		else static if (isPointer!(T[0])) enum bool isStronglyIsolated = is(PointerTarget!(T[0]) == immutable);
 		else static if (isAggregateType!(T[0])) enum bool isStronglyIsolated = isStronglyIsolated!(FieldTypeTuple!(T[0]));
 		else enum bool isStronglyIsolated = true;
 	}
@@ -1003,7 +1003,7 @@ template isWeaklyIsolated(T...)
 		else static if (isDynamicArray!(T[0])) enum bool isWeaklyIsolated = is(typeof(T[0].init[0]) == immutable) || is(typeof(T[0].init[0]) == shared);
 		else static if (isAssociativeArray!(T[0])) enum bool isWeaklyIsolated = false; // TODO: be less strict here
 		else static if (isSomeFunction!(T[0])) enum bool isWeaklyIsolated = true; // functions are immutable
-		else static if (isPointer!(T[0])) enum bool isWeaklyIsolated = is(typeof(*T[0].init) == immutable) || is(typeof(*T[0].init) == shared);
+		else static if (isPointer!(T[0])) enum bool isWeaklyIsolated = is(PointerTarget!(T[0]) == immutable) || is(PointerTarget!(T[0]) == shared);
 		else static if (isAggregateType!(T[0])) enum bool isWeaklyIsolated = isWeaklyIsolated!(FieldTypeTuple!(T[0]));
 		else enum bool isWeaklyIsolated = true;
 	}
@@ -1018,16 +1018,17 @@ unittest {
 		version(EnablePhobosFails)
 		Isolated!(Isolated!A[]) c; // strongly isolated
 		version(EnablePhobosFails)
-		Isolated!(Isolated!A[string]) c; // AA implementation does not like this
+		Isolated!(Isolated!A[string]) d; // AA implementation does not like this
 		version(EnablePhobosFails)
-		Isolated!(int[string]) d; // strongly isolated
+		Isolated!(int[string]) e; // strongly isolated
+		immutable(int)* f; // strongly isolated
 	}
 
 	static struct C {
 		string a; // strongly isolated
 		shared(A) b; // weakly isolated
 		Isolated!A c; // strongly isolated
-		shared(A*) d; // weakly isolated
+		shared(A)* d; // weakly isolated
 		shared(A[]) e; // weakly isolated
 		shared(A[string]) f; // weakly isolated
 	}
