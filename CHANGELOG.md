@@ -1,3 +1,13 @@
+2.8.6 - 2024-07-23
+==================
+
+- Fixed "info" log messages to be logged using the "plain" format by default - [pull #401][issue401]
+- Fixed `isWeaklyIsolated`/`isStronglyIsolated` to work correctly for `shared`/`immutable` pointer types - [pull #402][issue402]
+
+[issue401]: https://github.com/vibe-d/vibe-core/issues/401
+[issue402]: https://github.com/vibe-d/vibe-core/issues/402
+
+
 2.8.5 - 2024-06-18
 ==================
 
