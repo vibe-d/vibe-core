@@ -270,7 +270,24 @@ struct LogLine {
 	string text; /// Legacy field used in `Logger.log`
 }
 
-/// Abstract base class for all loggers
+/** Abstract base class for all loggers
+
+	Concurrency_requirements:
+
+	Classes derived from `Logger` must be implemented in a thread-safe way.
+	Although the methods of `Logger` are not annotated with `shared` due to
+	historic reasons, they should be treated as if they were.
+
+	Also, none of the methods must, explicitly or implicitly, yield
+	execution (e.g. by calling `vibe.core.yield` or performing vibe.d based
+	I/O or wait operations). In cases where a logger needs to perform
+	blocking I/O that may degrade performance of the calling thread, for
+	example by sending over the network, a separate writer thread should be
+	used in conjunction with a queue. The synchronization of this queue must
+	use classical synchronization primitives, such as `core.sync.Mutex`,
+	instead of the ones in `vibe.core.sync`. See `SyslogLogger` for an
+	example of such an implementation.
+*/
 class Logger {
 	LogLevel minLevel = LogLevel.min;
 
