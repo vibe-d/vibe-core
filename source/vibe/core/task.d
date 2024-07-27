@@ -819,6 +819,7 @@ package struct TaskFuncInfo {
 			typedCallable!CALLABLE = callable;
 			foreach (i, A; ARGS) {
 				static if (needsMove!A) args[i].move(typedArgs!TARGS.expand[i]);
+				else static if (is(A == immutable)) *cast(Unqual!A*)&typedArgs!TARGS.expand[i] = *cast(Unqual!A*)&args[i];
 				else typedArgs!TARGS.expand[i] = args[i];
 			}
 		} ();
