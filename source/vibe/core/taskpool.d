@@ -471,3 +471,13 @@ nothrow @safe:
 		return true;
 	}
 }
+
+
+unittest { // #138 - immutable arguments
+	auto tp = new shared TaskPool;
+	struct S { int[] x; }
+	auto s = immutable(S)([1, 2]);
+	tp.runTaskH((immutable S s) { assert(s.x == [1, 2]); }, s)
+		.joinUninterruptible();
+	tp.terminate();
+}
