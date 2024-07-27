@@ -270,6 +270,17 @@ TCPConnection connectTCP(NetworkAddress addr, NetworkAddress bind_address = anyA
 }
 
 
+/** Creates a streaming socket connection from an existing stream socket.
+*/
+TCPConnection createStreamConnection(StreamSocketFD socket)
+{
+	scope storage = new UnknownAddress;
+	scope sockaddr = new RefAddress(storage.name, storage.nameLen);
+	eventDriver.sockets.getRemoteAddress(socket, sockaddr);
+	return TCPConnection(socket, sockaddr);
+}
+
+
 /**
 	Creates a bound UDP socket suitable for sending and receiving packets.
 */
