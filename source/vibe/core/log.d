@@ -659,11 +659,11 @@ final class HTMLLogger : Logger {
 	Logger uses the stream's write function when it logs and would hence
 	log forevermore.
 */
-SyslogLogger!StreamCallback createSyslogLogger(StreamCallback)(StreamCallback stream_callback,
+shared(SyslogLogger!StreamCallback) createSyslogLogger(StreamCallback)(StreamCallback stream_callback,
 	SyslogFacility facility, string app_name = null, string host_name = hostName())
 	if (isWeaklyIsolated!StreamCallback)
 {
-	return new SyslogLogger!StreamCallback(stream_callback, facility, app_name, host_name);
+	return cast(shared)new SyslogLogger!StreamCallback(stream_callback, facility, app_name, host_name);
 }
 
 /**
@@ -743,14 +743,16 @@ final class SyslogLogger(StreamCallback) : Logger
 	}
 
 	void dispose()
-	{
+	shared {
+		auto thisus = cast()this;
+
 		{
 			auto l = scopedMutexLock(m_bufferMutex);
-			while (!m_buffer.empty) m_bufferCondition.wait();
-			m_buffer.capacity = 0;
+			while (!thisus.m_buffer.empty) thisus.m_bufferCondition.wait();
+			thisus.m_buffer.capacity = 0;
 		}
-		m_bufferCondition.notifyAll();
-		m_writeThread.join();
+		thisus.m_bufferCondition.notifyAll();
+		thisus.m_writeThread.join();
 	}
 
 	/**
@@ -938,9 +940,9 @@ unittest
 
 	foreach (lvl; [LogLevel.debug_, LogLevel.diagnostic, LogLevel.info, LogLevel.warn, LogLevel.error, LogLevel.critical, LogLevel.fatal]) {
 		msg.level = lvl;
-		logger.beginLine(msg);
-		logger.put("αβγ");
-		logger.endLine();
+		(cast()logger).beginLine(msg);
+		(cast()logger).put("αβγ");
+		(cast()logger).endLine();
 	}
 	logger.dispose();
 	auto path = atomicLoad(gpath);
