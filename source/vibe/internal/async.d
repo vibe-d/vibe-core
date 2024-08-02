@@ -257,3 +257,13 @@ private template hasAnyScopeParameter(Callback) {
 	static if (SC.length == 0) enum hasAnyScopeParameter = false;
 	else enum hasAnyScopeParameter = any!(c => c & ParameterStorageClass.scope_)([SC]);
 }
+
+static if (is(noreturn)) // issue 299, requires newer host compilers
+version (unittest) {
+	alias CB = noreturn delegate(int) @safe nothrow;
+	alias wait   = delegate noreturn(_)    => assert(0);
+	alias cancel = delegate noreturn(_, x) => assert(0);
+	alias done   = delegate noreturn(_)    => assert(0);
+	alias w = Waitable!(CB, wait, cancel, done);
+	static assert (__traits(compiles, { asyncAwaitAny!(false, w); }));
+}
