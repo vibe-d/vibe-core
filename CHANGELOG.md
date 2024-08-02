@@ -1,11 +1,24 @@
-2.8.6 - 2024-07-23
+2.9.0 - 2024-08-02
 ==================
 
-- Fixed "info" log messages to be logged using the "plain" format by default - [pull #401][issue401]
-- Fixed `isWeaklyIsolated`/`isStronglyIsolated` to work correctly for `shared`/`immutable` pointer types - [pull #402][issue402]
+- Added `createStreamConnection` for creating a `TCPConnection` from an existing `StreamSocketFD` - [issue #151][issue151], [pull #405][issue405]
+- `runTask` and related functions now accept `immutable` arguments - [issue #138][issue138], [pull #403][issue403]
+- `parallel(Unordered)Map` now forwards the `length` property of the input range - [pull #404][issue404]
+- Fixed `SyslogLogger` to behave properly w.r.t. concurrency and added `createSyslogLogger` - [issue #176][issue176], [pull #406][issue406], [pull #407][issue407], [pull #409][issue409]
+- Fixed a compile error when building with `-profile` or when calling `asyncAwait` with a `noreturn` `cancel` callback - [issue #299][issue299], [issue #319][issue319], [pull #408][issue408]
 
-[issue401]: https://github.com/vibe-d/vibe-core/issues/401
-[issue402]: https://github.com/vibe-d/vibe-core/issues/402
+[issue138]: https://github.com/vibe-core/vibe-core/issues/138
+[issue151]: https://github.com/vibe-core/vibe-core/issues/151
+[issue176]: https://github.com/vibe-core/vibe-core/issues/176
+[issue299]: https://github.com/vibe-core/vibe-core/issues/299
+[issue319]: https://github.com/vibe-core/vibe-core/issues/319
+[issue403]: https://github.com/vibe-core/vibe-core/issues/403
+[issue404]: https://github.com/vibe-core/vibe-core/issues/404
+[issue405]: https://github.com/vibe-core/vibe-core/issues/405
+[issue406]: https://github.com/vibe-core/vibe-core/issues/406
+[issue407]: https://github.com/vibe-core/vibe-core/issues/407
+[issue408]: https://github.com/vibe-core/vibe-core/issues/408
+[issue409]: https://github.com/vibe-core/vibe-core/issues/409
 
 
 2.8.5 - 2024-06-18
