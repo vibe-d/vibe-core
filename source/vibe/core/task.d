@@ -707,18 +707,20 @@ final package class TaskFiber : Fiber {
 	@safe nothrow @nogc {
 		// only record the outermost lock
 		if (m_yieldLockCount > 0) return;
+		assert (m_yieldLockCount == 0, "Yield lock counter negative!?");
 		m_yieldLockFile = file;
 		m_yieldLockLine = line;
 	}
 
 	package void acquireYieldLock()
 	@safe nothrow @nogc {
+		assert (m_yieldLockCount >= 0, "Acquiring yield lock with negative yield lock counter!?");
 		m_yieldLockCount++;
 	}
 
 	package void releaseYieldLock()
 	@safe nothrow @nogc {
-		assert(m_yieldLockCount > 0);
+		assert (m_yieldLockCount > 0, "Releasing yield lock with non-positive yield lock counter!?");
 		if (!--m_yieldLockCount) {
 			m_yieldLockFile = null;
 			m_yieldLockLine = -1;
@@ -729,7 +731,7 @@ final package class TaskFiber : Fiber {
 	@safe nothrow {
 		if (m_yieldLockCount > 0 && m_yieldLockFile.length)
 			logError("Yield lock violation for lock at %s:%s", m_yieldLockFile, m_yieldLockLine);
-		assert(m_yieldLockCount == 0, "May not yield while in an active yieldLock()!");
+		assert (m_yieldLockCount == 0, "May not yield while in an active yieldLock()!");
 	}
 
 	package bool isInYieldLock()
