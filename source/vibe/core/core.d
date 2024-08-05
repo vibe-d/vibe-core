@@ -1660,6 +1660,15 @@ unittest {
 	assert(!tf.isInYieldLock());
 }
 
+
+/** Less strict version of `yieldLock` that only locks if called within a task.
+*/
+auto taskYieldLock(string file = __FILE__, int line = __LINE__)
+@safe nothrow {
+	if (!Fiber.getThis()) return typeof(yieldLock()).init;
+	return yieldLock(file, line);
+}
+
 debug (VibeRunningTasks) {
 	/** Dumps a list of all active tasks of the calling thread.
 	*/

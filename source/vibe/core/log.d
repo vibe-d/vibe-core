@@ -1075,7 +1075,7 @@ unittest { // ensure arguments are evaluated lazily
 }
 
 private struct LogOutputRange {
-	import vibe.core.core : yieldLock;
+	import vibe.core.core : taskYieldLock;
 
 	LogLine info;
 	ScopedLock!Logger* logger;
@@ -1084,7 +1084,7 @@ private struct LogOutputRange {
 
 	this(ref ScopedLock!Logger logger, string file, int line, LogLevel level)
 	{
-		auto l = yieldLock();
+		auto l = taskYieldLock();
 
 		() @trusted { this.logger = &logger; } ();
 		try {
@@ -1111,7 +1111,7 @@ private struct LogOutputRange {
 
 	void finalize()
 	{
-		auto l = yieldLock();
+		auto l = taskYieldLock();
 
 		logger.endLine();
 	}
@@ -1121,7 +1121,7 @@ private struct LogOutputRange {
 		if (text.empty)
 			return;
 
-		auto l = yieldLock();
+		auto l = taskYieldLock();
 
 		if (logger.multilineLogger) {
 			logger.put(text);
