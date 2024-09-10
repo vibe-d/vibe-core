@@ -28,9 +28,9 @@ configuration "select" {
 	subConfiguration "eventcore" "select"
 	versions "Windows7" platform="windows"
 }
-configuration "libasync" {
-	subConfiguration "eventcore" "libasync"
-}
+//configuration "libasync" {
+//	subConfiguration "eventcore" "libasync"
+//}
 
 buildType "unittest" {
 	buildOptions "unittests" "debugMode" "debugInfo"
