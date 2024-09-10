@@ -39,7 +39,7 @@ struct Task {
 		m_taskCounter = task_counter;
 	}
 
-	this(in Task other)
+	this(const Task other)
 	@safe nothrow {
 		m_fiber = () @trusted { return cast(shared(TaskFiber))other.m_fiber; } ();
 		m_taskCounter = other.m_taskCounter;
