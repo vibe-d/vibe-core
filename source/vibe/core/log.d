@@ -833,7 +833,6 @@ final class SyslogLogger(StreamCallback) : Logger
 	@safe nothrow {
 		ubyte[4096] buf;
 
-
 		try {
 			auto ostr = m_streamCallback();
 
@@ -846,6 +845,8 @@ final class SyslogLogger(StreamCallback) : Logger
 					while (m_buffer.empty) {
 						if (m_buffer.capacity == 0) {
 							ostr.finalize();
+							static if (is(typeof(ostr.close())))
+								ostr.close();
 							return;
 						}
 						() @trusted { m_bufferCondition.wait(); } ();
