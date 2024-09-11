@@ -1,3 +1,13 @@
+2.9.1 - 2024-09-11
+==================
+
+- Fixed a rare crash issue occurring when logging from non-D threads - [pull #410][issue410]
+- Fixed a possible crash for code that doesn't explicitly close a `FileStream` before terminating the owner thread - [pull #411][issue411]
+
+[issue410]: https://github.com/vibe-core/vibe-core/issues/410
+[issue411]: https://github.com/vibe-core/vibe-core/issues/411
+
+
 2.9.0 - 2024-08-02
 ==================
 
