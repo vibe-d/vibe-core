@@ -699,6 +699,13 @@ scope:
 
 	~this()
 	nothrow {
+		if (this.isOpen) {
+			if (m_ctx.driver is (() @trusted => cast(shared)eventDriver)()) {
+				try close();
+				catch (Exception e) logException(e, "Closing unclosed FileStream during destruction failed");
+			} else logWarn("Destroying FileStream that is still open in a foreign thread (leaked to GC?). This may lead to crashes.");
+		}
+
 		if (m_fd != FileFD.invalid)
 			releaseHandle!"files"(m_fd, m_ctx.driver);
 	}
