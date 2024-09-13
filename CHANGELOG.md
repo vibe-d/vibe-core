@@ -1,3 +1,11 @@
+2.9.2 - 2024-09-13
+==================
+
+- Fixes a `FileStream` regression introduced by the previous release - [pull #412][issue412]
+
+[issue412]: https://github.com/vibe-core/vibe-core/issues/412
+
+
 2.9.1 - 2024-09-11
 ==================
 
