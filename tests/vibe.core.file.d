@@ -27,9 +27,13 @@ void main()
 	f.write(bytes!(6, 7, 8, 9, 10));
 	assert(f.size == 10);
 	assert(f.tell == 10);
+
+	auto fcopy = f;
 	ubyte[5] dst;
-	f.seek(2);
+	fcopy.seek(2);
 	assert(f.tell == 2);
+	fcopy = FileStream.init;
+
 	f.read(dst);
 	assert(f.tell == 7);
 	assert(dst[] == bytes!(3, 4, 5, 6, 7));
