@@ -19,6 +19,7 @@ module vibe.core.sync;
 
 import vibe.core.log;
 import vibe.core.task;
+import vibe.core.internal.threadlocalwaiter;
 
 import core.atomic;
 import core.sync.mutex;
@@ -1141,8 +1142,7 @@ struct LocalManualEvent {
 
 	private void initialize()
 	nothrow {
-		import vibe.container.internal.utilallocator : Mallocator, makeGCSafe;
-		m_waiter = () @trusted { return Mallocator.instance.makeGCSafe!Waiter; } ();
+		m_waiter = allocPlainThreadLocalWaiter();
 	}
 
 	this(this)
@@ -1153,26 +1153,20 @@ struct LocalManualEvent {
 
 	~this()
 	nothrow {
-		import vibe.container.internal.utilallocator : Mallocator, disposeGCSafe;
-		if (m_waiter) {
-			if (!m_waiter.releaseRef()) {
-				static if (__VERSION__ < 2087) scope (failure) assert(false);
-				() @trusted { Mallocator.instance.disposeGCSafe(m_waiter); } ();
-			}
-		}
+		if (m_waiter) m_waiter.releaseRef();
 	}
 
 	bool opCast (T : bool) () const nothrow { return m_waiter !is null; }
 
 	/// A counter that is increased with every emit() call
-	int emitCount() const nothrow { return m_waiter.m_emitCount; }
+	int emitCount() const nothrow { return m_waiter.emitCount; }
 
 	/// Emits the signal, waking up all owners of the signal.
 	int emit()
 	nothrow {
 		assert(m_waiter !is null, "LocalManualEvent is not initialized - use createManualEvent()");
 		logTrace("unshared emit");
-		auto ec = m_waiter.m_emitCount++;
+		auto ec = m_waiter.emitCount;
 		m_waiter.emit();
 		return ec;
 	}
@@ -1182,7 +1176,7 @@ struct LocalManualEvent {
 	nothrow {
 		assert(m_waiter !is null, "LocalManualEvent is not initialized - use createManualEvent()");
 		logTrace("unshared single emit");
-		auto ec = m_waiter.m_emitCount++;
+		auto ec = m_waiter.emitCount;
 		m_waiter.emitSingle();
 		return ec;
 	}
@@ -1238,14 +1232,14 @@ struct LocalManualEvent {
 			target_timeout = now + timeout;
 		}
 
-		while (m_waiter.m_emitCount - emit_count <= 0) {
+		while (m_waiter.emitCount - emit_count <= 0) {
 			m_waiter.wait!interruptible(timeout != Duration.max ? target_timeout - now : Duration.max);
 			try now = MonoTime.currTime();
 			catch (Exception e) { assert(false, e.msg); }
 			if (now >= target_timeout) break;
 		}
 
-		return m_waiter.m_emitCount;
+		return m_waiter.emitCount;
 	}
 }
 
@@ -1349,7 +1343,6 @@ struct ManualEvent {
 			StackSList!ThreadWaiter active; // actively waiting
 		}
 		Monitor!(Waiters, shared(Mutex)) m_waiters;
-		static StackSList!ThreadWaiter s_free; // free-list of reusable waiter structs for the calling thread
 	}
 
 	enum EmitMode {
@@ -1369,15 +1362,6 @@ struct ManualEvent {
 	private void initialize()
 	shared nothrow {
 		m_waiters.initialize(new shared Mutex);
-	}
-
-	package static void freeThreadResources()
-	{
-		s_free.filter((w) @trusted {
-			try destroy(w);
-			catch (Exception e) assert(false, e.msg);
-			return false;
-		});
 	}
 
 	deprecated("ManualEvent is always non-null!")
@@ -1400,14 +1384,11 @@ struct ManualEvent {
 		auto drv = eventDriver;
 		m_waiters.lock.active.iterate((ThreadWaiter w) {
 			debug (VibeMutexLog) () @trusted { logTrace("waiter %s", cast(void*)w); } ();
-			if (w.m_driver is drv) {
+			if (w.driver is drv) {
 				lw = w;
 				lw.addRef();
 			} else {
-				try {
-					assert(w.m_event != EventID.invalid);
-					() @trusted { return cast(shared)w.m_driver; } ().events.trigger(w.m_event, true);
-				} catch (Exception e) assert(false, e.msg);
+				w.triggerEvent();
 			}
 			return true;
 		});
@@ -1436,15 +1417,12 @@ struct ManualEvent {
 		auto drv = eventDriver;
 		m_waiters.lock.active.iterate((ThreadWaiter w) {
 			() @trusted { logTrace("waiter %s", cast(void*)w); } ();
-			if (w.m_driver is drv) {
+			if (w.driver is drv) {
 				if (w.unused) return true;
 				lw = w;
 				lw.addRef();
 			} else {
-				try {
-					assert(w.m_event != EventID.invalid);
-					() @trusted { return cast(shared)w.m_driver; } ().events.trigger(w.m_event, true);
-				} catch (Exception e) assert(false, e.msg);
+				w.triggerEvent();
 			}
 			return false;
 		});
@@ -1509,7 +1487,7 @@ struct ManualEvent {
 
 		acquireThreadWaiter((scope ThreadWaiter w) {
 			while (ec - emit_count <= 0) {
-				w.wait!interruptible(timeout != Duration.max ? target_timeout - now : Duration.max, w.m_event, () => (this.emitCount - emit_count) > 0);
+				w.wait!interruptible(timeout != Duration.max ? target_timeout - now : Duration.max, () => (this.emitCount - emit_count) > 0);
 				ec = this.emitCount;
 
 				if (timeout != Duration.max) {
@@ -1530,7 +1508,7 @@ struct ManualEvent {
 
 		with (m_waiters.lock) {
 			active.iterate((aw) {
-				if (aw.m_driver is drv) {
+				if (aw.driver is drv) {
 					w = aw;
 					w.addRef();
 					return false;
@@ -1539,17 +1517,8 @@ struct ManualEvent {
 			});
 
 			if (!w) {
-				if (!s_free.empty) {
-					w = s_free.first;
-					s_free.remove(w);
-					assert(w.m_refCount == 0);
-					assert(w.m_driver is drv);
-					w.addRef();
-				} else {
-					w = new ThreadWaiter;
-				}
-
-				assert(w.m_refCount == 1);
+				w = allocEventThreadLocalWaiter();
+				assert(w.unique == 1);
 				active.add(w);
 			}
 		}
@@ -1561,17 +1530,15 @@ struct ManualEvent {
 
 	private void releaseWaiter(ThreadWaiter w)
 	shared nothrow {
-		if (!w.releaseRef()) {
-			assert(w.m_driver is eventDriver, "Waiter was reassigned a different driver!?");
+		assert(w.driver is eventDriver, "Waiter was reassigned a different driver!?");
+		if (w.unique) {
 			assert(w.unused, "Waiter still used, but not referenced!?");
 			with (m_waiters.lock) {
 				auto rmvd = active.remove(w);
 				assert(rmvd, "Waiter not in active queue anymore!?");
 			}
-			assert(w.m_refCount == 0);
-			s_free.add(w);
-			// TODO: cap size of m_freeWaiters
 		}
+		w.releaseRef();
 	}
 }
 
@@ -1757,188 +1724,6 @@ shared struct Monitor(T, M)
 	}
 }
 
-
-private final class ThreadLocalWaiter(bool EVENT_TRIGGERED) {
-	import vibe.internal.list : CircularDList, StackSList;
-
-	private {
-		static struct TaskWaiter {
-			TaskWaiter* prev, next;
-			void delegate() @safe nothrow notifier;
-
-			void wait(void delegate() @safe nothrow del) @safe nothrow {
-				assert(notifier is null, "Local waiter is used twice!");
-				notifier = del;
-			}
-			void cancel() @safe nothrow { notifier = null; }
-			void emit() @safe nothrow { auto n = notifier; notifier = null; n(); }
-		}
-
-		static if (EVENT_TRIGGERED) {
-			package(vibe) ThreadLocalWaiter next; // queue of other waiters in the active/free list of the manual event
-			NativeEventDriver m_driver;
-			EventID m_event = EventID.invalid;
-		} else {
-			int m_emitCount = 0;
-		}
-		int m_refCount = 1;
-		TaskWaiter m_pivot;
-		TaskWaiter m_emitPivot;
-		CircularDList!(TaskWaiter*) m_waiters;
-	}
-
-	this()
-	{
-		m_waiters = CircularDList!(TaskWaiter*)(() @trusted { return &m_pivot; } ());
-		static if (EVENT_TRIGGERED) {
-			m_driver = eventDriver;
-			m_event = m_driver.events.create();
-			assert(m_event != EventID.invalid, "Failed to create event!");
-		}
-	}
-
-	static if (EVENT_TRIGGERED) {
-		~this()
-		{
-			import vibe.core.internal.release : releaseHandle;
-			import core.memory : GC;
-			import core.stdc.stdlib : abort;
-
-			if (m_event != EventID.invalid) {
-				if (m_driver !is eventDriver) {
-					logError("ThreadWaiter destroyed in foreign thread");
-					// handle GC finalization at process exit gracefully, as
-					// this can happen when tasks/threads have not been properly
-					// shut down before application exit
-					if (!GC.inFinalizer()) abort();
-				} else m_driver.events.releaseRef(m_event);
-				m_event = EventID.invalid;
-			}
-		}
-	}
-
-	@property bool unused() const @safe nothrow { return m_waiters.empty; }
-
-	void addRef() @safe nothrow { assert(m_refCount >= 0); m_refCount++; }
-	bool releaseRef() @safe nothrow { assert(m_refCount > 0); return --m_refCount > 0; }
-
-	bool wait(bool interruptible)(Duration timeout, EventID evt = EventID.invalid, scope bool delegate() @safe nothrow exit_condition = null)
-	@safe {
-		import core.time : MonoTime;
-		import vibe.internal.async : Waitable, asyncAwaitAny;
-
-		TaskWaiter waiter_store;
-		TaskWaiter* waiter = () @trusted { return &waiter_store; } ();
-
-		m_waiters.insertBack(waiter);
-		assert(waiter.next !is null);
-		scope (exit)
-			if (waiter.next !is null) {
-				m_waiters.remove(waiter);
-				assert(!waiter.next);
-			}
-
-		MonoTime target_timeout, now;
-		if (timeout != Duration.max) {
-			try now = MonoTime.currTime();
-			catch (Exception e) { assert(false, e.msg); }
-			target_timeout = now + timeout;
-		}
-
-		bool cancelled;
-
-		alias waitable = Waitable!(typeof(TaskWaiter.notifier),
-			(cb) { waiter.wait(cb); },
-			(cb) { cancelled = true; waiter.cancel(); },
-			() {}
-		);
-
-		alias ewaitable = Waitable!(EventCallback,
-			(cb) {
-				eventDriver.events.wait(evt, cb);
-				// check for exit condition *after* starting to wait for the event
-				// to avoid a race condition
-				if (exit_condition()) {
-					eventDriver.events.cancelWait(evt, cb);
-					cb(evt);
-				}
-			},
-			(cb) { eventDriver.events.cancelWait(evt, cb); },
-			(EventID) {}
-		);
-
-		if (evt != EventID.invalid) {
-			asyncAwaitAny!(interruptible, waitable, ewaitable)(timeout);
-		} else {
-			asyncAwaitAny!(interruptible, waitable)(timeout);
-		}
-
-		if (cancelled) {
-			assert(waiter.next !is null, "Cancelled waiter not in queue anymore!?");
-			return false;
-		} else {
-			assert(waiter.next is null, "Triggered waiter still in queue!?");
-			return true;
-		}
-	}
-
-	void emit()
-	@safe nothrow {
-		import std.algorithm.mutation : swap;
-		import vibe.core.core : yield;
-
-		if (m_waiters.empty) return;
-
-		TaskWaiter* pivot = () @trusted { return &m_emitPivot; } ();
-
-		if (pivot.next) { // another emit in progress?
-			// shift pivot to the end, so that the other emit call will process all pending waiters
-			if (pivot !is m_waiters.back) {
-				m_waiters.remove(pivot);
-				m_waiters.insertBack(pivot);
-			}
-			return;
-		}
-
-		m_waiters.insertBack(pivot);
-		scope (exit) m_waiters.remove(pivot);
-
-		foreach (w; m_waiters) {
-			if (w is pivot) break;
-			emitWaiter(w);
-		}
-	}
-
-	bool emitSingle()
-	@safe nothrow {
-		if (m_waiters.empty) return false;
-
-		TaskWaiter* pivot = () @trusted { return &m_emitPivot; } ();
-
-		if (pivot.next) { // another emit in progress?
-			// shift pivot to the right, so that the other emit call will process another waiter
-			if (pivot !is m_waiters.back) {
-				auto n = pivot.next;
-				m_waiters.remove(pivot);
-				m_waiters.insertAfter(pivot, n);
-			}
-			return true;
-		}
-
-		emitWaiter(m_waiters.front);
-		return true;
-	}
-
-	private void emitWaiter(TaskWaiter* w)
-	@safe nothrow {
-		m_waiters.remove(w);
-
-		if (w.notifier !is null) {
-			logTrace("notify task %s %s %s", cast(void*)w, () @trusted { return cast(void*)w.notifier.funcptr; } (), w.notifier.ptr);
-			w.emit();
-		} else logTrace("notify callback is null");
-	}
-}
 
 private struct TaskMutexImpl(bool INTERRUPTIBLE) {
 	private {
