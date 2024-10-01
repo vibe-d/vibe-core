@@ -1220,6 +1220,11 @@ struct LocalManualEvent {
 	/// ditto
 	int waitUninterruptible(Duration timeout, int emit_count) nothrow { return doWait!false(timeout, emit_count); }
 
+	bool opEquals(ref const LocalManualEvent other)
+	const nothrow {
+		return this.m_waiter is other.m_waiter;
+	}
+
 	private int doWait(bool interruptible)(Duration timeout, int emit_count)
 	{
 		import core.time : MonoTime;
