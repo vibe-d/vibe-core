@@ -1398,14 +1398,14 @@ struct ManualEvent {
 
 		ThreadWaiter lw;
 		auto drv = eventDriver;
-		m_waiters.lock.active.filter((ThreadWaiter w) {
+		m_waiters.lock.active.iterate((ThreadWaiter w) {
 			debug (VibeMutexLog) () @trusted { logTrace("waiter %s", cast(void*)w); } ();
 			if (w.m_driver is drv) {
 				lw = w;
 				lw.addRef();
 			} else {
 				try {
-					assert(w.m_event != EventID.init);
+					assert(w.m_event != EventID.invalid);
 					() @trusted { return cast(shared)w.m_driver; } ().events.trigger(w.m_event, true);
 				} catch (Exception e) assert(false, e.msg);
 			}
