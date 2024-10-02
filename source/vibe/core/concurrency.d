@@ -1301,23 +1301,23 @@ ReturnType!CALLABLE performInWorker(CALLABLE, ARGS...)
 		}
 	}, () @trusted { return cast(shared)&ctx; } ());
 
-	scope (failure) assert(false);
+	try {
+		{ // wait for result
+			auto l = scopedMutexLock(ctx.mutex);
+			while (!ctx.done) ctx.condition.wait();
+		}
 
-	{ // wait for result
-		auto l = scopedMutexLock(ctx.mutex);
-		while (!ctx.done) ctx.condition.wait();
-	}
-
-	// clean up resources
-	() @trusted {
-		import core.memory : GC;
-		destroy(ctx.condition);
-		destroy(ctx.mutex);
-		// NOTE: the GC will otherwise call the destructor on the destroy()ed
-		//       Mutex, which causes a failure in DeleteCriticalSection on
-		//       Windows
-		GC.free(cast(void*)ctx.mutex);
-	} ();
+		// clean up resources
+		() @trusted {
+			import core.memory : GC;
+			destroy(ctx.condition);
+			destroy(ctx.mutex);
+			// NOTE: the GC will otherwise call the destructor on the destroy()ed
+			//       Mutex, which causes a failure in DeleteCriticalSection on
+			//       Windows
+			GC.free(cast(void*)ctx.mutex);
+		} ();
+	} catch (Exception e) assert(false, e.msg);
 
 	static if (!is(ReturnType!CALLABLE == void))
 		return ctx.result;

@@ -1942,7 +1942,8 @@ static ~this()
 	foreach (f; s_availableFibers)
 		f.shutdown();
 
-	ManualEvent.freeThreadResources();
+	import vibe.core.internal.threadlocalwaiter : freeThreadResources;
+	freeThreadResources();
 
 	synchronized (st_threadsMutex) {
 		auto idx = st_threads.countUntil!(c => c.thread is thisthr);
