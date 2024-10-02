@@ -1135,9 +1135,7 @@ struct LocalManualEvent {
 	@safe:
 
 	private {
-		alias Waiter = ThreadLocalWaiter!false;
-
-		Waiter m_waiter;
+		ThreadLocalWaiter!false m_waiter;
 	}
 
 	private void initialize()
