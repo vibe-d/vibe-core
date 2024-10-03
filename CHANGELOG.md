@@ -1,9 +1,17 @@
-2.9.3 - 2024-10-03
+2.9.4 - 2024-10-03
 ==================
 
 - Fixed emitting `ManualEvent`s from non-D threads - [pull #415][issue415]
 
 [issue415]: https://github.com/vibe-core/vibe-core/issues/415
+
+
+2.9.3 - 2024-09-13
+==================
+
+- Fixed a bogus warning message - [pull #415][issue413]
+
+[issue413]: https://github.com/vibe-core/vibe-core/issues/413
 
 
 2.9.2 - 2024-09-13
