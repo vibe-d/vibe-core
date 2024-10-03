@@ -1379,17 +1379,18 @@ struct ManualEvent {
 		auto thisthr = Thread.getThis();
 
 		ThreadWaiter lw;
-		auto drv = eventDriver;
-		m_waiters.lock.active.iterate((ThreadWaiter w) {
-			debug (VibeMutexLog) () @trusted { logTrace("waiter %s", cast(void*)w); } ();
-			if (w.driver is drv) {
-				lw = w;
-				lw.addRef();
-			} else {
-				w.triggerEvent();
-			}
-			return true;
-		});
+		if (auto drv = tryGetEventDriver) {
+			m_waiters.lock.active.iterate((ThreadWaiter w) {
+				debug (VibeMutexLog) () @trusted { logTrace("waiter %s", cast(void*)w); } ();
+				if (w.driver is drv) {
+					lw = w;
+					lw.addRef();
+				} else {
+					w.triggerEvent();
+				}
+				return true;
+			});
+		}
 		debug (VibeMutexLog) () @trusted { logTrace("lw %s", cast(void*)lw); } ();
 		if (lw) {
 			lw.emit();
@@ -1412,18 +1413,19 @@ struct ManualEvent {
 		auto thisthr = Thread.getThis();
 
 		ThreadWaiter lw;
-		auto drv = eventDriver;
-		m_waiters.lock.active.iterate((ThreadWaiter w) {
-			() @trusted { logTrace("waiter %s", cast(void*)w); } ();
-			if (w.driver is drv) {
-				if (w.unused) return true;
-				lw = w;
-				lw.addRef();
-			} else {
-				w.triggerEvent();
-			}
-			return false;
-		});
+		if (auto drv = tryGetEventDriver) {
+			m_waiters.lock.active.iterate((ThreadWaiter w) {
+				() @trusted { logTrace("waiter %s", cast(void*)w); } ();
+				if (w.driver is drv) {
+					if (w.unused) return true;
+					lw = w;
+					lw.addRef();
+				} else {
+					w.triggerEvent();
+				}
+				return false;
+			});
+		}
 		() @trusted { logTrace("lw %s", cast(void*)lw); } ();
 		if (lw) {
 			lw.emitSingle();
@@ -1502,7 +1504,7 @@ struct ManualEvent {
 	private void acquireThreadWaiter(DEL)(scope DEL del)
 	shared {
 		ThreadWaiter w;
-		auto drv = eventDriver;
+		auto drv = tryGetEventDriver;
 
 		with (m_waiters.lock) {
 			active.iterate((aw) {
