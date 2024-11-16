@@ -437,10 +437,6 @@ struct NetworkAddress {
 	/// ditto
 	void toAddressString(scope void delegate(const(char)[]) @safe sink)
 	const nothrow {
-		import std.array : appender;
-		import std.format : formattedWrite;
-		ubyte[2] _dummy = void; // Workaround for DMD regression in master
-
 		scope (failure) assert(false);
 
 		switch (this.family) {
@@ -450,17 +446,11 @@ struct NetworkAddress {
 				break;
 			case AF_INET: {
 				ubyte[4] ip = () @trusted { return (cast(ubyte*)&addr_ip4.sin_addr.s_addr)[0 .. 4]; } ();
-				// NOTE: (DMD 2.101.2) FormatSpec.writeUpToNextSpec doesn't forward 'sink' as scope
-				() @trusted { sink.formattedWrite("%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]); } ();
+				writeV4(sink, ip);
 				} break;
 			case AF_INET6: {
 				ubyte[16] ip = addr_ip6.sin6_addr.s6_addr;
-				foreach (i; 0 .. 8) {
-					if (i > 0) sink(":");
-					_dummy[] = ip[i*2 .. i*2+2];
-					// NOTE: (DMD 2.101.2) FormatSpec.writeUpToNextSpec doesn't forward 'sink' as scope
-					() @trusted { sink.formattedWrite("%x", bigEndianToNative!ushort(_dummy)); } ();
-				}
+				writeV6(sink, ip);
 				} break;
 			version (Posix) {
 				case AddressFamily.UNIX:
@@ -515,13 +505,120 @@ struct NetworkAddress {
 	}
 
 	unittest {
-		void test(string ip) {
+		void test(string ip, string expected = null) {
+			if(expected is null) expected = ip;
 			auto res = () @trusted { return resolveHost(ip, AF_UNSPEC, false); } ().toAddressString();
-			assert(res == ip,
-				   "IP "~ip~" yielded wrong string representation: "~res);
+			assert(res == expected,
+				   "IP "~ip~" yielded wrong string representation: "~res~", expected: "~expected);
 		}
 		test("1.2.3.4");
 		test("102:304:506:708:90a:b0c:d0e:f10");
+		test("1:0:1::1");
+		test("1::1:0:0:1");
+		test("::1");
+		test("::2");
+		test("::0.0.0.1", "::1");
+		test("::0.0.0.2", "::2");
+		test("::ffff:0.0.0.1");
+		test("::ffff:0.0.0.2");
+		test("2001:db8::1:0:0:1");
+		test("2001:db8:0:1::");
+		test("2001:db8::");
+		test("::1:1", "::0.1.0.1");
+		test("::ffff:0:1", "::ffff:0.0.0.1");
+		test("::ffff:1", "::255.255.0.1");
+	}
+}
+
+private void writeV4(scope void delegate(const(char)[]) @safe sink, const scope ubyte[4] ip) @trusted {
+	import std.format : formattedWrite;
+
+	// NOTE: (DMD 2.101.2) FormatSpec.writeUpToNextSpec doesn't forward 'sink' as scope
+	sink.formattedWrite("%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+}
+
+private void writeV6(scope void delegate(const(char)[]) @safe sink, const scope ubyte[16] ip) @safe {
+	// Preprocess:
+	// Copy the input (bytewise) array into a wordwise array.
+	// Find the longest run of 0x00's in ip[] for :: shorthanding.
+
+	ushort[8] native = void;
+	static struct ZeroesSegment { byte base = -1; byte len; }
+	ZeroesSegment best, cur;
+
+	for(ubyte i=0; i<16; i+=2)
+	{
+		const ubyte[2] dummy = ip[i .. i+2];
+		const ubyte d = i/2;
+		native[d] = bigEndianToNative!ushort(dummy);
+
+		if(native[d] == 0)
+		{
+			if(cur.base == -1) // found first zero segment
+			{
+				cur.base = d;
+				cur.len = 1;
+			}
+			else
+				cur.len++;
+		}
+		else
+		{
+			if(cur.base != -1) // end of zeroes segment
+			{
+				// zeroes wasn't found before or we found longer zeroes segment
+				if(best.base == -1 || cur.len > best.len)
+					best = cur;
+
+				cur.base = -1;
+			}
+		}
+
+		// checks zero segments at the address end
+		if(cur.base != -1)
+		{
+			if (best.base == -1 || cur.len > best.len)
+				best = cur;
+		}
+
+		// cancel results if found segment too short
+		if (best.len < 2)
+			best.base = -1;
+	}
+
+	// Format the result:
+	foreach(const ubyte i; 0 .. 8)
+	{
+		if(best.base != -1)
+		{
+			// Are we inside the best run of 0x00's?
+			if(i >= best.base && i < best.base + best.len)
+			{
+				// We should sink only one :: for zeroes segment of any size
+				if(i == best.base || i == 7) // ...or is a trailing run of 0x00's
+					sink(":"); // another one ":" will be added as delimiter
+
+				continue;
+			}
+		}
+
+		if(i > 0) sink(":");
+
+		// Special case for encapsulated IPv4
+		if(i == 6 && best.base == 0)
+		{
+			if(
+				best.len == 6 || // ::xxx.xxx.xxx.xxx
+				(best.len == 5 && native[5] == 0xffff) // ::ffff:xxx.xxx.xxx.xxx
+			)
+			{
+				sink.writeV4(ip[12 .. 16]);
+				break;
+			}
+		}
+
+		import std.format : formattedWrite;
+		() @trusted { sink.formattedWrite("%x", native[i]); } ();
 	}
 }
 
