@@ -507,7 +507,10 @@ struct NetworkAddress {
 	unittest {
 		void test(string ip, string expected = null) {
 			if(expected is null) expected = ip;
-			auto res = () @trusted { return resolveHost(ip, AF_UNSPEC, false); } ().toAddressString();
+			auto w_dns = () @trusted { return resolveHost(ip, AF_UNSPEC, true); } ();
+			auto no_dns = () @trusted { return resolveHost(ip, AF_UNSPEC, false); } ();
+			assert(no_dns == w_dns);
+			auto res = no_dns.toAddressString();
 			assert(res == expected,
 				   "IP "~ip~" yielded wrong string representation: "~res~", expected: "~expected);
 		}
