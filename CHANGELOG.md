@@ -1,5 +1,15 @@
-2.9.4 - 2024-10-03
+2.9.6 - 2024-11-23
 ==================
+
+- Improved IPv6 address formatting by outputting the special IPv4 syntax where applicable (by Denis Feklushkin aka denizzzka) - [pull #416][issue416]
+- Fixed a possible `InvalidMemoryOperationError` when leaking `FileStream` instances to the GC - [pull #417][issue417]
+
+[issue416]: https://github.com/vibe-core/vibe-core/issues/416
+[issue417]: https://github.com/vibe-core/vibe-core/issues/417
+
+
+2.9.4+2.9.5 - 2024-10-03
+========================
 
 - Fixed emitting `ManualEvent`s from non-D threads - [pull #415][issue415]
 
