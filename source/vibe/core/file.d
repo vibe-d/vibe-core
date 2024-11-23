@@ -699,9 +699,19 @@ scope:
 
 	~this()
 	nothrow {
+		import core.memory : GC;
+		import core.stdc.stdio : fprintf, stderr;
+
 		static if (is(typeof(&eventDriver.files.isUnique))) {
 			if (this.isOpen) {
-				if (m_ctx.driver is (() @trusted => cast(shared)eventDriver)()) {
+				if (GC.inFinalizer) {
+					() @trusted {
+						auto path = m_ctx.path.toString();
+						fprintf(stderr, "Warning: Leaking open FileStream handle because the instance was leaked to the GC (%.*s)\n",
+							cast(int)path.length, path.ptr);
+					} ();
+					m_fd = FileFD.invalid;
+				} else if (m_ctx.driver is (() @trusted => cast(shared)eventDriver)()) {
 					if (eventDriver.files.isUnique(m_fd)) {
 						try close();
 						catch (Exception e) logException(e, "Closing unclosed FileStream during destruction failed");
