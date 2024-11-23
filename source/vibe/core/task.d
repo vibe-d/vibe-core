@@ -603,6 +603,9 @@ final package class TaskFiber : Fiber {
 			auto st = getTaskStatus();
 			if (!st.initialized || st.counter != task_counter)
 				break;
+
+			assert(cast(shared(TaskFiber))Fiber.getThis() !is this, "Task attempting to join itself");
+
 			static if (interruptiple)
 				cnt = m_onExit.wait(cnt);
 			else
