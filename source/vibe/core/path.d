@@ -34,7 +34,7 @@ Path relativeTo(Path)(in Path path, in Path base_path) @safe
 	assert(base_path.absolute, "Base path must be absolute for relativeTo.");
 	assert(path.absolute, "Path must be absolute for relativeTo.");
 
-	if (is(Path == WindowsPath)) { // FIXME: this shouldn't be a special case here!
+	if (is(Path.Format == WindowsPathFormat)) { // FIXME: this shouldn't be a special case here!
 		bool samePrefix(size_t n)
 		{
 			return path.bySegment.map!(n => n.encodedName).take(n).equal(base_path.bySegment.map!(n => n.encodedName).take(n));
