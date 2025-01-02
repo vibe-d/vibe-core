@@ -754,7 +754,7 @@ struct GenericPath(F) {
 			segments ("..") that lead to a path that is a parent path of the
 			root path.
 	*/
-	void normalize()
+	ref GenericPath normalize() scope return
 	{
 		import std.array : appender, join;
 
@@ -780,16 +780,15 @@ struct GenericPath(F) {
 		auto dst = appender!string;
 		Format.toString(newnodes, dst);
 		m_path = dst.data;
+		return this;
 	}
 
 	///
 	unittest {
-		auto path = WindowsPath("C:\\test/foo/./bar///../baz");
-		path.normalize();
+		auto path = WindowsPath("C:\\test/foo/./bar///../baz").normalize();
 		assert(path.toString() == "C:\\test\\foo\\baz", path.toString());
 
-		path = WindowsPath("foo/../../bar/");
-		path.normalize();
+		path = WindowsPath("foo/../../bar/").normalize();
 		assert(path.toString() == "..\\bar\\");
 	}
 
