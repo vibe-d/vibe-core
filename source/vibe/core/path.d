@@ -791,7 +791,8 @@ struct GenericPath(F) {
 
 	/** Replaces the path representation with its normalized form.
 
-		See `normalized` for a full description.
+		This is a simple convenience wrapper around the functional style
+		`.normalized`, which is usually preferable.
 	*/
 	void normalize()
 	{
