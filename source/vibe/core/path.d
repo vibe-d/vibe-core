@@ -7,8 +7,8 @@
 */
 module vibe.core.path;
 
-import std.algorithm.searching : commonPrefix, endsWith, startsWith;
-import std.algorithm.comparison : equal, min;
+import std.algorithm.searching : any, commonPrefix, endsWith, startsWith;
+import std.algorithm.comparison : among, equal, min;
 import std.algorithm.iteration : map;
 import std.exception : enforce;
 import std.range : empty, front, popFront, popFrontExactly, takeExactly;
@@ -741,6 +741,13 @@ struct GenericPath(F) {
 	const {
 		import std.array : appender, join;
 
+		// avoid constucting a new path if already normalized
+		if (!this.bySegment.any!(s => s.encodedName.among("", ".", "..")
+			|| (s.hasSeparator && s.separator != Format.defaultSeparator)))
+		{
+			return this;
+		}
+
 		Segment[] newnodes;
 		bool got_non_sep = false;
 		foreach (n; this.bySegment) {
@@ -774,6 +781,8 @@ struct GenericPath(F) {
 		assert(PosixPath("foo//./bar/../baz").normalized == PosixPath("foo/baz"));
 		assert(PosixPath("/foo/../bar").normalized == PosixPath("/bar"));
 		assert(WindowsPath(`\\PC/c$\foo/../bar/`).normalized == WindowsPath(`\\PC\c$\bar\`));
+		assert(PosixPath("/foo/bar").normalized == PosixPath("/foo/bar"));
+		assert(PosixPath("foo/bar/").normalized == PosixPath("foo/bar/"));
 	}
 
 
