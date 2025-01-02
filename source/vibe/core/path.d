@@ -723,26 +723,9 @@ struct GenericPath(F) {
 
 	/** Returns the normalized form of the path.
 
-		See `normalize` for a full description.
-	*/
-	@property GenericPath normalized()
-	const {
-		GenericPath ret = this;
-		ret.normalize();
-		return ret;
-	}
-
-	unittest {
-		assert(PosixPath("foo/../bar").normalized == PosixPath("bar"));
-		assert(PosixPath("foo//./bar/../baz").normalized == PosixPath("foo/baz"));
-	}
-
-
-	/** Removes any redundant path segments and replaces all separators by the
-		default one.
-
-		The resulting path representation is suitable for basic semantic
-		comparison to other normalized paths.
+		This removes any redundant path segments and replaces all separators
+		by the default one. The resulting path representation is suitable for
+		basic semantic comparison to other normalized paths.
 
 		Note that there are still ways for different normalized paths to
 		represent the same file. Examples of this are the tilde shortcut to the
@@ -754,8 +737,8 @@ struct GenericPath(F) {
 			segments ("..") that lead to a path that is a parent path of the
 			root path.
 	*/
-	void normalize()
-	{
+	@property GenericPath normalized()
+	const {
 		import std.array : appender, join;
 
 		Segment[] newnodes;
@@ -779,7 +762,28 @@ struct GenericPath(F) {
 
 		auto dst = appender!string;
 		Format.toString(newnodes, dst);
-		m_path = dst.data;
+
+		GenericPath ret;
+		ret.m_path = dst.data;
+		return ret;
+	}
+
+	///
+	unittest {
+		assert(PosixPath("foo/../bar").normalized == PosixPath("bar"));
+		assert(PosixPath("foo//./bar/../baz").normalized == PosixPath("foo/baz"));
+		assert(PosixPath("/foo/../bar").normalized == PosixPath("/bar"));
+		assert(WindowsPath(`\\PC/c$\foo/../bar/`).normalized == WindowsPath(`\\PC\c$\bar\`));
+	}
+
+
+	/** Replaces the path representation with its normalized form.
+
+		See `normalized` for a full description.
+	*/
+	void normalize()
+	{
+		this.m_path = this.normalized.m_path;
 	}
 
 	///
