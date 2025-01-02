@@ -36,7 +36,7 @@ void main()
 	assert(atomicLoad(counter) == ntasks, "Event loop exited prematurely.");
 }
 
-void worker()
+void worker() nothrow
 {
 	ev.wait(0);
 	ev.emit();
