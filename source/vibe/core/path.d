@@ -65,7 +65,7 @@ Path relativeTo(Path)(in Path path, in Path base_path) @safe
 		base++;
 	}
 
-	enum up = Path.Segment2("..", Path.defaultSeparator);
+	enum up = Path.Segment("..", Path.defaultSeparator);
 	auto ret = Path(base_nodes.map!(p => up).chain(nodes));
 	if (path.endsWithSlash) {
 		if (ret.empty) return Path.fromTrustedString("." ~ path.toString()[$-1]);
@@ -216,6 +216,7 @@ struct GenericPath(F) {
 	alias Format = F;
 
 	/// vibe-core 1.x compatibility alias
+	deprecated("Use `Segment` instead.")
 	alias Segment2 = Segment;
 
 	/** A single path segment.
@@ -524,6 +525,7 @@ struct GenericPath(F) {
 	}
 
 	/// vibe-core 1.x compatibility alias
+	deprecated("Use `.bySegment` instead.")
 	alias bySegment2 = bySegment;
 
 	/** Iterates over the individual segments of the path.
@@ -665,6 +667,7 @@ struct GenericPath(F) {
 	}
 
 	// vibe-core 1.x compatibility alias
+	deprecated("Use `.head` instead.")
 	alias head2 = head;
 
 	/// Returns the trailing segment of the path.
