@@ -7,8 +7,8 @@
 */
 module vibe.core.path;
 
-import std.algorithm.searching : commonPrefix, endsWith, startsWith;
-import std.algorithm.comparison : equal, min;
+import std.algorithm.searching : any, commonPrefix, endsWith, startsWith;
+import std.algorithm.comparison : among, equal, min;
 import std.algorithm.iteration : map;
 import std.exception : enforce;
 import std.range : empty, front, popFront, popFrontExactly, takeExactly;
@@ -65,7 +65,7 @@ Path relativeTo(Path)(in Path path, in Path base_path) @safe
 		base++;
 	}
 
-	enum up = Path.Segment2("..", Path.defaultSeparator);
+	enum up = Path.Segment("..", Path.defaultSeparator);
 	auto ret = Path(base_nodes.map!(p => up).chain(nodes));
 	if (path.endsWithSlash) {
 		if (ret.empty) return Path.fromTrustedString("." ~ path.toString()[$-1]);
@@ -216,6 +216,7 @@ struct GenericPath(F) {
 	alias Format = F;
 
 	/// vibe-core 1.x compatibility alias
+	deprecated("Use `Segment` instead.")
 	alias Segment2 = Segment;
 
 	/** A single path segment.
@@ -524,6 +525,7 @@ struct GenericPath(F) {
 	}
 
 	/// vibe-core 1.x compatibility alias
+	deprecated("Use `.bySegment` instead.")
 	alias bySegment2 = bySegment;
 
 	/** Iterates over the individual segments of the path.
@@ -665,6 +667,7 @@ struct GenericPath(F) {
 	}
 
 	// vibe-core 1.x compatibility alias
+	deprecated("Use `.head` instead.")
 	alias head2 = head;
 
 	/// Returns the trailing segment of the path.
@@ -723,26 +726,9 @@ struct GenericPath(F) {
 
 	/** Returns the normalized form of the path.
 
-		See `normalize` for a full description.
-	*/
-	@property GenericPath normalized()
-	const {
-		GenericPath ret = this;
-		ret.normalize();
-		return ret;
-	}
-
-	unittest {
-		assert(PosixPath("foo/../bar").normalized == PosixPath("bar"));
-		assert(PosixPath("foo//./bar/../baz").normalized == PosixPath("foo/baz"));
-	}
-
-
-	/** Removes any redundant path segments and replaces all separators by the
-		default one.
-
-		The resulting path representation is suitable for basic semantic
-		comparison to other normalized paths.
+		This removes any redundant path segments and replaces all separators
+		by the default one. The resulting path representation is suitable for
+		basic semantic comparison to other normalized paths.
 
 		Note that there are still ways for different normalized paths to
 		represent the same file. Examples of this are the tilde shortcut to the
@@ -754,9 +740,16 @@ struct GenericPath(F) {
 			segments ("..") that lead to a path that is a parent path of the
 			root path.
 	*/
-	void normalize()
-	{
+	@property GenericPath normalized()
+	const {
 		import std.array : appender, join;
+
+		// avoid constucting a new path if already normalized
+		if (!this.bySegment.any!(s => s.encodedName.among("", ".", "..")
+			|| (s.hasSeparator && s.separator != Format.defaultSeparator)))
+		{
+			return this;
+		}
 
 		Segment[] newnodes;
 		bool got_non_sep = false;
@@ -779,7 +772,31 @@ struct GenericPath(F) {
 
 		auto dst = appender!string;
 		Format.toString(newnodes, dst);
-		m_path = dst.data;
+
+		GenericPath ret;
+		ret.m_path = dst.data;
+		return ret;
+	}
+
+	///
+	unittest {
+		assert(PosixPath("foo/../bar").normalized == PosixPath("bar"));
+		assert(PosixPath("foo//./bar/../baz").normalized == PosixPath("foo/baz"));
+		assert(PosixPath("/foo/../bar").normalized == PosixPath("/bar"));
+		assert(WindowsPath(`\\PC/c$\foo/../bar/`).normalized == WindowsPath(`\\PC\c$\bar\`));
+		assert(PosixPath("/foo/bar").normalized == PosixPath("/foo/bar"));
+		assert(PosixPath("foo/bar/").normalized == PosixPath("foo/bar/"));
+	}
+
+
+	/** Replaces the path representation with its normalized form.
+
+		This is a simple convenience wrapper around the functional style
+		`.normalized`, which is usually preferable.
+	*/
+	void normalize()
+	{
+		this.m_path = this.normalized.m_path;
 	}
 
 	///

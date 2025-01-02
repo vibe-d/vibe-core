@@ -1134,7 +1134,7 @@ private void performListDirectory(ListDirectoryRequest req)
 					if (fi.isSymlink && !req.followSymlinks)
 						continue;
 					try {
-						if (!scanRec(path ~ NativePath.Segment2(fi.name)))
+						if (!scanRec(path ~ NativePath.Segment(fi.name)))
 							return false;
 					} catch (Exception e) {}
 				}
