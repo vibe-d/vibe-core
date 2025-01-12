@@ -199,16 +199,24 @@ string toNativeString(P)(P path)
 
 /// Represents a path on Windows operating systems.
 alias WindowsPath = GenericPath!WindowsPathFormat;
+/// ditto
+alias WindowsPathN = NormalizedPath!WindowsPath;
 
 /// Represents a path on Unix/Posix systems.
 alias PosixPath = GenericPath!PosixPathFormat;
+/// ditto
+alias PosixPathN = NormalizedPath!PosixPath;
 
 /// Represents a path as part of an URI.
 alias InetPath = GenericPath!InetPathFormat;
+/// ditto
+alias InetPathN = NormalizedPath!InetPath;
 
 /// The path type native to the target operating system.
 version (Windows) alias NativePath = WindowsPath;
 else alias NativePath = PosixPath;
+/// ditto
+alias NativePathN = NormalizedPath!NativePath;
 
 /// Provides a common interface to operate on paths of various kinds.
 struct GenericPath(F) {
@@ -744,7 +752,7 @@ struct GenericPath(F) {
 			segments ("..") that lead to a path that is a parent path of the
 			root path.
 	*/
-	@property GenericPath normalized()
+	@property NormalizedPath!GenericPath normalized()
 	const {
 		import std.array : appender, join;
 
@@ -752,7 +760,9 @@ struct GenericPath(F) {
 		if (!this.bySegment.any!(s => s.encodedName.among("", ".", "..")
 			|| (s.hasSeparator && s.separator != Format.defaultSeparator)))
 		{
-			return this;
+			NormalizedPath!GenericPath ret;
+			ret.m_path = this;
+			return ret;
 		}
 
 		Segment[] newnodes;
@@ -777,8 +787,8 @@ struct GenericPath(F) {
 		auto dst = appender!string;
 		Format.toString(newnodes, dst);
 
-		GenericPath ret;
-		ret.m_path = dst.data;
+		NormalizedPath!GenericPath ret;
+		ret.m_path.m_path = dst.data;
 		return ret;
 	}
 
@@ -800,7 +810,7 @@ struct GenericPath(F) {
 	*/
 	void normalize()
 	{
-		this.m_path = this.normalized.m_path;
+		this.m_path = this.normalized.m_path.m_path;
 	}
 
 	///
@@ -1031,6 +1041,67 @@ unittest {
 unittest {
 	assert(WindowsPath([WindowsPath.Segment("foo"), WindowsPath.Segment("bar")]).toString() == "foo\\bar");
 }
+
+
+/** Represents a path in its normalized form.
+
+	This path type ensures that the represented path is always in normalized
+	form. It implicitly converts to the base path type. See also
+	`GenericPath.normalized`.
+*/
+struct NormalizedPath(P) {
+	alias Format = P.Format;
+	alias Segment = P.Segment;
+
+	private {
+		P m_path;
+	}
+
+	P toPath() const { return m_path; }
+	alias toPath this;
+
+	this(P path) { m_path = path.normalized; }
+	this(string p) { this(P(p)); }
+	this(R)(R segments) if (isInputRange!R && is(ElementType!R : Segment)) { this(P(segments)); }
+
+	static NormalizedPath fromString(string p) { return NormalizedPath(p); }
+	static NormalizedPath fromTrustedString(string p) { return NormalizedPath(P.fromTrustedString(p)); }
+
+	alias isSeparator = P.isSeparator;
+
+	@property NormalizedPath normalized() nothrow @nogc { return this; }
+
+	/** Concatenates two paths.
+
+		The right hand side must represent a relative path.
+	*/
+	NormalizedPath opBinary(string op : "~")(string subpath) const { return this ~ P(subpath); }
+	/// ditto
+	NormalizedPath opBinary(string op : "~")(Segment subpath) const { return this ~ P(subpath); }
+	/// ditto
+	NormalizedPath opBinary(string op : "~", F)(GenericPath!F.Segment subpath) const { return this ~ cast(Segment)(subpath); }
+	/// ditto
+	NormalizedPath opBinary(string op : "~")(P subpath) const { return (m_path ~ subpath).normalized; }
+	/// ditto
+	NormalizedPath opBinary(string op : "~", F)(GenericPath!F subpath) const if (!is(F == Format)) { return this ~ cast(P)subpath; }
+	/// ditto
+	NormalizedPath opBinary(string op : "~", R)(R entries) const if (isInputRange!R && is(ElementType!R : Segment)) { return this ~ P(entries); }
+
+	/// Appends a relative path to this path.
+	void opOpAssign(string op : "~", T)(T op) { this = this ~ op; }
+}
+
+///
+unittest {
+	PosixPathN path = PosixPathN("/foo/../bar");
+	assert(path.toString() == "/bar");
+	path ~= "..";
+	assert(path.toString() == "/");
+
+	path = PosixPath("/foo/../bar").normalized;
+	assert(path.toString() == "/bar");
+}
+
 
 /// Thrown when an invalid string representation of a path is detected.
 class PathValidationException : Exception {
