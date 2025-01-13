@@ -1065,6 +1065,8 @@ struct NormalizedPath(P) {
 
 	alias isSeparator = P.isSeparator;
 
+	@property NormalizedPath parentPath() const @nogc { return fromPreNormalized(m_path.parentPath); }
+
 	@property NormalizedPath normalized() nothrow @nogc { return this; }
 
 	/** Concatenates two paths.
@@ -1085,6 +1087,12 @@ struct NormalizedPath(P) {
 
 	/// Appends a relative path to this path.
 	void opOpAssign(string op : "~", T)(T op) { this = this ~ op; }
+
+	private static NormalizedPath fromPreNormalized(P path) {
+		NormalizedPath ret;
+		ret.m_path = path;
+		return ret;
+	}
 }
 
 ///
