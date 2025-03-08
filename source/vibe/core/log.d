@@ -126,7 +126,7 @@ nothrow {
 		args = Any input values needed for formatting
 */
 void log(LogLevel level, S, T...)(S fmt, lazy T args, string mod = __MODULE__,
-    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+	string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
 	nothrow if ((isSomeString!S || is(S == InterpolationHeader)) && level != LogLevel.none)
 {
 	doLog(level, mod, func, file, line, fmt, args);
@@ -134,74 +134,74 @@ void log(LogLevel level, S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 
 /// ditto
 void logTrace(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
-    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow if (isSomeString!S || is(S == InterpolationHeader))
+	string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+	nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
-    doLog(LogLevel.trace, mod, func, file, line, fmt, args);
+	doLog(LogLevel.trace, mod, func, file, line, fmt, args);
 }
 
 /// ditto
 void logDebugV(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
-    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow if (isSomeString!S || is(S == InterpolationHeader))
+	string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+	nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
-    doLog(LogLevel.debugV, mod, func, file, line, fmt, args);
+	doLog(LogLevel.debugV, mod, func, file, line, fmt, args);
 }
 
 /// ditto
 void logDebug(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
-    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow if (isSomeString!S || is(S == InterpolationHeader))
+	string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+	nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
-    doLog(LogLevel.debug_, mod, func, file, line, fmt, args);
+	doLog(LogLevel.debug_, mod, func, file, line, fmt, args);
 }
 
 /// ditto
 void logDiagnostic(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
-    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow if (isSomeString!S || is(S == InterpolationHeader))
+	string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+	nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
-    doLog(LogLevel.diagnostic, mod, func, file, line, fmt, args);
+	doLog(LogLevel.diagnostic, mod, func, file, line, fmt, args);
 }
 
 /// ditto
 void logInfo(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
-    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow if (isSomeString!S || is(S == InterpolationHeader))
+	string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+	nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
-    doLog(LogLevel.info, mod, func, file, line, fmt, args);
+	doLog(LogLevel.info, mod, func, file, line, fmt, args);
 }
 
 /// ditto
 void logWarn(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
-    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow if (isSomeString!S || is(S == InterpolationHeader))
+	string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+	nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
-    doLog(LogLevel.warn, mod, func, file, line, fmt, args);
+	doLog(LogLevel.warn, mod, func, file, line, fmt, args);
 }
 
 /// ditto
 void logError(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
-    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow if (isSomeString!S || is(S == InterpolationHeader))
+	string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+	nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
-    doLog(LogLevel.error, mod, func, file, line, fmt, args);
+	doLog(LogLevel.error, mod, func, file, line, fmt, args);
 }
 
 /// ditto
 void logCritical(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
-    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow if (isSomeString!S || is(S == InterpolationHeader))
+	string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+	nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
-    doLog(LogLevel.critical, mod, func, file, line, fmt, args);
+	doLog(LogLevel.critical, mod, func, file, line, fmt, args);
 }
 
 /// ditto
 void logFatal(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
-    string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow if (isSomeString!S || is(S == InterpolationHeader))
+	string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
+	nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
-    doLog(LogLevel.fatal, mod, func, file, line, fmt, args);
+	doLog(LogLevel.fatal, mod, func, file, line, fmt, args);
 }
 
 ///
@@ -211,8 +211,11 @@ void logFatal(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 		logInfo("Hello, World!");
 		logWarn("This may not be %s.", "good");
 		log!(LogLevel.info)("This is a %s.", "test");
-		static if (__VERSION__ >= 2108)
+
+		// NOTE: interpolated strings are available starting with DMD 2.108.0
+		static if (__VERSION__ >= 2108) mixin(q{
 			logInfo(i"Answer: $(2*21)");
+		});
 	}
 }
 
@@ -220,12 +223,12 @@ void logFatal(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 /** Logs an exception, including a debug stack trace.
 */
 void logException(LogLevel level = LogLevel.error)(Throwable exception,
-    string error_description, string mod = __MODULE__, string func = __FUNCTION__,
-    string file = __FILE__, int line = __LINE__)
+	string error_description, string mod = __MODULE__, string func = __FUNCTION__,
+	string file = __FILE__, int line = __LINE__)
 @safe nothrow {
 	doLog(level, mod, func, file, line, "%s: %s", error_description, exception.msg);
 	try doLog(LogLevel.diagnostic, mod, func, file, line,
-              "Full exception: %s", () @trusted { return exception.toString(); } ());
+			  "Full exception: %s", () @trusted { return exception.toString(); } ());
 	catch (Exception e) logDiagnostic("Failed to print full exception: %s", e.msg);
 }
 
@@ -432,7 +435,7 @@ final class FileLogger : Logger {
 			case Format.threadTime:
 				dst.put('[');
 				auto tm = msg.time;
-			    auto msecs = tm.fracSecs.total!"msecs";
+				auto msecs = tm.fracSecs.total!"msecs";
 				m_curFile.writef("%d-%02d-%02d %02d:%02d:%02d.%03d ", tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second, msecs);
 
 				if (msg.threadName.length) dst.put(msg.threadName);
@@ -1051,8 +1054,8 @@ package void initializeLogModule()
 }
 
 private void doLog(S, T...)(LogLevel level, string mod, string func, string file,
-                            int line, S fmt, lazy T args)
-    nothrow
+							int line, S fmt, lazy T args)
+	nothrow
 {
 	try {
 		static if(T.length != 0) {
