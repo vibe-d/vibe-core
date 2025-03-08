@@ -1,3 +1,13 @@
+2.10.0 - 2025-03-08
+===================
+
+- Deprecates `GenericPath.Segment2` - [pull #422][issue422]
+- The logging functions now also support passing an interpolated string instead of a format string - [pull #425][issue425]
+
+[issue422]: https://github.com/vibe-core/vibe-core/issues/422
+[issue425]: https://github.com/vibe-core/vibe-core/issues/425
+
+
 2.9.6 - 2024-11-23
 ==================
 
