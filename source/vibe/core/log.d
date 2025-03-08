@@ -22,6 +22,11 @@ import core.thread;
 import std.traits : isSomeString;
 import std.range.primitives : isInputRange, isOutputRange;
 
+// support string interpolation on modern compiler versions
+static if (__VERSION__ >= 2108) import core.interpolation;
+else private struct InterpolationHeader;
+
+
 /**
 	Sets the minimum log level to be printed using the default console logger.
 
@@ -122,7 +127,7 @@ nothrow {
 */
 void log(LogLevel level, S, T...)(S fmt, lazy T args, string mod = __MODULE__,
     string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-	nothrow if (isSomeString!S && level != LogLevel.none)
+	nothrow if ((isSomeString!S || is(S == InterpolationHeader)) && level != LogLevel.none)
 {
 	doLog(level, mod, func, file, line, fmt, args);
 }
@@ -130,7 +135,7 @@ void log(LogLevel level, S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 /// ditto
 void logTrace(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
     string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow
+    nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
     doLog(LogLevel.trace, mod, func, file, line, fmt, args);
 }
@@ -138,7 +143,7 @@ void logTrace(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 /// ditto
 void logDebugV(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
     string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow
+    nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
     doLog(LogLevel.debugV, mod, func, file, line, fmt, args);
 }
@@ -146,7 +151,7 @@ void logDebugV(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 /// ditto
 void logDebug(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
     string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow
+    nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
     doLog(LogLevel.debug_, mod, func, file, line, fmt, args);
 }
@@ -154,7 +159,7 @@ void logDebug(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 /// ditto
 void logDiagnostic(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
     string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow
+    nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
     doLog(LogLevel.diagnostic, mod, func, file, line, fmt, args);
 }
@@ -162,7 +167,7 @@ void logDiagnostic(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 /// ditto
 void logInfo(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
     string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow
+    nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
     doLog(LogLevel.info, mod, func, file, line, fmt, args);
 }
@@ -170,7 +175,7 @@ void logInfo(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 /// ditto
 void logWarn(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
     string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow
+    nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
     doLog(LogLevel.warn, mod, func, file, line, fmt, args);
 }
@@ -178,7 +183,7 @@ void logWarn(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 /// ditto
 void logError(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
     string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow
+    nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
     doLog(LogLevel.error, mod, func, file, line, fmt, args);
 }
@@ -186,7 +191,7 @@ void logError(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 /// ditto
 void logCritical(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
     string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow
+    nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
     doLog(LogLevel.critical, mod, func, file, line, fmt, args);
 }
@@ -194,7 +199,7 @@ void logCritical(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 /// ditto
 void logFatal(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
     string func = __FUNCTION__, string file = __FILE__, int line = __LINE__,)
-    nothrow
+    nothrow if (isSomeString!S || is(S == InterpolationHeader))
 {
     doLog(LogLevel.fatal, mod, func, file, line, fmt, args);
 }
@@ -206,6 +211,8 @@ void logFatal(S, T...)(S fmt, lazy T args, string mod = __MODULE__,
 		logInfo("Hello, World!");
 		logWarn("This may not be %s.", "good");
 		log!(LogLevel.info)("This is a %s.", "test");
+		static if (__VERSION__ >= 2108)
+			logInfo(i"Answer: $(2*21)");
 	}
 }
 
@@ -1055,11 +1062,16 @@ private void doLog(S, T...)(LogLevel level, string mod, string func, string file
 			T args_copy = args;
 		}
 
+		FormatSpec!char fmtspec;
+
 		foreach (l; getLoggers())
 			if (l.minLevel <= level) { // WARNING: TYPE SYSTEM HOLE: accessing field of shared class!
 				auto ll = l.lock();
 				auto rng = LogOutputRange(ll, file, line, level);
-				static if(T.length != 0)
+
+				static if (is(S == InterpolationHeader))
+					foreach (i, A; T) rng.formatValue(args_copy[i], fmtspec);
+				else static if(T.length != 0)
 					/*() @trusted {*/ rng.formattedWrite(fmt, args_copy); //} (); // formattedWrite is not @safe at least up to 2.068.0
 				else
 					rng.put(fmt);
