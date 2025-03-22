@@ -736,7 +736,7 @@ final class RecursiveTaskMutex : core.sync.mutex.Mutex, Lockable {
 	this() { m_impl.setup(); }
 
 	override bool tryLock() nothrow { return m_impl.tryLock(); }
-	override void lock() { m_impl.lock(); }
+	override void lock() nothrow { m_impl.lock(); }
 	override void unlock() nothrow { m_impl.unlock(); }
 
 	// new shared API
@@ -744,7 +744,7 @@ final class RecursiveTaskMutex : core.sync.mutex.Mutex, Lockable {
 	this() shared { m_impl.setup(); }
 
 	override bool tryLock() shared nothrow { return m_impl.tryLock(); }
-	override void lock() shared { m_impl.lock(); }
+	override void lock() shared nothrow { m_impl.lock(); }
 	override void unlock() shared nothrow { m_impl.unlock(); }
 }
 
@@ -1794,7 +1794,7 @@ private struct TaskMutexImpl(bool INTERRUPTIBLE) {
 private struct RecursiveTaskMutexImpl(bool INTERRUPTIBLE) {
 	import std.stdio;
 	private static struct State {
-		Task m_owner;
+		TaskFiber m_owner;
 		size_t m_recCount = 0;
 	}
 
@@ -1815,14 +1815,14 @@ private struct RecursiveTaskMutexImpl(bool INTERRUPTIBLE) {
 
 	@trusted bool tryLock()
 	nothrow {
-		auto self = Task.getThis();
+		auto self = TaskFiber.getThis();
 		with (m_state.lock()) {
 			if (!m_owner) {
-				assert(m_recCount == 0);
+				assert(m_recCount == 0, "Recursion count > 0 without lock owner!?");
 				m_recCount = 1;
 				m_owner = self;
 				return true;
-			} else if (m_owner == self) {
+			} else if (m_owner is self) {
 				m_recCount++;
 				return true;
 			}
@@ -1845,13 +1845,13 @@ private struct RecursiveTaskMutexImpl(bool INTERRUPTIBLE) {
 
 	@trusted void unlock()
 	{
-		auto self = Task.getThis();
+		auto self = TaskFiber.getThis();
 		with (m_state.lock()) {
-			assert(m_owner == self);
+			assert(m_owner is self);
 			assert(m_recCount > 0);
 			m_recCount--;
 			if (m_recCount == 0) {
-				m_owner = Task.init;
+				m_owner = TaskFiber.init;
 			}
 		}
 		debug(VibeMutexLog) logTrace("mutex %s unlock %s", cast(void*)&this, atomicLoad(m_waiters));
