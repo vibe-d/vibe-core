@@ -1,3 +1,12 @@
+2.10.1 - 2025-03-22
+===================
+
+- Fixed `(Interruptible)RecursiveTaskMutex` to work outside of a task - [pull #426][issue426]
+- Fixed `RecursiveTaskMutex` to be completely `nothrow` - [pull #426][issue426]
+
+[issue426]: https://github.com/vibe-core/vibe-core/issues/426
+
+
 2.10.0 - 2025-03-08
 ===================
 
