@@ -732,24 +732,43 @@ final class RecursiveTaskMutex : core.sync.mutex.Mutex, Lockable {
 	private shared(RecursiveTaskMutexImpl!false) m_impl;
 
 	// non-shared compatibility API
-	this(Object o) { m_impl.setup(); super(o); }
-	this() { m_impl.setup(); }
+	this(Object o) nothrow { m_impl.setup(); super(o); }
+	this() nothrow { m_impl.setup(); }
 
 	override bool tryLock() nothrow { return m_impl.tryLock(); }
-	override void lock() { m_impl.lock(); }
+	override void lock() nothrow { m_impl.lock(); }
 	override void unlock() nothrow { m_impl.unlock(); }
 
 	// new shared API
-	this(Object o) shared { m_impl.setup(); super(o); }
-	this() shared { m_impl.setup(); }
+	this(Object o) shared nothrow { m_impl.setup(); super(o); }
+	this() shared nothrow { m_impl.setup(); }
 
 	override bool tryLock() shared nothrow { return m_impl.tryLock(); }
-	override void lock() shared { m_impl.lock(); }
+	override void lock() shared nothrow { m_impl.lock(); }
 	override void unlock() shared nothrow { m_impl.unlock(); }
 }
 
 unittest {
 	runMutexUnitTests!RecursiveTaskMutex();
+}
+
+@safe nothrow unittest {
+	import vibe.core.core : runTask;
+
+	auto m = new RecursiveTaskMutex;
+	m.lock();
+	assert(m.tryLock());
+	m.unlock();
+	runTask({
+		assert(!m.tryLock());
+	}).joinUninterruptible();
+	m.unlock();
+	runTask({
+		assert(m.tryLock());
+		assert(m.tryLock());
+		m.unlock();
+		m.unlock();
+	}).joinUninterruptible();
 }
 
 
@@ -767,7 +786,7 @@ final class InterruptibleRecursiveTaskMutex : Lockable {
 	private shared(RecursiveTaskMutexImpl!true) m_impl;
 
 	this()
-	{
+	nothrow {
 		m_impl.setup();
 
 		// detects invalid usage within synchronized(...)
@@ -779,7 +798,7 @@ final class InterruptibleRecursiveTaskMutex : Lockable {
 	void unlock() nothrow { m_impl.unlock(); }
 
 	this()
-	shared {
+	nothrow shared {
 		m_impl.setup();
 
 		// detects invalid usage within synchronized(...)
@@ -1794,7 +1813,7 @@ private struct TaskMutexImpl(bool INTERRUPTIBLE) {
 private struct RecursiveTaskMutexImpl(bool INTERRUPTIBLE) {
 	import std.stdio;
 	private static struct State {
-		Task m_owner;
+		TaskFiber m_owner;
 		size_t m_recCount = 0;
 	}
 
@@ -1815,14 +1834,14 @@ private struct RecursiveTaskMutexImpl(bool INTERRUPTIBLE) {
 
 	@trusted bool tryLock()
 	nothrow {
-		auto self = Task.getThis();
+		auto self = TaskFiber.getThis();
 		with (m_state.lock()) {
 			if (!m_owner) {
-				assert(m_recCount == 0);
+				assert(m_recCount == 0, "Recursion count > 0 without lock owner!?");
 				m_recCount = 1;
 				m_owner = self;
 				return true;
-			} else if (m_owner == self) {
+			} else if (m_owner is self) {
 				m_recCount++;
 				return true;
 			}
@@ -1845,13 +1864,13 @@ private struct RecursiveTaskMutexImpl(bool INTERRUPTIBLE) {
 
 	@trusted void unlock()
 	{
-		auto self = Task.getThis();
+		auto self = TaskFiber.getThis();
 		with (m_state.lock()) {
-			assert(m_owner == self);
+			assert(m_owner is self);
 			assert(m_recCount > 0);
 			m_recCount--;
 			if (m_recCount == 0) {
-				m_owner = Task.init;
+				m_owner = TaskFiber.init;
 			}
 		}
 		debug(VibeMutexLog) logTrace("mutex %s unlock %s", cast(void*)&this, atomicLoad(m_waiters));
