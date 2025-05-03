@@ -320,8 +320,12 @@ struct GenericPath(F) {
 					string toString()
 					const @safe nothrow {
 						import std.conv : to;
-						try return m_value.save.to!string;
-						catch (Exception e) assert(false, e.msg);
+						static if (is(typeof(m_value.toString())))
+							return m_value.toString();
+						else {
+							try return m_value.save.to!string;
+							catch (Exception e) assert(false, e.msg);
+						}
 					}
 				}
 
@@ -1531,23 +1535,23 @@ struct InetPathFormat {
 		}
 
 		static struct R {
-			@safe pure nothrow @nogc:
+			@safe pure nothrow:
 
 			private {
 				string m_str;
 			}
 
 			this(string s)
-			{
+			@nogc {
 				m_str = s;
 			}
 
-			@property bool empty() const { return m_str.length == 0; }
+			@property bool empty() const @nogc { return m_str.length == 0; }
 
-			@property R save() const { return this; }
+			@property R save() const @nogc { return this; }
 
 			@property char front()
-			const {
+			const @nogc {
 				auto ch = m_str[0];
 				if (ch != '%') return ch;
 
@@ -1557,14 +1561,14 @@ struct InetPathFormat {
 			}
 
 			@property void popFront()
-			{
+			@nogc {
 				assert(!empty);
 				if (m_str[0] == '%') m_str = m_str[3 .. $];
 				else m_str = m_str[1 .. $];
 			}
 
 			@property char back()
-			const {
+			const @nogc {
 				if (m_str.length >= 3 && m_str[$-3] == '%') {
 					auto a = m_str[$-2];
 					auto b = m_str[$-1];
@@ -1573,10 +1577,24 @@ struct InetPathFormat {
 			}
 
 			void popBack()
-			{
+			@nogc {
 				assert(!empty);
 				if (m_str.length >= 3 && m_str[$-3] == '%') m_str = m_str[0 .. $-3];
 				else m_str = m_str[0 .. $-1];
+			}
+
+			string toString()
+			const {
+				import std.algorithm.mutation : copy;
+				import std.array : appender;
+
+				if (m_str.indexOf('%') < 0)
+					return m_str;
+
+				auto ret = appender!string;
+				ret.reserve(m_str.length);
+				copy(this.save, ret);
+				return ret.data;
 			}
 		}
 
