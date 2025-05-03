@@ -79,11 +79,15 @@ FileStream openFile(string path, FileMode mode = FileMode.read)
 */
 ubyte[] readFile(NativePath path, ubyte[] buffer = null, size_t max_size = size_t.max)
 {
+	import core.memory : GC;
+
 	auto fil = openFile(path);
 	scope (exit) fil.close();
 	enforce(fil.size <= max_size, "File is too big.");
 	auto sz = cast(size_t)fil.size;
-	auto ret = sz <= buffer.length ? buffer[0 .. sz] : new ubyte[sz];
+	auto ret = sz <= buffer.length
+		? buffer[0 .. sz]
+		: () @trusted { return cast(ubyte[])GC.malloc(sz)[0 .. sz]; } ();
 	fil.read(ret);
 	return ret;
 }
