@@ -87,7 +87,7 @@ ubyte[] readFile(NativePath path, ubyte[] buffer = null, size_t max_size = size_
 	auto sz = cast(size_t)fil.size;
 	auto ret = sz <= buffer.length
 		? buffer[0 .. sz]
-		: () @trusted { return cast(ubyte[])GC.malloc(sz)[0 .. sz]; } ();
+		: () @trusted { return cast(ubyte[])GC.malloc(sz, GC.BlkAttr.NO_SCAN)[0 .. sz]; } ();
 	fil.read(ret);
 	return ret;
 }
