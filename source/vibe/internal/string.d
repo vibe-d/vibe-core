@@ -26,14 +26,14 @@ import core.exception;
 	the original as possible.
 */
 string sanitizeUTF8(immutable(ubyte)[] str)
-@safe pure {
+@safe pure nothrow {
 	import std.encoding : sanitize;
 	auto ustr = cast(immutable(char)[])str;
 	return () @trusted { return sanitize(ustr); } ();
 }
 /// ditto
 string sanitizeUTF8(in ubyte[] str)
-@trusted pure {
+@trusted pure nothrow {
 	import std.encoding : sanitize;
 	auto ustr = cast(immutable(char)[])str;
 	auto ret = sanitize(ustr);
