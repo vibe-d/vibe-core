@@ -1,3 +1,17 @@
+2.11.0 - 2025-05-09
+===================
+
+- Added the possibility to import `vibe.core` instead of individual sub modules - [pull #429][issue429]
+- `InetPath.Segment.toString()` avoids allocations when no encoded sequences are present - [pull #427][issue427]
+- Reduced CPU overhead of `readFile` when reading large files - [pull #427][issue427], [pull #428][issue428]
+- Enabled precise GC scanning for the internal `FreeListRef`, which is used in various places - [pull #429][issue429]
+
+
+[issue427]: https://github.com/vibe-core/vibe-core/issues/427
+[issue428]: https://github.com/vibe-core/vibe-core/issues/428
+[issue429]: https://github.com/vibe-core/vibe-core/issues/429
+
+
 2.10.1 - 2025-03-22
 ===================
 
