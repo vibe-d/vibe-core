@@ -48,7 +48,7 @@ struct FreeListObjectAlloc(T, bool USE_GC = true, bool INIT = true, EXTRA = void
 		} else {
 			//logInfo("alloc %s/%d", T.stringof, ElemSize);
 			mem = Mallocator.instance.allocate(ElemSlotSize);
-			static if(hasIndirections!T) () @trusted { GC.addRange(mem.ptr, ElemSlotSize); } ();
+			static if(hasIndirections!T) () @trusted { GC.addRange(mem.ptr, ElemSlotSize, typeid(T)); } ();
 		}
 
 		// FIXME: this emplace has issues with qualified types, but Unqual!T may result in the wrong constructor getting called.
