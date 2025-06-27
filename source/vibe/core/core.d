@@ -744,6 +744,83 @@ void runWorkerTaskDistH(HCB, FT, ARGS...)(TaskSettings settings, scope HCB on_ha
 }
 
 
+/** Groups together a set of tasks and ensures that no task outlives the group.
+
+	This struct uses RAII to ensure that none of the associated tasks can
+	outlive the group.
+*/
+struct TaskGroup {
+	private {
+		Task[] m_tasks;
+	}
+
+	@disable this(this);
+
+	~this()
+	@safe nothrow {
+		joinUninterruptible();
+	}
+
+	/// Runs a new task and adds it to the group.
+	Task run(ARGS...)(ARGS args)
+	{
+		auto t = runTask(args);
+		add(t);
+		return t;
+	}
+
+	/// Runs a new task and adds it to the group.
+	Task runInWorker(ARGS...)(ARGS args)
+	{
+		auto t = runWorkerTaskH(args);
+		add(t);
+		return t;
+	}
+
+	/// Adds an existing task to the group.
+	void add(Task t)
+	@safe nothrow {
+		if (t.running)
+			m_tasks ~= t;
+		cleanup();
+	}
+
+	/// Interrupts all tasks of the group.
+	void interrupt()
+	@safe nothrow {
+		foreach (t; m_tasks)
+			t.interrupt();
+	}
+
+	/// Joins all tasks in the group.
+	void join()
+	@safe {
+		foreach (t; m_tasks)
+			t.join();
+		cleanup();
+	}
+	/// ditto
+	void joinUninterruptible()
+	@safe nothrow {
+		foreach (t; m_tasks)
+			t.joinUninterruptible();
+		cleanup();
+	}
+
+	private void cleanup()
+	@safe nothrow {
+		size_t j = 0;
+		foreach (i; 0 .. m_tasks.length)
+			if (m_tasks[i].running) {
+				if (i != j) m_tasks[j] = m_tasks[i];
+				j++;
+			}
+		m_tasks.length = j;
+		() @trusted { m_tasks.assumeSafeAppend(); } ();
+	}
+}
+
+
 enum isCallable(CALLABLE, ARGS...) = is(typeof({ mixin(testCall!ARGS("CALLABLE.init")); }));
 enum isNothrowCallable(CALLABLE, ARGS...) = is(typeof(() nothrow { mixin(testCall!ARGS("CALLABLE.init")); }));
 enum isMethod(T, alias method, ARGS...) = is(typeof({ mixin(testCall!ARGS("__traits(getMember, T.init, __traits(identifier, method))")); }));
