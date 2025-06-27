@@ -1,3 +1,13 @@
+2.12.0 - 2025-06-27
+===================
+
+- Added `TaskGroup` as a means to limit task lifetime to a scope - [pull #432][issue432]
+- Improved `logException` to avoid GC allocations and print line-by-line - [pull #430][issue430]
+
+[issue430]: https://github.com/vibe-core/vibe-core/issues/430
+[issue432]: https://github.com/vibe-core/vibe-core/issues/432
+
+
 2.11.0 - 2025-05-09
 ===================
 
