@@ -39,7 +39,9 @@ struct Task {
 		m_taskCounter = task_counter;
 	}
 
-	this(const Task other)
+	// NOTE: this is a template function to avoid the compiler treating it as a
+	//       move constructor
+	this()(const Task other)
 	@safe nothrow {
 		m_fiber = () @trusted { return cast(shared(TaskFiber))other.m_fiber; } ();
 		m_taskCounter = other.m_taskCounter;
