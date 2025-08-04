@@ -123,7 +123,7 @@ final class ThreadLocalWaiter(bool EVENT_TRIGGERED) {
 	void addRef() @safe nothrow { assert(m_refCount >= 0); m_refCount++; }
 	bool releaseRef()
 	@safe nothrow {
-		assert(m_refCount > 0);
+		assert(m_refCount > 0, "Releasing unreferenced thread local waiter");
 		if (--m_refCount == 0) {
 			static if (EVENT_TRIGGERED) {
 				s_free.add(this);
