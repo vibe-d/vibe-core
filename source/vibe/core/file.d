@@ -21,7 +21,7 @@ import core.sys.posix.unistd;
 import core.sys.posix.fcntl;
 import core.sys.posix.sys.stat;
 import core.time;
-import std.conv : octal;
+import std.conv : octal, to;
 import std.datetime;
 import std.exception;
 import std.file;
@@ -761,7 +761,7 @@ scope:
 		auto res = asyncAwaitUninterruptible!(FileIOCallback,
 			cb => eventDriver.files.truncate(m_fd, size, cb)
 		);
-		enforce(res[1] == IOStatus.ok, "Failed to resize file.");
+		enforce(res[1] == IOStatus.ok, "Failed to resize file ("~res[1].to!string~")");
 		m_ctx.size = size;
 	}
 
@@ -804,7 +804,7 @@ scope:
 			cb => eventDriver.files.read(m_fd, m_ctx.ptr, () @trusted { return dst; } (), mode, cb)
 		);
 		m_ctx.ptr += res[2];
-		enforce(res[1] == IOStatus.ok, "Failed to read data from disk.");
+		enforce(res[1] == IOStatus.ok, "Failed to read data from disk ("~res[1].to!string~")");
 		return res[2];
 	}
 
@@ -824,7 +824,7 @@ scope:
 		);
 		m_ctx.ptr += res[2];
 		if (m_ctx.ptr > m_ctx.size) m_ctx.size = m_ctx.ptr;
-		enforce(res[1] == IOStatus.ok, "Failed to write data to disk.");
+		enforce(res[1] == IOStatus.ok, "Failed to write data to disk ("~res[1].to!string~")");
 		return res[2];
 	}
 
