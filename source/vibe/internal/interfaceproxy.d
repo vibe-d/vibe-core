@@ -179,23 +179,23 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 		}
 	}
 
+	private static string impl(Overloads...)(string member)
+	{
+		string ret;
+		foreach (idx, F; Overloads) {
+			enum attribs = functionAttributeString!F(false);
+			enum is_prop = functionAttributes!F & FunctionAttribute.property;
+			ret ~= attribs~" ReturnType!(Overloads["~idx.stringof~"]) "~member~"("~parameterDecls!(F, idx)~")"
+				~ "{ assert(!!m_intf, \"Accessing null \"~I.stringof~\" interface proxy\");"
+				~ "return m_intf."~member~"(m_value, "~parameterNames!F~"); }";
+		}
+		return ret;
+	}
+
 	private mixin template overloadMethods(string member) {
 		alias Overloads = AliasSeq!(__traits(getOverloads, I, member));
 
-		private static string impl()
-		{
-			string ret;
-			foreach (idx, F; Overloads) {
-				enum attribs = functionAttributeString!F(false);
-				enum is_prop = functionAttributes!F & FunctionAttribute.property;
-				ret ~= attribs~" ReturnType!(Overloads["~idx.stringof~"]) "~member~"("~parameterDecls!(F, idx)~")"
-					~ "{ assert(!!m_intf, \"Accessing null \"~I.stringof~\" interface proxy\");"
-					~ "return m_intf."~member~"(m_value, "~parameterNames!F~"); }";
-			}
-			return ret;
-		}
-
-		mixin(impl());
+		mixin(impl!(Overloads)(member));
 	}
 
 	private interface Proxy : staticMap!(ProxyOf, BaseTypeTuple!I) {
