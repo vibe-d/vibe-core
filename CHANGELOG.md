@@ -1,3 +1,15 @@
+2.13.0 - 2025-08-06
+===================
+
+- Fixed a warning on DMD 2.111.0/LDC2 1.41.0 related to a bogus `Task` move constructor - [pull #433][issue433]
+- Exceptions thrown by `FileStream.(read/write)` now include the error reason - [pull #434][issue434]
+- Added an overload of `Channel!T.tryConsumeOne` that takes a `timeout` parameter - [pull #436][issue436]
+
+[issue433]: https://github.com/vibe-core/vibe-core/issues/433
+[issue434]: https://github.com/vibe-core/vibe-core/issues/434
+[issue436]: https://github.com/vibe-core/vibe-core/issues/436
+
+
 2.12.0 - 2025-06-27
 ===================
 
