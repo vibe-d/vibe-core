@@ -13,6 +13,7 @@ import vibe.internal.array : FixedRingBuffer;
 import std.algorithm.mutation : move, swap;
 import std.exception : enforce;
 import core.sync.mutex;
+import core.time;
 
 // multiple producers allowed, multiple consumers allowed - Q: should this be restricted to allow higher performance? maybe configurable?
 // currently always buffered - TODO: implement blocking non-buffered mode
@@ -123,9 +124,9 @@ struct Channel(T, size_t buffer_size = 100) {
 		If no more elements are available and the channel has been closed,
 		`false` is returned and `dst` is left untouched.
 	*/
-	bool tryConsumeOne(ref T dst) { return m_impl.tryConsumeOne(dst); }
+	bool tryConsumeOne(ref T dst, Duration timeout = Duration.max) { return m_impl.tryConsumeOne(dst, timeout); }
 	/// ditto
-	bool tryConsumeOne(ref T dst) shared { return m_impl.tryConsumeOne(dst); }
+	bool tryConsumeOne(ref T dst, Duration timeout = Duration.max) shared { return m_impl.tryConsumeOne(dst, timeout); }
 
 	/** Attempts to consume all elements currently in the queue.
 
@@ -265,6 +266,48 @@ private final class ChannelImpl(T, size_t buffer_size) {
 			while (thisus.m_items.empty) {
 				if (m_closed) return false;
 				thisus.m_condition.wait();
+			}
+
+			if (m_config.priority == ChannelPriority.latency)
+				need_notify = thisus.m_items.full;
+
+			move(thisus.m_items.front, dst);
+			thisus.m_items.removeFront();
+
+			if (m_config.priority == ChannelPriority.overhead)
+				need_notify = thisus.m_items.empty;
+		}
+
+		if (need_notify) {
+			if (m_config.priority == ChannelPriority.overhead)
+				thisus.m_condition.notifyAll();
+			else
+				thisus.m_condition.notify();
+		}
+
+		return true;
+	}
+
+	bool tryConsumeOne(ref T dst, Duration timeout)
+	shared nothrow {
+		if (timeout == Duration.max) return tryConsumeOne(dst);
+
+		auto thisus = () @trusted { return cast(ChannelImpl)this; } ();
+		bool need_notify = false;
+
+		auto endtime = MonoTime.currTime() + timeout;
+
+		{
+			m_mutex.lock_nothrow();
+			scope (exit) m_mutex.unlock_nothrow();
+
+			while (thisus.m_items.empty) {
+				if (m_closed) return false;
+				auto to = endtime - MonoTime.currTime;
+				if (to < Duration.zero)
+					return false;
+				if (!thisus.m_condition.wait(to))
+					return false;
 			}
 
 			if (m_config.priority == ChannelPriority.latency)
