@@ -1148,9 +1148,6 @@ unittest {
 	Note: the ownership can be shared between multiple fibers of the same thread.
 */
 struct LocalManualEvent {
-	import core.thread : Thread;
-	import vibe.internal.async : Waitable, asyncAwait, asyncAwaitUninterruptible, asyncAwaitAny;
-
 	@safe:
 
 	private {
@@ -1347,7 +1344,6 @@ unittest { // ensure that LocalManualEvent behaves correctly after being copied
 */
 struct ManualEvent {
 	import core.thread : Thread;
-	import vibe.internal.async : Waitable, asyncAwait, asyncAwaitUninterruptible, asyncAwaitAny;
 	import vibe.internal.list : StackSList;
 
 	@safe:
