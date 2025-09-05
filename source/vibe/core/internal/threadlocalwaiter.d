@@ -5,6 +5,7 @@ module vibe.core.internal.threadlocalwaiter;
 
 import vibe.container.internal.utilallocator : Mallocator, disposeGCSafe, makeGCSafe;
 import vibe.core.log;
+import vibe.internal.async : Waitable, asyncAwaitAny;
 import vibe.internal.list : StackSList;
 
 import eventcore.core : NativeEventDriver, eventDriver;
@@ -140,7 +141,6 @@ final class ThreadLocalWaiter(bool EVENT_TRIGGERED) {
 	bool wait(bool interruptible)(Duration timeout, scope bool delegate() @safe nothrow exit_condition = null)
 	@safe {
 		import core.time : MonoTime;
-		import vibe.internal.async : Waitable, asyncAwaitAny;
 
 		TaskWaiter waiter_store;
 		TaskWaiter* waiter = () @trusted { return &waiter_store; } ();
