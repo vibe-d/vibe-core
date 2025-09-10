@@ -748,6 +748,7 @@ scope:
 
 	void seek(ulong offset)
 	{
+		enforce(isOpen, "Seeking in closed file stream");
 		enforce(m_ctx.mode != FileMode.append, "File opened for appending, not random access. Cannot seek.");
 		m_ctx.ptr = offset;
 	}
@@ -756,6 +757,7 @@ scope:
 
 	void truncate(ulong size)
 	{
+		enforce(isOpen, "Truncating closed file stream");
 		enforce(m_ctx.mode != FileMode.append, "File opened for appending, not random access. Cannot truncate.");
 
 		auto res = asyncAwaitUninterruptible!(FileIOCallback,
@@ -785,6 +787,7 @@ scope:
 	@property bool empty() const { assert(this.readable); return m_ctx.ptr >= m_ctx.size; }
 	@property ulong leastSize()
 	const {
+		enforce(isOpen, "Reading from closed file stream");
 		assert(this.readable);
 		return m_ctx.ptr < m_ctx.size ? m_ctx.size - m_ctx.ptr : 0;
 	}
@@ -797,6 +800,8 @@ scope:
 
 	size_t read(scope ubyte[] dst, IOMode mode)
 	{
+		enforce(isOpen, "Reading from closed file stream");
+
 		// NOTE: cancelRead is currently not behaving as specified and cannot
 		//       be relied upon. For this reason, we MUST use the uninterruptible
 		//       version of asyncAwait here!
@@ -816,6 +821,8 @@ scope:
 
 	size_t write(scope const(ubyte)[] bytes, IOMode mode)
 	{
+		enforce(isOpen, "Writing to closed file stream");
+
 		// NOTE: cancelWrite is currently not behaving as specified and cannot
 		//       be relied upon. For this reason, we MUST use the uninterruptible
 		//       version of asyncAwait here!
@@ -846,6 +853,7 @@ scope:
 
 	void flush()
 	{
+		enforce(isOpen, "Flushing closed file stream");
 		assert(this.writable);
 	}
 
