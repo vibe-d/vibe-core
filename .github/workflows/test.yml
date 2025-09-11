@@ -22,8 +22,8 @@ jobs:
                 arch: [x86_64]
                 include:
                   - { os: ubuntu-latest, dc: dmd-2.096.1, arch: x86_64 }
-                  - { os: windows-latest, dc: dmd-2.092.0, arch: x86_64 }
-                  - { os: windows-latest, dc: dmd-2.092.0, arch: x86_mscoff }
+                  - { os: windows-latest, dc: dmd-2.096.0, arch: x86_64 }
+                  - { os: windows-latest, dc: dmd-2.096.0, arch: x86_mscoff }
                   - { os: windows-latest, dc: dmd-2.091.1, arch: x86_64 }
                   - { os: windows-latest, dc: ldc-1.20.1, arch: x86_64 }
 
