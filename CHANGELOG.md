@@ -1,3 +1,11 @@
+2.13.1 - 2025-09-11
+===================
+
+- Reading/writing from/to a `FileStream` now results in a normal exception instead of an assertion failure - [pull #438][issue438]
+
+[issue438]: https://github.com/vibe-core/vibe-core/issues/438
+
+
 2.13.0 - 2025-08-06
 ===================
 
