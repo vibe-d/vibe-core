@@ -758,7 +758,10 @@ struct TaskGroup {
 
 	~this()
 	@safe nothrow {
-		joinUninterruptible();
+		// NOTE: not calling joinUninterruptible here to avoid
+		//       InvalidMemoryOperationErrors due to the assumeSafeAppend call
+		foreach (t; m_tasks)
+			t.joinUninterruptible();
 	}
 
 	/// Runs a new task and adds it to the group.
