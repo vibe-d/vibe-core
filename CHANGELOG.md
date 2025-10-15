@@ -1,3 +1,11 @@
+2.13.2 - 2025-10-15
+===================
+
+- Fixes an `InvalidMemoryOperationError` that was generated when a `TaskPool` got destroyed by the GC - [pull #439][issue439]
+
+[issue439]: https://github.com/vibe-core/vibe-core/issues/439
+
+
 2.13.1 - 2025-09-11
 ===================
 
