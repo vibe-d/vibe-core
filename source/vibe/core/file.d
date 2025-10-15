@@ -1242,7 +1242,6 @@ private void performListDirectory(ListDirectoryRequest req)
 
 	try scanRec(req.path);
 	catch (Exception e) {
-		logException(e, "goo");
 		try req.channel.put(ListDirectoryData(FileInfo.init, e.msg.length ? e.msg : "Failed to iterate directory"));
 		catch (Exception e2) {} // channel got closed
 	}

@@ -152,8 +152,8 @@ struct TaskSettings {
 		example, a task with priority 100 will be scheduled every 10 rounds
 		when competing against a task with priority 1000.
 
-		The default priority is defined by `basePriority` and has a value
-		of 65536. Priorities should be computed relative to `basePriority`.
+		The default priority is defined by `Task.basePriority` and has a value
+		of 65536. Priorities should be computed relative to `Task.basePriority`.
 
 		A task with a priority of zero will only be executed if no other
 		non-zero task is competing.
