@@ -1,3 +1,11 @@
+2.13.3 - 2025-10-20
+===================
+
+- Fixed a performance regression that caused every asynchronous operation to generate a GC allocation - [pull #441][issue441]
+
+[issue441]: https://github.com/vibe-core/vibe-core/issues/441
+
+
 2.13.2 - 2025-10-15
 ===================
 
