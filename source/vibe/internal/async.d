@@ -131,16 +131,16 @@ void asyncAwaitAny(bool interruptible, Waitables...)(string func = __FUNCTION__)
 			~ "	}\n"
 			~ "};\n"
 			~ "debug(VibeAsyncLog) logDebugV(\"Starting operation %%s\", "~i.stringof~");\n"
-			~ "alias WR"~i.stringof~" = typeof(Waitables["~i.stringof~"].wait(() @trusted { return callback_"~i.stringof~"; } ()));\n"
-			~ "static if (is(WR"~i.stringof~" == void)) Waitables["~i.stringof~"].wait(() @trusted { return callback_"~i.stringof~"; } ());\n"
-			~ "else auto wr"~i.stringof~" = Waitables["~i.stringof~"].wait(() @trusted { return callback_"~i.stringof~"; } ());\n"
+			~ "alias WR"~i.stringof~" = typeof(Waitables["~i.stringof~"].wait(callback_"~i.stringof~"));\n"
+			~ "static if (is(WR"~i.stringof~" == void)) Waitables["~i.stringof~"].wait(escape(callback_"~i.stringof~"));\n"
+			~ "else auto wr"~i.stringof~" = Waitables["~i.stringof~"].wait(escape(callback_"~i.stringof~"));\n"
 			~ "scope (exit) {\n"
 			~ "	if (!fired["~i.stringof~"]) {\n"
 			~ "		debug(VibeAsyncLog) logDebugV(\"Cancelling operation %%s\", "~i.stringof~");\n"
 			~ "		any_fired = true;\n"
 			~ "		fired["~i.stringof~"] = true;\n"
-			~ "		static if (is(WR"~i.stringof~" == void)) Waitables["~i.stringof~"].cancel(() @trusted { return callback_"~i.stringof~"; } ());\n"
-			~ "		else Waitables["~i.stringof~"].cancel(() @trusted { return callback_"~i.stringof~"; } (), wr"~i.stringof~");\n"
+			~ "		static if (is(WR"~i.stringof~" == void)) Waitables["~i.stringof~"].cancel(escape(callback_"~i.stringof~"));\n"
+			~ "		else Waitables["~i.stringof~"].cancel(escape(callback_"~i.stringof~"), wr"~i.stringof~");\n"
 			~ "	}\n"
 			~ "}\n"
 			~ "if (any_fired) {\n"
@@ -175,13 +175,30 @@ void asyncAwaitAny(bool interruptible, Waitables...)(string func = __FUNCTION__)
 	debug(VibeAsyncLog) logDebugV("Return result for %s.", func);
 }
 
+
+// helper function to escape a stack allocated variable from within a delegate
+// without triggering the creation of a GC closure - this is safe to use here
+// because all paths of asyncAwaitAny make sure that the escaped callback delegate
+// is not referenced anymore at the end
+private T escape(T)(scope T value) @trusted { return value; }
+
 private alias CBDel(alias Waitable) = Waitable.Callback;
 
-@safe nothrow /*@nogc*/ unittest {
+@safe nothrow unittest {
+	import core.memory : GC;
+
+	// this may allocate a dummy TaskFiber instance lazily
+	Task.getThis();
+
+	auto allocs_in = () @trusted { return GC.stats.allocatedInCurrentThread; } ();
+
 	int cnt = 0;
 	auto ret = asyncAwaitUninterruptible!(void delegate(int) @safe nothrow, (cb) { cnt++; cb(42); });
 	assert(ret[0] == 42);
 	assert(cnt == 1);
+
+	assert(allocs_in == () @trusted { return GC.stats.allocatedInCurrentThread; } (),
+		"asyncAwaitUninterruptible had GC allocations!");
 }
 
 @safe nothrow /*@nogc*/ unittest {
