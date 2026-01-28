@@ -14,7 +14,10 @@ import eventcore.driver : EventCallback, EventID;
 
 package(vibe.core):
 
-static StackSList!(ThreadLocalWaiter!true) s_free; // free-list of reusable waiter structs for the calling thread
+static StackSList!(ThreadLocalWaiter!true) s_free;
+static size_t s_freeCount = 0;
+enum maxFreeCount = 16;
+
 
 ThreadLocalWaiter!false allocPlainThreadLocalWaiter()
 @safe nothrow {
@@ -29,6 +32,7 @@ ThreadLocalWaiter!true allocEventThreadLocalWaiter()
 	if (!s_free.empty) {
 		w = s_free.first;
 		s_free.remove(w);
+		s_freeCount--;
 		assert(w.m_refCount == 0);
 		assert(w.m_driver is drv);
 		w.addRef();
@@ -44,6 +48,7 @@ void freeThreadResources()
 	s_free.filter((w) @trusted {
 		try destroy(w);
 		catch (Exception e) assert(false, e.msg);
+		s_freeCount--;
 		return false;
 	});
 }
@@ -127,8 +132,15 @@ final class ThreadLocalWaiter(bool EVENT_TRIGGERED) {
 		assert(m_refCount > 0, "Releasing unreferenced thread local waiter");
 		if (--m_refCount == 0) {
 			static if (EVENT_TRIGGERED) {
-				s_free.add(this);
-				// TODO: cap size of m_freeWaiters
+				if (s_freeCount >= maxFreeCount) {
+					() @trusted {
+						try destroy(this);
+						catch (Exception e) assert(false, e.msg);
+					} ();
+				} else {
+					s_free.add(this);
+					s_freeCount++;
+				}
 			} else {
 				static if (__VERSION__ < 2087) scope (failure) assert(false);
 				() @trusted { Mallocator.instance.disposeGCSafe(this); } ();

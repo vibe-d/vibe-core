@@ -159,11 +159,18 @@ struct InterfaceProxy(I) if (is(I == interface)) {
 		static assert(O.sizeof <= maxSize, "Object is too big to be stored in an InterfaceProxy.");
 		import std.conv : emplace;
 		clear();
-		m_intf = ProxyImpl!O.get();
-		static if (is(O == class))
-			(cast(O[])m_value[0 .. O.sizeof/m_value[0].sizeof])[0] = object;
-		else emplace!O(m_value[0 .. O.sizeof/m_value[0].sizeof]);
-		swap((cast(O[])m_value[0 .. O.sizeof/m_value[0].sizeof])[0], object);
+
+		static if (!is(O == typeof(null))) {
+			static if (is(O == class) || is(O == interface))
+				if (!object)
+					return;
+
+			m_intf = ProxyImpl!O.get();
+			static if (is(O == class))
+				(cast(O[])m_value[0 .. O.sizeof/m_value[0].sizeof])[0] = object;
+			else emplace!O(m_value[0 .. O.sizeof/m_value[0].sizeof]);
+			swap((cast(O[])m_value[0 .. O.sizeof/m_value[0].sizeof])[0], object);
+		}
 	}
 
 	bool opCast(T)() const @safe nothrow if (is(T == bool)) { return m_intf !is null; }
@@ -362,6 +369,7 @@ unittest {
 
 	auto t = interfaceProxy!I(s);
 	assert(s.count == 2);
+	assert(!!t);
 
 	t = interfaceProxy!I(s);
 	assert(s.count == 2);
@@ -376,6 +384,15 @@ unittest {
 	assert(s.count == 2);
 
 	t = InterfaceProxy!I.init;
+	assert(s.count == 1);
+	assert(!t);
+
+	t = null;
+	assert(!t);
+
+	t = cast(I)null;
+	assert(!t);
+
 	assert(s.count == 1);
 
 	t = s;

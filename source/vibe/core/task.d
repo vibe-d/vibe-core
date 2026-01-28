@@ -788,7 +788,7 @@ package struct TaskFuncInfo {
 	{
 		assert(!func, "Setting TaskFuncInfo that is already set.");
 
-		import std.algorithm : move;
+		import std.algorithm : move, moveEmplace;
 		import std.traits : hasElaborateAssign;
 		import std.conv : to;
 
@@ -806,10 +806,10 @@ package struct TaskFuncInfo {
 			assert(tfi.func is &callDelegate, "Wrong callDelegate called!?");
 
 			// copy original call data to stack
-			CALLABLE c;
-			TARGS args;
-			move(*(cast(CALLABLE*)tfi.callable.ptr), c);
-			move(*(cast(TARGS*)tfi.args.ptr), args);
+			CALLABLE c = void;
+			TARGS args = void;
+			moveEmplace(*(cast(CALLABLE*)tfi.callable.ptr), c);
+			moveEmplace(*(cast(TARGS*)tfi.args.ptr), args);
 
 			// reset the info
 			tfi.func = null;
