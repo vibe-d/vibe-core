@@ -1,3 +1,13 @@
+2.13.4 - 2026-01-28
+===================
+
+- Fixed a crash happening when assigning a `null` reference to an `InterfaceProxy` - [pull #442][issue442]
+- `connectTCP` does not call `bind()` anymore when no explicit bind address is given - [pull #442][issue442]
+- The amount of unused thread local waiters is now limited to 16 per thread, potentially reducing the amount of open event file descriptors - [pull #442][issue442]
+
+[issue442]: https://github.com/vibe-core/vibe-core/issues/442
+
+
 2.13.3 - 2025-10-20
 ===================
 
