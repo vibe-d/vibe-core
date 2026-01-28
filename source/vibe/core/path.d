@@ -502,7 +502,7 @@ struct GenericPath(F) {
 	static GenericPath fromTrustedString(string p)
 	nothrow @nogc {
 		if (auto val = Format.validatePath(p))
-			assert(false, val);
+			debug assert(false, val ~ ": " ~ p);
 
 		GenericPath ret;
 		ret.m_path = p;
