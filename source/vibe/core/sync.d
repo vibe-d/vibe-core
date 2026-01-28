@@ -1162,12 +1162,13 @@ struct LocalManualEvent {
 	this(this)
 	nothrow {
 		if (m_waiter)
-			return m_waiter.addRef();
+			m_waiter.addRef();
 	}
 
 	~this()
 	nothrow {
-		if (m_waiter) m_waiter.releaseRef();
+		if (m_waiter)
+			m_waiter.releaseRef();
 	}
 
 	bool opCast (T : bool) () const nothrow { return m_waiter !is null; }
