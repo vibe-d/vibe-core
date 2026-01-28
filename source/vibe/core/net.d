@@ -241,7 +241,7 @@ TCPConnection connectTCP(NetworkAddress addr, NetworkAddress bind_address = anyA
 		ConnectStatus status;
 
 		alias waiter = Waitable!(ConnectCallback,
-			cb => eventDriver.sockets.connectStream(uaddr, baddr, cb),
+			cb => eventDriver.sockets.connectStream(uaddr, bind_address == anyAddress ? null : baddr, cb),
 			(cb, sock_fd) {
 				cancelled = true;
 				if (sock_fd != SocketFD.invalid) {
