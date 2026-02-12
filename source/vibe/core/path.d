@@ -857,7 +857,7 @@ struct GenericPath(F) {
 	GenericPath opBinary(string op : "~", F)(GenericPath!F.Segment subpath) const { return this ~ cast(Segment)(subpath); }
 	/// ditto
 	GenericPath opBinary(string op : "~")(GenericPath subpath) const nothrow {
-		assert(!subpath.absolute || m_path.length == 0, "Cannot append absolute path.");
+		assert(!subpath.absolute || m_path.length == 0, "Cannot append absolute path: " ~ subpath.toString());
 		if (endsWithSlash || empty) return GenericPath.fromTrustedString(m_path ~ subpath.m_path);
 		else return GenericPath.fromTrustedString(m_path ~ Format.defaultSeparator ~ subpath.m_path);
 	}
@@ -1226,6 +1226,7 @@ struct WindowsPathFormat {
 
 	unittest {
 		assert(validatePath("c:\\foo") is null);
+		assert(validatePath("Z:\\") is null);
 		assert(validatePath("\\\\?\\c:\\foo") is null);
 		assert(validatePath("//?\\c:\\foo") !is null);
 		assert(validatePath("-foo/bar\\*\\baz") is null);

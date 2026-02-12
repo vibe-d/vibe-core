@@ -894,12 +894,24 @@ struct DirectoryWatcher { // TODO: avoid all those heap allocations!
 				case FileChangeKind.modified: ct = DirectoryChangeType.modified; break;
 			}
 
+			NativePath path;
 			static if (is(typeof(change.baseDirectory))) {
 				// eventcore 0.8.23 and up
-				this.changes ~= DirectoryChange(ct, NativePath.fromTrustedString(change.baseDirectory) ~ NativePath.fromTrustedString(change.directory) ~ NativePath.fromTrustedString(change.name.idup));
+				try {
+					auto basep = NativePath(change.baseDirectory);
+					auto dirp = NativePath(change.directory);
+					enforce(!dirp.absolute, "Sub directory path should not be absolute: " ~ dirp.toString());
+					auto namep = NativePath(change.name.idup);
+					enforce(!namep.absolute, "File name path should not be absolute: " ~ namep.toString());
+					path = basep ~ dirp ~ namep;
+				} catch (Exception e) {
+					logDiagnostic("Invalid path for file system change ('%s' '%s' '%s'): %s", change.baseDirectory, change.directory, change.name, e.msg);
+					return;
+				}
 			} else {
-				this.changes ~= DirectoryChange(ct, NativePath.fromTrustedString(change.directory) ~ NativePath.fromTrustedString(change.name.idup));
+				path = NativePath.fromTrustedString(change.directory) ~ NativePath.fromTrustedString(change.name.idup);
 			}
+			this.changes ~= DirectoryChange(ct, path);
 			this.changeEvent.emit();
 		}
 	}
