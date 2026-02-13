@@ -1,3 +1,11 @@
+2.13.5 - 2026-02-13
+===================
+
+- Fixed an assertion failure caused by invalid filenames reported by the directory watcher on Windows - [pull #443][issue443]
+
+[issue443]: https://github.com/vibe-core/vibe-core/issues/443
+
+
 2.13.4 - 2026-01-28
 ===================
 
