@@ -358,9 +358,9 @@ unittest {
 
 	static struct S {
 		int* cnt;
-		this(bool) { cnt = new int; *cnt = 1; }
-		this(this) { if (cnt) (*cnt)++; }
-		~this() { if (cnt) (*cnt)--; }
+		this(bool) nothrow { cnt = new int; *cnt = 1; }
+		this(this) nothrow { if (cnt) (*cnt)++; }
+		~this() nothrow { if (cnt) (*cnt)--; }
 		@property int count() const { return cnt ? *cnt : 0; }
 	}
 
