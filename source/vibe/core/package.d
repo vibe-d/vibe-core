@@ -12,6 +12,7 @@ public import vibe.core.channel;
 public import vibe.core.concurrency;
 public import vibe.core.connectionpool;
 public import vibe.core.core;
+public import vibe.core.dns;
 public import vibe.core.file;
 public import vibe.core.log;
 public import vibe.core.net;
