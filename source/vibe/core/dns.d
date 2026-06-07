@@ -17,6 +17,8 @@ import std.file : readText, exists;
 import std.random : uniform;
 import std.string : split;
 
+version (Windows) pragma(lib, "iphlpapi");
+
 @safe:
 
 /// Fixed length in bytes of the DNS message header preceding the question section.
@@ -405,21 +407,63 @@ SRVRecord parseSRV(const(ubyte)[] rdata) pure
 
 /** Returns the configured DNS nameserver addresses.
 
-	Reads `/etc/resolv.conf` when present and falls back to the systemd-resolved
-	stub resolver `127.0.0.53` when the file is missing or lists no nameservers.
+	On POSIX systems the addresses are read from `/etc/resolv.conf`, falling back
+	to the systemd-resolved stub resolver `127.0.0.53` when the file is missing or
+	lists no nameservers. On Windows they are obtained from the network
+	configuration via `GetNetworkParams`.
 
 	Returns:
 		The nameserver addresses to query, in priority order.
 */
 string[] nameservers() @trusted
 {
-	if (exists("/etc/resolv.conf")) {
-		auto configured = parseResolvConf(readText("/etc/resolv.conf"));
-		if (configured.length > 0)
-			return configured;
-	}
+	version (Windows)
+		return windowsNameservers();
+	else
+		return posixNameservers();
+}
 
-	return ["127.0.0.53"];
+version (Windows) {
+	private string[] windowsNameservers() @trusted
+	{
+		import core.sys.windows.iphlpapi : GetNetworkParams;
+		import core.sys.windows.iptypes : FIXED_INFO;
+		import core.stdc.stdlib : malloc, free;
+		import std.string : fromStringz;
+
+		uint length = 0;
+		GetNetworkParams(null, &length);          // sizes the buffer (returns ERROR_BUFFER_OVERFLOW)
+
+		auto buffer = malloc(length);
+		if (buffer is null)
+			return null;
+		scope (exit) free(buffer);
+
+		auto info = cast(FIXED_INFO*) buffer;
+		if (GetNetworkParams(info, &length) != 0) // ERROR_SUCCESS
+			return null;
+
+		string[] servers;
+		for (auto entry = &info.DnsServerList; entry !is null; entry = entry.Next) {
+			auto address = entry.IpAddress.String.ptr.fromStringz.idup;
+			if (address.length > 0)
+				servers ~= address;
+		}
+		return servers;
+	}
+} else {
+	private string[] posixNameservers()
+	{
+		enum stubResolver = "127.0.0.53";       // systemd-resolved
+
+		if (exists("/etc/resolv.conf")) {
+			auto configured = parseResolvConf(readText("/etc/resolv.conf"));
+			if (configured.length > 0)
+				return configured;
+		}
+
+		return [stubResolver];
+	}
 }
 
 /** Resolves a DNS query over UDP against the configured nameservers.
