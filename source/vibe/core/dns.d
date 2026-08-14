@@ -2,7 +2,7 @@
 	DNS wire format encoding and decoding.
 
 	Copyright: © 2012-2016 Sönke Ludwig
-	Authors: Sönke Ludwig
+	Authors: Bogdan Szabo
 	License: Subject to the terms of the MIT license, as written in the included LICENSE.txt file.
 */
 module vibe.core.dns;
@@ -30,274 +30,97 @@ private enum ubyte dnsPointerFlag = 0xC0;
 /// Mask selecting the 14-bit offset carried by a compression pointer.
 private enum ushort dnsPointerOffsetMask = 0x3FFF;
 
-/** DNS resource-record TYPE codes, named by their IANA-assigned values. */
+/// DNS resource-record TYPE codes, named by their IANA-assigned values.
 enum DNSRecordType : ushort {
-	/// IPv4 host address
-	A = 1,
-
-	/// Authoritative name server for the zone
-	NS = 2,
-
-	/// Mail destination (obsolete, use MX)
-	MD = 3,
-
-	/// Mail forwarder (obsolete, use MX)
-	MF = 4,
-
-	/// Canonical name alias for another domain
-	CNAME = 5,
-
-	/// Start of authority, zone's authoritative metadata
-	SOA = 6,
-
-	/// Mailbox domain name (experimental)
-	MB = 7,
-
-	/// Mail group member (experimental)
-	MG = 8,
-
-	/// Mail rename domain name (experimental)
-	MR = 9,
-
-	/// Placeholder record holding arbitrary data (experimental)
-	NULL = 10,
-
-	/// Well-known service description for a host
-	WKS = 11,
-
-	/// Domain name pointer, used for reverse DNS lookups
-	PTR = 12,
-
-	/// Host CPU and operating system information
-	HINFO = 13,
-
-	/// Mailbox or mailing-list information
-	MINFO = 14,
-
-	/// Mail exchange server with a preference value
-	MX = 15,
-
-	/// Arbitrary descriptive text strings
-	TXT = 16,
-
-	/// Responsible person mailbox for the domain
-	RP = 17,
-
-	/// AFS cell database server location
-	AFSDB = 18,
-
-	/// X.25 PSDN address
-	X25 = 19,
-
-	/// ISDN address
-	ISDN = 20,
-
-	/// Route-through binding to an intermediate host
-	RT = 21,
-
-	/// NSAP address for ISO-protocol mapping
-	NSAP = 22,
-
-	/// NSAP-style reverse pointer (obsolete)
-	NSAP_PTR = 23,
-
-	/// Cryptographic signature (obsolete, use RRSIG)
-	SIG = 24,
-
-	/// Public key record (obsolete, use DNSKEY)
-	KEY = 25,
-
-	/// X.400-to-RFC822 mail mapping pointer
-	PX = 26,
-
-	/// Geographical position (obsolete, use LOC)
-	GPOS = 27,
-
-	/// IPv6 host address
-	AAAA = 28,
-
-	/// Geographic location of the host
-	LOC = 29,
-
-	/// Next-domain record (obsolete, use NSEC)
-	NXT = 30,
-
-	/// Endpoint identifier (Nimrod)
-	EID = 31,
-
-	/// Nimrod locator
-	NIMLOC = 32,
-
-	/// Service location with priority, weight and port
-	SRV = 33,
-
-	/// ATM address
-	ATMA = 34,
-
-	/// Naming authority pointer for regex-based rewriting
-	NAPTR = 35,
-
-	/// Key exchanger for the domain
-	KX = 36,
-
-	/// Stored certificate or CRL
-	CERT = 37,
-
-	/// IPv6 address (obsolete, use AAAA)
-	A6 = 38,
-
-	/// Non-terminal name redirection of an entire subtree
-	DNAME = 39,
-
-	/// Kitchen-sink experimental record
-	SINK = 40,
-
-	/// EDNS pseudo-record carrying extension options
-	OPT = 41,
-
-	/// Address prefix list
-	APL = 42,
-
-	/// Delegation signer, hash of a delegated zone's key
-	DS = 43,
-
-	/// SSH public-key fingerprint
-	SSHFP = 44,
-
-	/// IPsec public key for the host
-	IPSECKEY = 45,
-
-	/// DNSSEC signature over a record set
-	RRSIG = 46,
-
-	/// Authenticated denial of existence, next secure name
-	NSEC = 47,
-
-	/// DNSSEC public signing key for the zone
-	DNSKEY = 48,
-
-	/// DHCP client identifier
-	DHCID = 49,
-
-	/// Hashed authenticated denial of existence
-	NSEC3 = 50,
-
-	/// Parameters for NSEC3 hashing
-	NSEC3PARAM = 51,
-
-	/// TLS certificate association (DANE)
-	TLSA = 52,
-
-	/// S/MIME certificate association
-	SMIMEA = 53,
-
-	/// Host identity protocol binding
-	HIP = 55,
-
-	/// Zone status information
-	NINFO = 56,
-
-	/// Key for encrypted resource records
-	RKEY = 57,
-
-	/// Trust anchor link
-	TALINK = 58,
-
-	/// Child DS record signalled to the parent
-	CDS = 59,
-
-	/// Child DNSKEY signalled to the parent
-	CDNSKEY = 60,
-
-	/// OpenPGP public key
-	OPENPGPKEY = 61,
-
-	/// Child-to-parent synchronization signal
-	CSYNC = 62,
-
-	/// Message digest over the zone contents
-	ZONEMD = 63,
-
-	/// General service binding parameters
-	SVCB = 64,
-
-	/// HTTPS-specific service binding parameters
-	HTTPS = 65,
-
-	/// Sender policy framework (obsolete, use TXT)
-	SPF = 99,
-
-	/// User information (reserved, IANA)
-	UINFO = 100,
-
-	/// User ID (reserved, IANA)
-	UID = 101,
-
-	/// Group ID (reserved, IANA)
-	GID = 102,
-
-	/// Unspecified data (reserved, IANA)
-	UNSPEC = 103,
-
-	/// Node identifier for ILNP
-	NID = 104,
-
-	/// 32-bit ILNP locator
-	L32 = 105,
-
-	/// 64-bit ILNP locator
-	L64 = 106,
-
-	/// ILNP locator pointer to L32/L64 records
-	LP = 107,
-
-	/// 48-bit IEEE extended unique identifier
-	EUI48 = 108,
-
-	/// 64-bit IEEE extended unique identifier
-	EUI64 = 109,
-
-	/// Transaction key for shared-secret negotiation
-	TKEY = 249,
-
-	/// Transaction signature for message authentication
-	TSIG = 250,
-
-	/// Incremental zone transfer request
-	IXFR = 251,
-
-	/// Full zone transfer request
-	AXFR = 252,
-
-	/// Query for mailbox-related records (MB, MG, MR)
-	MAILB = 253,
-
-	/// Query for mail-agent records (obsolete, use MX)
-	MAILA = 254,
-
-	/// Query matching all record types
-	ANY = 255,
-
-	/// URI mapping for the domain
-	URI = 256,
-
-	/// Certification authority authorization
-	CAA = 257,
-
-	/// Application visibility and control
-	AVC = 258,
-
-	/// Digital object architecture
-	DOA = 259,
-
-	/// Automatic multicast tunneling relay
-	AMTRELAY = 260,
-
-	/// DNSSEC trust anchor (DLV-style)
-	TA = 32768,
-
-	/// DNSSEC lookaside validation (obsolete)
-	DLV = 32769,
+	A = 1, ///< IPv4 host address
+	NS = 2, ///< Authoritative name server for the zone
+	MD = 3, ///< Mail destination (obsolete, use MX)
+	MF = 4, ///< Mail forwarder (obsolete, use MX)
+	CNAME = 5, ///< Canonical name alias for another domain
+	SOA = 6, ///< Start of authority, zone's authoritative metadata
+	MB = 7, ///< Mailbox domain name (experimental)
+	MG = 8, ///< Mail group member (experimental)
+	MR = 9, ///< Mail rename domain name (experimental)
+	NULL = 10, ///< Placeholder record holding arbitrary data (experimental)
+	WKS = 11, ///< Well-known service description for a host
+	PTR = 12, ///< Domain name pointer, used for reverse DNS lookups
+	HINFO = 13, ///< Host CPU and operating system information
+	MINFO = 14, ///< Mailbox or mailing-list information
+	MX = 15, ///< Mail exchange server with a preference value
+	TXT = 16, ///< Arbitrary descriptive text strings
+	RP = 17, ///< Responsible person mailbox for the domain
+	AFSDB = 18, ///< AFS cell database server location
+	X25 = 19, ///< X.25 PSDN address
+	ISDN = 20, ///< ISDN address
+	RT = 21, ///< Route-through binding to an intermediate host
+	NSAP = 22, ///< NSAP address for ISO-protocol mapping
+	NSAP_PTR = 23, ///< NSAP-style reverse pointer (obsolete)
+	SIG = 24, ///< Cryptographic signature (obsolete, use RRSIG)
+	KEY = 25, ///< Public key record (obsolete, use DNSKEY)
+	PX = 26, ///< X.400-to-RFC822 mail mapping pointer
+	GPOS = 27, ///< Geographical position (obsolete, use LOC)
+	AAAA = 28, ///< IPv6 host address
+	LOC = 29, ///< Geographic location of the host
+	NXT = 30, ///< Next-domain record (obsolete, use NSEC)
+	EID = 31, ///< Endpoint identifier (Nimrod)
+	NIMLOC = 32, ///< Nimrod locator
+	SRV = 33, ///< Service location with priority, weight and port
+	ATMA = 34, ///< ATM address
+	NAPTR = 35, ///< Naming authority pointer for regex-based rewriting
+	KX = 36, ///< Key exchanger for the domain
+	CERT = 37, ///< Stored certificate or CRL
+	A6 = 38, ///< IPv6 address (obsolete, use AAAA)
+	DNAME = 39, ///< Non-terminal name redirection of an entire subtree
+	SINK = 40, ///< Kitchen-sink experimental record
+	OPT = 41, ///< EDNS pseudo-record carrying extension options
+	APL = 42, ///< Address prefix list
+	DS = 43, ///< Delegation signer, hash of a delegated zone's key
+	SSHFP = 44, ///< SSH public-key fingerprint
+	IPSECKEY = 45, ///< IPsec public key for the host
+	RRSIG = 46, ///< DNSSEC signature over a record set
+	NSEC = 47, ///< Authenticated denial of existence, next secure name
+	DNSKEY = 48, ///< DNSSEC public signing key for the zone
+	DHCID = 49, ///< DHCP client identifier
+	NSEC3 = 50, ///< Hashed authenticated denial of existence
+	NSEC3PARAM = 51, ///< Parameters for NSEC3 hashing
+	TLSA = 52, ///< TLS certificate association (DANE)
+	SMIMEA = 53, ///< S/MIME certificate association
+	HIP = 55, ///< Host identity protocol binding
+	NINFO = 56, ///< Zone status information
+	RKEY = 57, ///< Key for encrypted resource records
+	TALINK = 58, ///< Trust anchor link
+	CDS = 59, ///< Child DS record signalled to the parent
+	CDNSKEY = 60, ///< Child DNSKEY signalled to the parent
+	OPENPGPKEY = 61, ///< OpenPGP public key
+	CSYNC = 62, ///< Child-to-parent synchronization signal
+	ZONEMD = 63, ///< Message digest over the zone contents
+	SVCB = 64, ///< General service binding parameters
+	HTTPS = 65, ///< HTTPS-specific service binding parameters
+	SPF = 99, ///< Sender policy framework (obsolete, use TXT)
+	UINFO = 100, ///< User information (reserved, IANA)
+	UID = 101, ///< User ID (reserved, IANA)
+	GID = 102, ///< Group ID (reserved, IANA)
+	UNSPEC = 103, ///< Unspecified data (reserved, IANA)
+	NID = 104, ///< Node identifier for ILNP
+	L32 = 105, ///< 32-bit ILNP locator
+	L64 = 106, ///< 64-bit ILNP locator
+	LP = 107, ///< ILNP locator pointer to L32/L64 records
+	EUI48 = 108, ///< 48-bit IEEE extended unique identifier
+	EUI64 = 109, ///< 64-bit IEEE extended unique identifier
+	TKEY = 249, ///< Transaction key for shared-secret negotiation
+	TSIG = 250, ///< Transaction signature for message authentication
+	IXFR = 251, ///< Incremental zone transfer request
+	AXFR = 252, ///< Full zone transfer request
+	MAILB = 253, ///< Query for mailbox-related records (MB, MG, MR)
+	MAILA = 254, ///< Query for mail-agent records (obsolete, use MX)
+	ANY = 255, ///< Query matching all record types
+	URI = 256, ///< URI mapping for the domain
+	CAA = 257, ///< Certification authority authorization
+	AVC = 258, ///< Application visibility and control
+	DOA = 259, ///< Digital object architecture
+	AMTRELAY = 260, ///< Automatic multicast tunneling relay
+	TA = 32768, ///< DNSSEC trust anchor (DLV-style)
+	DLV = 32769, ///< DNSSEC lookaside validation (obsolete)
 }
 
 /** A single resource record decoded from a DNS message. */
