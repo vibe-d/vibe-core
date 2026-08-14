@@ -21,127 +21,80 @@ version (Windows) pragma(lib, "iphlpapi");
 
 @safe:
 
-/// Fixed length in bytes of the DNS message header preceding the question section.
-private enum size_t dnsHeaderLength = 12;
+/** Resolves a DNS query over UDP against the configured nameservers.
 
-/// High bits in a label-length byte marking it as a compression pointer.
-private enum ubyte dnsPointerFlag = 0xC0;
+	A random transaction id is used and responses whose id does not match are
+	rejected as potential spoofs. Each nameserver is tried in turn; a timeout or
+	parse error on one falls through to the next.
 
-/// Mask selecting the 14-bit offset carried by a compression pointer.
-private enum ushort dnsPointerOffsetMask = 0x3FFF;
+	Params:
+		name = The dotted domain name to query.
+		type = The resource-record type being requested.
+		timeout = Maximum time to wait for each nameserver's reply.
 
-/// DNS resource-record TYPE codes, named by their IANA-assigned values.
-enum DNSRecordType : ushort {
-	A = 1, ///< IPv4 host address
-	NS = 2, ///< Authoritative name server for the zone
-	MD = 3, ///< Mail destination (obsolete, use MX)
-	MF = 4, ///< Mail forwarder (obsolete, use MX)
-	CNAME = 5, ///< Canonical name alias for another domain
-	SOA = 6, ///< Start of authority, zone's authoritative metadata
-	MB = 7, ///< Mailbox domain name (experimental)
-	MG = 8, ///< Mail group member (experimental)
-	MR = 9, ///< Mail rename domain name (experimental)
-	NULL = 10, ///< Placeholder record holding arbitrary data (experimental)
-	WKS = 11, ///< Well-known service description for a host
-	PTR = 12, ///< Domain name pointer, used for reverse DNS lookups
-	HINFO = 13, ///< Host CPU and operating system information
-	MINFO = 14, ///< Mailbox or mailing-list information
-	MX = 15, ///< Mail exchange server with a preference value
-	TXT = 16, ///< Arbitrary descriptive text strings
-	RP = 17, ///< Responsible person mailbox for the domain
-	AFSDB = 18, ///< AFS cell database server location
-	X25 = 19, ///< X.25 PSDN address
-	ISDN = 20, ///< ISDN address
-	RT = 21, ///< Route-through binding to an intermediate host
-	NSAP = 22, ///< NSAP address for ISO-protocol mapping
-	NSAP_PTR = 23, ///< NSAP-style reverse pointer (obsolete)
-	SIG = 24, ///< Cryptographic signature (obsolete, use RRSIG)
-	KEY = 25, ///< Public key record (obsolete, use DNSKEY)
-	PX = 26, ///< X.400-to-RFC822 mail mapping pointer
-	GPOS = 27, ///< Geographical position (obsolete, use LOC)
-	AAAA = 28, ///< IPv6 host address
-	LOC = 29, ///< Geographic location of the host
-	NXT = 30, ///< Next-domain record (obsolete, use NSEC)
-	EID = 31, ///< Endpoint identifier (Nimrod)
-	NIMLOC = 32, ///< Nimrod locator
-	SRV = 33, ///< Service location with priority, weight and port
-	ATMA = 34, ///< ATM address
-	NAPTR = 35, ///< Naming authority pointer for regex-based rewriting
-	KX = 36, ///< Key exchanger for the domain
-	CERT = 37, ///< Stored certificate or CRL
-	A6 = 38, ///< IPv6 address (obsolete, use AAAA)
-	DNAME = 39, ///< Non-terminal name redirection of an entire subtree
-	SINK = 40, ///< Kitchen-sink experimental record
-	OPT = 41, ///< EDNS pseudo-record carrying extension options
-	APL = 42, ///< Address prefix list
-	DS = 43, ///< Delegation signer, hash of a delegated zone's key
-	SSHFP = 44, ///< SSH public-key fingerprint
-	IPSECKEY = 45, ///< IPsec public key for the host
-	RRSIG = 46, ///< DNSSEC signature over a record set
-	NSEC = 47, ///< Authenticated denial of existence, next secure name
-	DNSKEY = 48, ///< DNSSEC public signing key for the zone
-	DHCID = 49, ///< DHCP client identifier
-	NSEC3 = 50, ///< Hashed authenticated denial of existence
-	NSEC3PARAM = 51, ///< Parameters for NSEC3 hashing
-	TLSA = 52, ///< TLS certificate association (DANE)
-	SMIMEA = 53, ///< S/MIME certificate association
-	HIP = 55, ///< Host identity protocol binding
-	NINFO = 56, ///< Zone status information
-	RKEY = 57, ///< Key for encrypted resource records
-	TALINK = 58, ///< Trust anchor link
-	CDS = 59, ///< Child DS record signalled to the parent
-	CDNSKEY = 60, ///< Child DNSKEY signalled to the parent
-	OPENPGPKEY = 61, ///< OpenPGP public key
-	CSYNC = 62, ///< Child-to-parent synchronization signal
-	ZONEMD = 63, ///< Message digest over the zone contents
-	SVCB = 64, ///< General service binding parameters
-	HTTPS = 65, ///< HTTPS-specific service binding parameters
-	SPF = 99, ///< Sender policy framework (obsolete, use TXT)
-	UINFO = 100, ///< User information (reserved, IANA)
-	UID = 101, ///< User ID (reserved, IANA)
-	GID = 102, ///< Group ID (reserved, IANA)
-	UNSPEC = 103, ///< Unspecified data (reserved, IANA)
-	NID = 104, ///< Node identifier for ILNP
-	L32 = 105, ///< 32-bit ILNP locator
-	L64 = 106, ///< 64-bit ILNP locator
-	LP = 107, ///< ILNP locator pointer to L32/L64 records
-	EUI48 = 108, ///< 48-bit IEEE extended unique identifier
-	EUI64 = 109, ///< 64-bit IEEE extended unique identifier
-	TKEY = 249, ///< Transaction key for shared-secret negotiation
-	TSIG = 250, ///< Transaction signature for message authentication
-	IXFR = 251, ///< Incremental zone transfer request
-	AXFR = 252, ///< Full zone transfer request
-	MAILB = 253, ///< Query for mailbox-related records (MB, MG, MR)
-	MAILA = 254, ///< Query for mail-agent records (obsolete, use MX)
-	ANY = 255, ///< Query matching all record types
-	URI = 256, ///< URI mapping for the domain
-	CAA = 257, ///< Certification authority authorization
-	AVC = 258, ///< Application visibility and control
-	DOA = 259, ///< Digital object architecture
-	AMTRELAY = 260, ///< Automatic multicast tunneling relay
-	TA = 32768, ///< DNSSEC trust anchor (DLV-style)
-	DLV = 32769, ///< DNSSEC lookaside validation (obsolete)
+	Returns:
+		The decoded DNS message from the first nameserver that answers.
+
+	Throws:
+		Exception if no nameserver returns a valid matching response.
+*/
+DNSMessage resolveDNS(string name, DNSRecordType type, Duration timeout = 5.seconds) @trusted
+{
+	ushort id = uniform!ushort;
+	auto query = encodeDNSQuery(id, name, type);
+
+	foreach (ns; nameservers()) {
+		try {
+			auto conn = listenUDP(0);
+			conn.connect(ns, 53);
+			conn.send(query);
+			auto response = conn.recv(timeout);
+			auto msg = parseDNSMessage(response);
+			if (msg.id != id)
+				continue;
+			return msg;
+		} catch (Exception e) {
+			continue;
+		}
+	}
+
+	throw new Exception("DNS resolution failed for " ~ name);
 }
 
-/** A single resource record decoded from a DNS message. */
-struct DNSResourceRecord {
-	string name;
-	DNSRecordType type;
-	ubyte[] rdata;
+/** Looks up the SRV records for a service name.
+
+	Params:
+		name = The SRV service name to query (e.g. `_sip._tcp.example.com`).
+		timeout = Maximum time to wait for each nameserver's reply.
+
+	Returns:
+		The decoded SRV records from the response.
+*/
+SRVRecord[] lookupSRV(string name, Duration timeout = 5.seconds) @trusted
+{
+	return resolveDNS(name, DNSRecordType.SRV, timeout)
+		.answers
+		.filter!(a => a.type == DNSRecordType.SRV)
+		.map!(a => parseSRV(a.rdata))
+		.array;
 }
 
-/** A decoded DNS message, exposing the transaction id and its answer records. */
-struct DNSMessage {
-	ushort id;
-	DNSResourceRecord[] answers;
-}
+/** Looks up the TXT records for a domain name.
 
-/** A decoded SRV resource record locating a service host and port. */
-struct SRVRecord {
-	ushort priority;
-	ushort weight;
-	ushort port;
-	string target;
+	Params:
+		name = The dotted domain name to query.
+		timeout = Maximum time to wait for each nameserver's reply.
+
+	Returns:
+		The character-strings of all TXT answers, flattened in order.
+*/
+string[] lookupTXT(string name, Duration timeout = 5.seconds) @trusted
+{
+	return resolveDNS(name, DNSRecordType.TXT, timeout)
+		.answers
+		.filter!(a => a.type == DNSRecordType.TXT)
+		.map!(a => parseTXT(a.rdata))
+		.join;
 }
 
 /** Decodes a DNS message from its wire format.
@@ -289,80 +242,119 @@ version (Windows) {
 	}
 }
 
-/** Resolves a DNS query over UDP against the configured nameservers.
 
-	A random transaction id is used and responses whose id does not match are
-	rejected as potential spoofs. Each nameserver is tried in turn; a timeout or
-	parse error on one falls through to the next.
-
-	Params:
-		name = The dotted domain name to query.
-		type = The resource-record type being requested.
-		timeout = Maximum time to wait for each nameserver's reply.
-
-	Returns:
-		The decoded DNS message from the first nameserver that answers.
-
-	Throws:
-		Exception if no nameserver returns a valid matching response.
-*/
-DNSMessage resolveDNS(string name, DNSRecordType type, Duration timeout = 5.seconds) @trusted
-{
-	ushort id = uniform!ushort;
-	auto query = encodeDNSQuery(id, name, type);
-
-	foreach (ns; nameservers()) {
-		try {
-			auto conn = listenUDP(0);
-			conn.connect(ns, 53);
-			conn.send(query);
-			auto response = conn.recv(timeout);
-			auto msg = parseDNSMessage(response);
-			if (msg.id != id)
-				continue;
-			return msg;
-		} catch (Exception e) {
-			continue;
-		}
-	}
-
-	throw new Exception("DNS resolution failed for " ~ name);
+/// DNS resource-record TYPE codes, named by their IANA-assigned values.
+enum DNSRecordType : ushort {
+	A = 1, ///< IPv4 host address
+	NS = 2, ///< Authoritative name server for the zone
+	MD = 3, ///< Mail destination (obsolete, use MX)
+	MF = 4, ///< Mail forwarder (obsolete, use MX)
+	CNAME = 5, ///< Canonical name alias for another domain
+	SOA = 6, ///< Start of authority, zone's authoritative metadata
+	MB = 7, ///< Mailbox domain name (experimental)
+	MG = 8, ///< Mail group member (experimental)
+	MR = 9, ///< Mail rename domain name (experimental)
+	NULL = 10, ///< Placeholder record holding arbitrary data (experimental)
+	WKS = 11, ///< Well-known service description for a host
+	PTR = 12, ///< Domain name pointer, used for reverse DNS lookups
+	HINFO = 13, ///< Host CPU and operating system information
+	MINFO = 14, ///< Mailbox or mailing-list information
+	MX = 15, ///< Mail exchange server with a preference value
+	TXT = 16, ///< Arbitrary descriptive text strings
+	RP = 17, ///< Responsible person mailbox for the domain
+	AFSDB = 18, ///< AFS cell database server location
+	X25 = 19, ///< X.25 PSDN address
+	ISDN = 20, ///< ISDN address
+	RT = 21, ///< Route-through binding to an intermediate host
+	NSAP = 22, ///< NSAP address for ISO-protocol mapping
+	NSAP_PTR = 23, ///< NSAP-style reverse pointer (obsolete)
+	SIG = 24, ///< Cryptographic signature (obsolete, use RRSIG)
+	KEY = 25, ///< Public key record (obsolete, use DNSKEY)
+	PX = 26, ///< X.400-to-RFC822 mail mapping pointer
+	GPOS = 27, ///< Geographical position (obsolete, use LOC)
+	AAAA = 28, ///< IPv6 host address
+	LOC = 29, ///< Geographic location of the host
+	NXT = 30, ///< Next-domain record (obsolete, use NSEC)
+	EID = 31, ///< Endpoint identifier (Nimrod)
+	NIMLOC = 32, ///< Nimrod locator
+	SRV = 33, ///< Service location with priority, weight and port
+	ATMA = 34, ///< ATM address
+	NAPTR = 35, ///< Naming authority pointer for regex-based rewriting
+	KX = 36, ///< Key exchanger for the domain
+	CERT = 37, ///< Stored certificate or CRL
+	A6 = 38, ///< IPv6 address (obsolete, use AAAA)
+	DNAME = 39, ///< Non-terminal name redirection of an entire subtree
+	SINK = 40, ///< Kitchen-sink experimental record
+	OPT = 41, ///< EDNS pseudo-record carrying extension options
+	APL = 42, ///< Address prefix list
+	DS = 43, ///< Delegation signer, hash of a delegated zone's key
+	SSHFP = 44, ///< SSH public-key fingerprint
+	IPSECKEY = 45, ///< IPsec public key for the host
+	RRSIG = 46, ///< DNSSEC signature over a record set
+	NSEC = 47, ///< Authenticated denial of existence, next secure name
+	DNSKEY = 48, ///< DNSSEC public signing key for the zone
+	DHCID = 49, ///< DHCP client identifier
+	NSEC3 = 50, ///< Hashed authenticated denial of existence
+	NSEC3PARAM = 51, ///< Parameters for NSEC3 hashing
+	TLSA = 52, ///< TLS certificate association (DANE)
+	SMIMEA = 53, ///< S/MIME certificate association
+	HIP = 55, ///< Host identity protocol binding
+	NINFO = 56, ///< Zone status information
+	RKEY = 57, ///< Key for encrypted resource records
+	TALINK = 58, ///< Trust anchor link
+	CDS = 59, ///< Child DS record signalled to the parent
+	CDNSKEY = 60, ///< Child DNSKEY signalled to the parent
+	OPENPGPKEY = 61, ///< OpenPGP public key
+	CSYNC = 62, ///< Child-to-parent synchronization signal
+	ZONEMD = 63, ///< Message digest over the zone contents
+	SVCB = 64, ///< General service binding parameters
+	HTTPS = 65, ///< HTTPS-specific service binding parameters
+	SPF = 99, ///< Sender policy framework (obsolete, use TXT)
+	UINFO = 100, ///< User information (reserved, IANA)
+	UID = 101, ///< User ID (reserved, IANA)
+	GID = 102, ///< Group ID (reserved, IANA)
+	UNSPEC = 103, ///< Unspecified data (reserved, IANA)
+	NID = 104, ///< Node identifier for ILNP
+	L32 = 105, ///< 32-bit ILNP locator
+	L64 = 106, ///< 64-bit ILNP locator
+	LP = 107, ///< ILNP locator pointer to L32/L64 records
+	EUI48 = 108, ///< 48-bit IEEE extended unique identifier
+	EUI64 = 109, ///< 64-bit IEEE extended unique identifier
+	TKEY = 249, ///< Transaction key for shared-secret negotiation
+	TSIG = 250, ///< Transaction signature for message authentication
+	IXFR = 251, ///< Incremental zone transfer request
+	AXFR = 252, ///< Full zone transfer request
+	MAILB = 253, ///< Query for mailbox-related records (MB, MG, MR)
+	MAILA = 254, ///< Query for mail-agent records (obsolete, use MX)
+	ANY = 255, ///< Query matching all record types
+	URI = 256, ///< URI mapping for the domain
+	CAA = 257, ///< Certification authority authorization
+	AVC = 258, ///< Application visibility and control
+	DOA = 259, ///< Digital object architecture
+	AMTRELAY = 260, ///< Automatic multicast tunneling relay
+	TA = 32768, ///< DNSSEC trust anchor (DLV-style)
+	DLV = 32769, ///< DNSSEC lookaside validation (obsolete)
 }
 
-/** Looks up the SRV records for a service name.
-
-	Params:
-		name = The SRV service name to query (e.g. `_sip._tcp.example.com`).
-		timeout = Maximum time to wait for each nameserver's reply.
-
-	Returns:
-		The decoded SRV records from the response.
-*/
-SRVRecord[] lookupSRV(string name, Duration timeout = 5.seconds) @trusted
-{
-	return resolveDNS(name, DNSRecordType.SRV, timeout)
-		.answers
-		.filter!(a => a.type == DNSRecordType.SRV)
-		.map!(a => parseSRV(a.rdata))
-		.array;
+/** A single resource record decoded from a DNS message. */
+struct DNSResourceRecord {
+	string name;
+	DNSRecordType type;
+	ubyte[] rdata;
 }
 
-/** Looks up the TXT records for a domain name.
+/** A decoded DNS message, exposing the transaction id and its answer records. */
+struct DNSMessage {
+	ushort id;
+	DNSResourceRecord[] answers;
+}
 
-	Params:
-		name = The dotted domain name to query.
-		timeout = Maximum time to wait for each nameserver's reply.
-
-	Returns:
-		The character-strings of all TXT answers, flattened in order.
-*/
-string[] lookupTXT(string name, Duration timeout = 5.seconds) @trusted
-{
-	return resolveDNS(name, DNSRecordType.TXT, timeout)
-		.answers
-		.filter!(a => a.type == DNSRecordType.TXT)
-		.map!(a => parseTXT(a.rdata))
-		.join;
+/** A decoded SRV resource record locating a service host and port. */
+struct SRVRecord {
+	ushort priority;
+	ushort weight;
+	ushort port;
+	string target;
 }
 
 /** Encodes a recursion-desired DNS query carrying a single question.
@@ -507,6 +499,18 @@ package ushort readBigEndianU16(const(ubyte)[] data, size_t offset) pure
 {
 	return bigEndianToNative!ushort(data[offset .. offset + 2][0 .. 2]);
 }
+
+
+/// Fixed length in bytes of the DNS message header preceding the question section.
+private enum size_t dnsHeaderLength = 12;
+
+/// High bits in a label-length byte marking it as a compression pointer.
+private enum ubyte dnsPointerFlag = 0xC0;
+
+/// Mask selecting the 14-bit offset carried by a compression pointer.
+private enum ushort dnsPointerOffsetMask = 0x3FFF;
+
+
 
 /// encodeName of a single label produces a length prefix, label bytes and a root terminator
 unittest {
