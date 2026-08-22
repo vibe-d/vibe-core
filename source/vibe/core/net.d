@@ -15,8 +15,10 @@ import std.socket : AddressFamily, UnknownAddress;
 import vibe.core.internal.release;
 import vibe.core.log;
 import vibe.core.stream;
+import vibe.core.task : Task;
 import vibe.internal.async;
-import core.time : Duration;
+import core.time : Duration, MonoTime;
+import core.runtime : defaultTraceHandler;
 
 @safe:
 
@@ -643,6 +645,30 @@ struct TCPConnection {
 	import vibe.internal.array : BatchBuffer;
 	//static assert(isConnectionStream!TCPConnection);
 
+	// Diagnostic state for net.d:768-style invariant violations. Heap
+	// allocated and pointed to from Context so that Context itself stays
+	// within eventcore's fixed-size (16*size_t) FD-slot user-data buffer.
+	static struct Diag {
+		// Identity of the call site / fiber that constructed this connection
+		string createdFile;
+		size_t createdLine;
+		Task   createdTask;
+		MonoTime createdAt;
+		// Identity of the last close() call (if any)
+		string closedFile;
+		size_t closedLine;
+		Task   closedTask;
+		MonoTime closedAt;
+		bool   closeRecorded;
+		Throwable.TraceInfo closedTrace;
+		// Identity of the most recent waitForDataEx() issuer (if any in flight)
+		string readFile;
+		size_t readLine;
+		Task   readTask;
+		MonoTime readIssuedAt;
+		Throwable.TraceInfo readTrace;
+	}
+
 	static struct Context {
 		BatchBuffer!ubyte readBuffer;
 		bool tcpNoDelay = false;
@@ -650,6 +676,7 @@ struct TCPConnection {
 		Duration readTimeout = Duration.max;
 		string remoteAddressString;
 		shared(NativeEventDriver) driver;
+		Diag* diag;
 	}
 
 	private {
@@ -657,7 +684,8 @@ struct TCPConnection {
 		Context* m_context;
 	}
 
-	private this(StreamSocketFD socket, scope RefAddress remote_address)
+	private this(StreamSocketFD socket, scope RefAddress remote_address,
+		string file = __FILE__, size_t line = __LINE__)
 	nothrow {
 		import std.exception : enforce;
 
@@ -665,6 +693,14 @@ struct TCPConnection {
 		m_context = () @trusted { return &eventDriver.sockets.userData!Context(socket); } ();
 		m_context.readBuffer.capacity = 4096;
 		m_context.driver = () @trusted { return cast(shared)eventDriver; } ();
+		if (m_context.diag is null)
+			m_context.diag = new Diag;
+		m_context.diag.createdFile = file;
+		m_context.diag.createdLine = line;
+		try m_context.diag.createdTask = Task.getThis();
+		catch (Exception) {}
+		m_context.diag.createdAt   = MonoTime.currTime;
+		m_context.diag.closeRecorded = false;
 	}
 
 	this(this)
@@ -680,6 +716,8 @@ struct TCPConnection {
 	}
 
 	@property int fd() const nothrow { return cast(int)m_socket; }
+	/// Returns the raw StreamSocketFD for use with eventcore operations.
+	@property StreamSocketFD socketFD() const nothrow { return m_socket; }
 
 	bool opCast(T)() const nothrow if (is(T == bool)) { return m_socket != StreamSocketFD.invalid; }
 
@@ -725,10 +763,29 @@ struct TCPConnection {
 
 	@property bool dataAvailableForRead() { return waitForData(0.seconds); }
 
-	void close()
+	void close(string file = __FILE__, size_t line = __LINE__)
 	nothrow {
 		//logInfo("close %s", cast(int)m_fd);
 		if (m_socket != StreamSocketFD.invalid) {
+			// Record who closed us, BEFORE clearing m_context, so a later
+			// invariant violation in waitForDataEx can identify the closer.
+			// The underlying Context lives in eventcore's userData and stays
+			// alive as long as any addRef (e.g. waitForDataEx's inner one)
+			// is held against the FD.
+			if (m_context !is null && m_context.diag !is null) {
+				auto d = m_context.diag;
+				d.closedFile = file;
+				d.closedLine = line;
+				try d.closedTask = Task.getThis();
+				catch (Exception) {}
+				d.closedAt = MonoTime.currTime;
+				d.closeRecorded = true;
+				// Capture a stack trace so the closer can be identified even
+				// when called through wrappers like operations.pipe(),
+				// ConnectionStream.close, HTTPClientResponse.disconnect, etc.
+				try d.closedTrace = () @trusted { return defaultTraceHandler(null); } ();
+				catch (Exception) {}
+			}
 			eventDriver.sockets.shutdown(m_socket, true, true);
 			eventDriver.sockets.releaseRef(m_socket);
 			m_socket = StreamSocketFD.invalid;
@@ -736,12 +793,14 @@ struct TCPConnection {
 		}
 	}
 
-	bool waitForData(Duration timeout = Duration.max)
+	bool waitForData(Duration timeout = Duration.max,
+		string file = __FILE__, size_t line = __LINE__)
 	{
-		return waitForDataEx(timeout) == WaitForDataStatus.dataAvailable;
+		return waitForDataEx(timeout, file, line) == WaitForDataStatus.dataAvailable;
 	}
 
-	WaitForDataStatus waitForDataEx(Duration timeout = Duration.max)
+	WaitForDataStatus waitForDataEx(Duration timeout = Duration.max,
+		string file = __FILE__, size_t line = __LINE__)
 	{
 		mixin(tracer);
 		if (!m_context) return WaitForDataStatus.noMoreData;
@@ -757,15 +816,107 @@ struct TCPConnection {
 		eventDriver.sockets.addRef(m_socket);
 		scope (exit) eventDriver.sockets.releaseRef(sock);
 
+		// Record the issuer of this read for diagnostics on a later
+		// invariant violation (m_socket changing under us). The stack trace
+		// captures the full call chain (e.g. operations.pipe -> bodyReader
+		// -> waitForDataEx) so wrappers like proxy pipe() can be identified.
+		Task issuerTask;
+		try issuerTask = Task.getThis();
+		catch (Exception) {}
+		auto issuedAt = MonoTime.currTime;
+		if (m_context.diag is null)
+			m_context.diag = new Diag;
+		{
+			auto d = m_context.diag;
+			d.readFile = file;
+			d.readLine = line;
+			d.readTask = issuerTask;
+			d.readIssuedAt = issuedAt;
+		}
+		Throwable.TraceInfo issuerTrace;
+		try issuerTrace = () @trusted { return defaultTraceHandler(null); } ();
+		catch (Exception) {}
+		m_context.diag.readTrace = issuerTrace;
+
+		// Capture pointers to the Context (lives in eventcore's userData,
+		// kept alive by our addRef above) and Diag (GC-rooted via the slot)
+		// so that, even if a concurrent close() zeroes m_socket / m_context
+		// on this struct, we can still recover the closer's identity in the
+		// callback below.
+		auto ctxBefore  = m_context;
+		auto diagBefore = m_context.diag;
+
 		alias waiter = Waitable!(IOCallback,
 			cb => eventDriver.sockets.read(m_socket, m_context.readBuffer.peekDst(), mode, cb),
 			(cb) { cancelled = true; eventDriver.sockets.cancelRead(m_socket); },
-			(sock, st, nb) {
-				if (m_socket == StreamSocketFD.invalid) {
-					cancelled = true;
-					return;
+			(sock_cb, st, nb) {
+				// Identity invariant: the FD captured before the await (`sock`)
+				// must still match both the field (m_socket) and the FD that
+				// eventcore is delivering the completion for (sock_cb). If any
+				// of these disagree, somebody closed or aliased this connection
+				// across fibers — log everything we know about both ends and
+				// then abort, since proceeding past this point is unsafe (the
+				// readBuffer may have been written by a foreign FD).
+				if (m_socket != sock || sock_cb != sock) {
+					Task cbTask;
+					try cbTask = Task.getThis();
+					catch (Exception) {}
+					auto ageMs = (MonoTime.currTime - issuedAt).total!"msecs";
+					// Prefer the captured-before-await pointers: m_context may
+					// have been zeroed by a concurrent close(), but the slot
+					// itself is kept alive by the addRef we made before await.
+					Diag* d = diagBefore;
+					if (d is null && m_context !is null) d = m_context.diag;
+					long sinceCloseMs = -1;
+					if (d !is null && d.closeRecorded)
+						sinceCloseMs = (MonoTime.currTime - d.closedAt).total!"msecs";
+					string readTraceStr = "<unavailable>";
+					if (issuerTrace !is null) {
+						try readTraceStr = () @trusted { return issuerTrace.toString(); } ();
+						catch (Exception) {}
+					}
+					string closeTraceStr = "<no close recorded>";
+					if (d !is null && d.closeRecorded && d.closedTrace !is null) {
+						try closeTraceStr = () @trusted {
+							return d.closedTrace.toString(); } ();
+						catch (Exception) {}
+					}
+					logError(
+						"TCPConnection.waitForDataEx: m_socket invariant violated.\n"
+						~ "  captured sock = %s\n"
+						~ "  current m_socket = %s\n"
+						~ "  callback sock = %s\n"
+						~ "  IOStatus = %s, nbytes = %s\n"
+						~ "  m_context (current) = %s; (before await) = %s\n"
+						~ "  read issued at %s:%s by task %s, %s ms ago\n"
+						~ "  callback delivered to task %s\n"
+						~ "  connection created at %s:%s by task %s\n"
+						~ "  close()%s%s%s%s\n"
+						~ "  --- read issuer trace ---\n%s\n"
+						~ "  --- closer trace ---\n%s",
+						cast(int)sock, cast(int)m_socket, cast(int)sock_cb,
+						st, nb,
+						() @trusted { return cast(void*)m_context; } (),
+						() @trusted { return cast(void*)ctxBefore; } (),
+						file, line, issuerTask, ageMs,
+						cbTask,
+						(d !is null) ? d.createdFile : "<diag gone>",
+						(d !is null) ? d.createdLine : 0,
+						(d !is null) ? format("%s", d.createdTask) : "<unknown>",
+						(d !is null && d.closeRecorded) ?
+							" called at " : " not yet recorded",
+						(d !is null && d.closeRecorded) ?
+							format("%s:%s", d.closedFile, d.closedLine) : "",
+						(d !is null && d.closeRecorded) ?
+							format(" by task %s", d.closedTask) : "",
+						(sinceCloseMs >= 0) ?
+							format(" %s ms before this callback", sinceCloseMs) : "",
+						readTraceStr,
+						closeTraceStr);
+					assert(false, "TCPConnection.waitForDataEx: m_socket changed "
+						~ "under in-flight read; see log above for issuer/closer.");
 				}
-				assert(sock == m_socket); status = st; nbytes = nb;
+				status = st; nbytes = nb;
 			}
 		);
 
@@ -1004,11 +1155,7 @@ enum WaitForDataAsyncStatus {
 	waiting,
 }
 
-enum WaitForDataStatus {
-	dataAvailable,
-	noMoreData,
-	timeout
-}
+
 
 unittest { // test compilation of callback with scoped destruction
 	static struct CB {
