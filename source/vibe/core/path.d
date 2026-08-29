@@ -19,14 +19,15 @@ import std.utf : byChar;
 
 /** Computes the relative path from `base_path` to this path.
 
+	Note that both, `path` and `base_path` must be absolute.
+
 	Params:
 		path = The destination path
 		base_path = The path from which the relative path starts
 
 	See_also: `relativeToWeb`
 */
-Path relativeTo(Path)(in Path path, in Path base_path) @safe
-	if (isInstanceOf!(GenericPath, Path))
+GenericPath!Format relativeTo(Format)(in GenericPath!Format path, in GenericPath!Format base_path) @safe
 {
 	import std.array : array, replicate;
 	import std.range : chain, drop, take;
@@ -34,7 +35,15 @@ Path relativeTo(Path)(in Path path, in Path base_path) @safe
 	assert(base_path.absolute, "Base path must be absolute for relativeTo.");
 	assert(path.absolute, "Path must be absolute for relativeTo.");
 
-	if (is(Path.Format == WindowsPathFormat)) { // FIXME: this shouldn't be a special case here!
+	return relativeTo(AbsolutePath!Format.assumeAbsolute(path), AbsolutePath!Format.assumeAbsolute(base_path));
+}
+/// ditto
+GenericPath!Format relativeTo(Format)(in AbsolutePath!Format path, in AbsolutePath!Format base_path) @safe
+{
+	import std.array : array, replicate;
+	import std.range : chain, drop, take;
+
+	if (is(Format == WindowsPathFormat)) { // FIXME: this shouldn't be a special case here!
 		bool samePrefix(size_t n)
 		{
 			return path.bySegment.map!(n => n.encodedName).take(n).equal(base_path.bySegment.map!(n => n.encodedName).take(n));
@@ -65,10 +74,10 @@ Path relativeTo(Path)(in Path path, in Path base_path) @safe
 		base++;
 	}
 
-	enum up = Path.Segment("..", Path.defaultSeparator);
-	auto ret = Path(base_nodes.map!(p => up).chain(nodes));
+	enum up = GenericPath!Format.Segment("..", GenericPath!Format.defaultSeparator);
+	auto ret = GenericPath!Format(base_nodes.map!(p => up).chain(nodes));
 	if (path.endsWithSlash) {
-		if (ret.empty) return Path.fromTrustedString("." ~ path.toString()[$-1]);
+		if (ret.empty) return GenericPath!Format.fromTrustedString("." ~ path.toString()[$-1]);
 		else ret.endsWithSlash = true;
 	}
 	return ret;
@@ -199,16 +208,56 @@ string toNativeString(P)(P path)
 
 /// Represents a path on Windows operating systems.
 alias WindowsPath = GenericPath!WindowsPathFormat;
+/// ditto
+alias AbsoluteWindowsPath = AbsolutePath!WindowsPathFormat;
+///
+alias RelativeWindowsPath = RelativePath!WindowsPathFormat;
+/// ditto
+alias WindowsPathN = NormalizedPath!WindowsPath;
+/// ditto
+alias AbsoluteWindowsPathN = NormalizedPath!AbsoluteWindowsPath;
+/// ditto
+alias RelativeWindowsPathN = NormalizedPath!RelativeWindowsPath;
 
 /// Represents a path on Unix/Posix systems.
 alias PosixPath = GenericPath!PosixPathFormat;
+/// ditto
+alias AbsolutePosixPath = AbsolutePath!PosixPathFormat;
+/// ditto
+alias RelativePosixPath = RelativePath!PosixPathFormat;
+/// ditto
+alias PosixPathN = NormalizedPath!PosixPath;
+/// ditto
+alias AbsolutePosixPathN = NormalizedPath!AbsolutePosixPath;
+/// ditto
+alias RelativePosixPathN = NormalizedPath!RelativePosixPath;
 
 /// Represents a path as part of an URI.
 alias InetPath = GenericPath!InetPathFormat;
+/// ditto
+alias AbsoluteInetPath = AbsolutePath!InetPathFormat;
+/// ditto
+alias RelativeInetPath = RelativePath!InetPathFormat;
+/// ditto
+alias InetPathN = NormalizedPath!InetPath;
+/// ditto
+alias AbsoluteInetPathN = NormalizedPath!AbsoluteInetPath;
+/// ditto
+alias RelativeInetPathN = NormalizedPath!RelativeInetPath;
 
 /// The path type native to the target operating system.
 version (Windows) alias NativePath = WindowsPath;
 else alias NativePath = PosixPath;
+/// ditto
+alias AbsoluteNativePath = AbsolutePath!(NativePath.Format);
+/// ditto
+alias RelativeNativePath = RelativePath!(NativePath.Format);
+/// ditto
+alias NativePathN = NormalizedPath!NativePath;
+/// ditto
+alias AbsoluteNativePathN = NormalizedPath!AbsoluteNativePath;
+/// ditto
+alias RelativeNativePathN = NormalizedPath!RelativeNativePath;
 
 /// Provides a common interface to operate on paths of various kinds.
 struct GenericPath(F) {
@@ -744,7 +793,7 @@ struct GenericPath(F) {
 			segments ("..") that lead to a path that is a parent path of the
 			root path.
 	*/
-	@property GenericPath normalized()
+	@property NormalizedPath!GenericPath normalized()
 	const {
 		import std.array : appender, join;
 
@@ -752,7 +801,9 @@ struct GenericPath(F) {
 		if (!this.bySegment.any!(s => s.encodedName.among("", ".", "..")
 			|| (s.hasSeparator && s.separator != Format.defaultSeparator)))
 		{
-			return this;
+			NormalizedPath!GenericPath ret;
+			ret.m_path = this;
+			return ret;
 		}
 
 		Segment[] newnodes;
@@ -777,8 +828,8 @@ struct GenericPath(F) {
 		auto dst = appender!string;
 		Format.toString(newnodes, dst);
 
-		GenericPath ret;
-		ret.m_path = dst.data;
+		NormalizedPath!GenericPath ret;
+		ret.m_path.m_path = dst.data;
 		return ret;
 	}
 
@@ -800,7 +851,7 @@ struct GenericPath(F) {
 	*/
 	void normalize()
 	{
-		this.m_path = this.normalized.m_path;
+		this.m_path = this.normalized.m_path.m_path;
 	}
 
 	///
@@ -1031,6 +1082,231 @@ unittest {
 unittest {
 	assert(WindowsPath([WindowsPath.Segment("foo"), WindowsPath.Segment("bar")]).toString() == "foo\\bar");
 }
+
+
+/** Represents a `GenericPath` that is a relative path.
+*/
+struct RelativePath(F) {
+	alias Path = GenericPath!F;
+	alias Format = F;
+	alias Segment = Path.Segment;
+
+	private {
+		Path m_path;
+	}
+
+	Path toPath() const { return m_path; }
+	alias toPath this;
+
+	this(string p) { this(Path(p)); }
+	this(Segment segment) { this(Path(segment)); }
+	this(R)(R segments) if (isInputRange!R && is(ElementType!R : Segment)) { this(Path(segments)); }
+	this(Path path) {
+		enforce(!path.absolute, "Treating absolute path as relative");
+		m_path = path;
+	}
+
+	static RelativePath fromString(string p) { return RelativePath(Path(p)); }
+
+	static RelativePath fromTrustedString(string p) { return RelativePath(Path.fromTrustedString(p)); }
+
+	@property RelativePath parentPath() const { return assumeRelative(m_path.parentPath); }
+
+	void normalize() { this.m_path = this.normalized.m_path; }
+
+	/** Concatenates two paths.
+
+		The right hand side must represent a relative path.
+	*/
+	RelativePath opBinary(string op : "~")(string subpath) const { return this ~ Path(subpath); }
+	/// ditto
+	RelativePath opBinary(string op : "~")(Segment subpath) const { return this ~ Path(subpath); }
+	/// ditto
+	RelativePath opBinary(string op : "~", F)(GenericPath!F.Segment subpath) const { return this ~ cast(Segment)(subpath); }
+	/// ditto
+	RelativePath opBinary(string op : "~")(Path subpath) const nothrow {
+		assert(!subpath.absolute, "Cannot append absolute path.");
+		return assumeRelative(m_path ~ subpath);
+	}
+	/// ditto
+	RelativePath opBinary(string op : "~", F)(GenericPath!F subpath) const if (!is(F == Format)) { return this ~ cast(Path)subpath; }
+	/// ditto
+	RelativePath opBinary(string op : "~", R)(R entries) const nothrow
+		if (isInputRange!R && is(ElementType!R : Segment))
+	{
+		return this ~ GenericPath(entries);
+	}
+
+	/// Appends a relative path to this path.
+	void opOpAssign(string op : "~", T)(T op) { this = this ~ op; }
+
+	private static RelativePath assumeRelative(Path p)
+	{
+		assert(!p.absolute, "Attempt to create relative path from absolute path");
+		RelativePath ret;
+		ret.m_path = p;
+		return ret;
+	}
+}
+
+///
+unittest {
+	import std.exception : assertThrown;
+
+	auto p = RelativePosixPath("foo/bar");
+	p = p.parentPath;
+	assert(p.toString() == "foo/");
+	p ~= "bar";
+	assert(p.toString() == "foo/bar");
+	assertThrown(RelativePosixPath("/foo"));
+}
+
+
+/** Represents a `GenericPath` that is an absolute path.
+*/
+struct AbsolutePath(F) {
+	alias Path = GenericPath!F;
+	alias Format = F;
+	alias Segment = Path.Segment;
+
+	private {
+		Path m_path;
+	}
+
+	Path toPath() const { return m_path; }
+	alias toPath this;
+
+	this(string p) { this(Path(p)); }
+	this(Segment segment) { this(Path(segment)); }
+	this(R)(R segments) if (isInputRange!R && is(ElementType!R : Segment)) { this(Path(segments)); }
+	this(Path path) {
+		enforce(path.absolute, "Treating relative path as absolute");
+		m_path = path;
+	}
+
+	static AbsolutePath fromString(string p) { return AbsolutePath(Path(p)); }
+
+	static AbsolutePath fromTrustedString(string p) { return AbsolutePath(Path.fromTrustedString(p)); }
+
+	@property AbsolutePath parentPath() const { return assumeAbsolute(m_path.parentPath); }
+
+	void normalize() { this.m_path = this.normalized.m_path; }
+
+	/** Concatenates two paths.
+
+		The right hand side must represent a relative path.
+	*/
+	AbsolutePath opBinary(string op : "~")(string subpath) const { return this ~ Path(subpath); }
+	/// ditto
+	AbsolutePath opBinary(string op : "~")(Segment subpath) const { return this ~ Path(subpath); }
+	/// ditto
+	AbsolutePath opBinary(string op : "~", F)(GenericPath!F.Segment subpath) const { return this ~ cast(Segment)(subpath); }
+	/// ditto
+	AbsolutePath opBinary(string op : "~")(Path subpath) const nothrow {
+		assert(!subpath.absolute, "Cannot append absolute path.");
+		return assumeAbsolute(m_path ~ subpath);
+	}
+	/// ditto
+	AbsolutePath opBinary(string op : "~", F)(GenericPath!F subpath) const if (!is(F == Format)) { return this ~ cast(Path)subpath; }
+	/// ditto
+	AbsolutePath opBinary(string op : "~", R)(R entries) const nothrow
+		if (isInputRange!R && is(ElementType!R : Segment))
+	{
+		return this ~ GenericPath(entries);
+	}
+
+	/// Appends a relative path to this path.
+	void opOpAssign(string op : "~", T)(T op) { this = this ~ op; }
+
+	private static AbsolutePath assumeAbsolute(Path p)
+	{
+		assert(p.absolute, "Attempt to create absolute path from relative path");
+		AbsolutePath ret;
+		ret.m_path = p;
+		return ret;
+	}
+}
+
+///
+unittest {
+	import std.exception : assertThrown;
+
+	auto p = AbsolutePosixPath("/foo/bar");
+	p = p.parentPath;
+	assert(p.toString() == "/foo/");
+	p ~= "bar";
+	assert(p.toString() == "/foo/bar");
+	assertThrown(AbsolutePosixPath("foo"));
+}
+
+
+/** Represents a path in its normalized form.
+
+	This path type ensures that the represented path is always in normalized
+	form. It implicitly converts to the base path type. See also
+	`GenericPath.normalized`.
+*/
+struct NormalizedPath(P) {
+	alias Format = P.Format;
+	alias Segment = P.Segment;
+
+	private {
+		P m_path;
+	}
+
+	P toPath() const { return m_path; }
+	alias toPath this;
+
+	this(P path) { m_path = path.normalized; }
+	this(string p) { this(P(p)); }
+	this(R)(R segments) if (isInputRange!R && is(ElementType!R : Segment)) { this(P(segments)); }
+
+	static NormalizedPath fromString(string p) { return NormalizedPath(p); }
+	static NormalizedPath fromTrustedString(string p) { return NormalizedPath(P.fromTrustedString(p)); }
+
+	alias isSeparator = P.isSeparator;
+
+	@property NormalizedPath parentPath() const @nogc { return fromPreNormalized(m_path.parentPath); }
+
+	@property NormalizedPath normalized() nothrow @nogc { return this; }
+
+	/** Concatenates two paths.
+
+		The right hand side must represent a relative path.
+	*/
+	NormalizedPath opBinary(string op : "~")(string subpath) const { return this ~ P(subpath); }
+	/// ditto
+	NormalizedPath opBinary(string op : "~")(Segment subpath) const { return this ~ P(subpath); }
+	/// ditto
+	NormalizedPath opBinary(string op : "~", F)(GenericPath!F.Segment subpath) const { return this ~ cast(Segment)(subpath); }
+	/// ditto
+	NormalizedPath opBinary(string op : "~")(P subpath) const { return (m_path ~ subpath).normalized; }
+	/// ditto
+	NormalizedPath opBinary(string op : "~", F)(GenericPath!F subpath) const if (!is(F == Format)) { return this ~ cast(P)subpath; }
+	/// ditto
+	NormalizedPath opBinary(string op : "~", R)(R entries) const if (isInputRange!R && is(ElementType!R : Segment)) { return this ~ P(entries); }
+
+	/// Appends a relative path to this path.
+	void opOpAssign(string op : "~", T)(T op) { this = this ~ op; }
+
+	private static NormalizedPath fromPreNormalized(P path) {
+		NormalizedPath ret;
+		ret.m_path = path;
+		return ret;
+	}
+}
+
+///
+unittest {
+	PosixPathN path = PosixPathN("/foo/../bar");
+	assert(path.toString() == "/bar");
+	path ~= "..";
+	assert(path.toString() == "/");
+
+	path = PosixPath("/foo/../bar").normalized;
+	assert(path.toString() == "/bar");
+}
+
 
 /// Thrown when an invalid string representation of a path is detected.
 class PathValidationException : Exception {
