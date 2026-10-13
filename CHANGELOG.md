@@ -1,3 +1,13 @@
+2.15.0 - 2026-10-13
+===================
+
+- Added `vibe.core.dns` module for direct DNS queries (by Bogdan Szabo aka gedaiu) - [pull #448][issue448]
+- Added `vibe.core.socks` module implementing TCP connections via a SOCKS5 proxy (by Denis Feklushkin aka denizzzka) - [pull #449][issue449]
+
+[issue448]: https://github.com/vibe-core/vibe-core/issues/448
+[issue449]: https://github.com/vibe-core/vibe-core/issues/449
+
+
 2.14.0 - 2026-03-02
 ===================
 
