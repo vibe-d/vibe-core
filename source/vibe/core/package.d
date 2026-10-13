@@ -19,7 +19,6 @@ public import vibe.core.net;
 public import vibe.core.parallelism;
 public import vibe.core.path;
 public import vibe.core.process;
-public import vibe.core.socks;
 public import vibe.core.stream;
 public import vibe.core.sync;
 public import vibe.core.task;
