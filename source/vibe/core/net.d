@@ -761,11 +761,11 @@ struct TCPConnection {
 			cb => eventDriver.sockets.read(m_socket, m_context.readBuffer.peekDst(), mode, cb),
 			(cb) { cancelled = true; eventDriver.sockets.cancelRead(m_socket); },
 			(sock, st, nb) {
-				if (m_socket == StreamSocketFD.invalid) {
+				if (sock != m_socket) {
 					cancelled = true;
 					return;
 				}
-				assert(sock == m_socket); status = st; nbytes = nb;
+				status = st; nbytes = nb;
 			}
 		);
 
