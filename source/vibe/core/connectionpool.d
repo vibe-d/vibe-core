@@ -87,10 +87,10 @@ final class ConnectionPool(Connection)
 
 		Connection conn;
 		if( cidx != size_t.max ){
-			logTrace("returning %s connection %d of %d", Connection.stringof, cidx, m_connections.length);
+			logInfo("returning %s connection %d of %d", Connection.stringof, cidx, m_connections.length);
 			conn = m_connections[cidx];
 		} else {
-			logDebug("creating new %s connection, all %d are in use", Connection.stringof, m_connections.length);
+			logInfo("creating new %s connection, all %d are in use", Connection.stringof, m_connections.length);
 			conn = m_connectionFactory(); // NOTE: may block
 			static if (is(typeof(cast(void*)conn)))
 				logDebug(" ... %s", () @trusted { return cast(void*)conn; } ());
