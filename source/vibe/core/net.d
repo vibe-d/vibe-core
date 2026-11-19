@@ -775,15 +775,18 @@ struct TCPConnection {
 			cb => eventDriver.sockets.read(m_socket, m_context.readBuffer.peekDst(), mode, cb),
 			(cb) { cancelled = true; eventDriver.sockets.cancelRead(m_socket); },
 			(sock, st, nb) {
-				if (sock != m_socket) {
+				if (m_socket == StreamSocketFD.invalid) {
 					cancelled = true;
 					return;
 				}
-				status = st; nbytes = nb;
+				status = st;
+				nbytes = nb;
 			}
 		);
 
 		asyncAwaitAny!(true, waiter)(timeout);
+		assert(m_socket == StreamSocketFD.invalid || m_socket == sock,
+			"TCPConnection corrupted while waiting for data!");
 
 		if (!m_context) return WaitForDataStatus.noMoreData;
 		// NOTE: for IOMode.immediate, no actual timeout occurrs, but the read
