@@ -17,7 +17,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                os: [ubuntu-latest, windows-latest, macOS-14]
+                os: [ubuntu-latest, windows-latest, macOS-15]
                 dc: [dmd-latest, ldc-latest]
                 arch: [x86_64]
                 include:
@@ -40,5 +40,6 @@ jobs:
               env:
                 DC: ${{matrix.dc}}
                 ARCH: ${{matrix.arch}}
+                OS: ${{matrix.os}}
               run: ./run-ci.sh
               shell: bash

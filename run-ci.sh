@@ -14,7 +14,7 @@ grep -nrI --include='*.d' '\s$' . && (echo "Trailing whitespace found"; exit 1)
 dub build -b release --compiler=$DC $DUB_FLAGS
 
 # test for successful 32-bit build
-if [ "$DC" == "dmd" ]; then
+if [ "$DC" == "dmd" -a "$OS" == "windows-latest" ]; then
 	dub build --arch=x86 $DUB_FLAGS
 fi
 
