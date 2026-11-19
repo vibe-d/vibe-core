@@ -765,11 +765,14 @@ struct TCPConnection {
 					cancelled = true;
 					return;
 				}
-				assert(sock == m_socket); status = st; nbytes = nb;
+				status = st;
+				nbytes = nb;
 			}
 		);
 
 		asyncAwaitAny!(true, waiter)(timeout);
+		assert(m_socket == StreamSocketFD.invalid || m_socket == sock,
+			"TCPConnection corrupted while waiting for data!");
 
 		if (!m_context) return WaitForDataStatus.noMoreData;
 		// NOTE: for IOMode.immediate, no actual timeout occurrs, but the read
