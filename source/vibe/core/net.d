@@ -650,6 +650,7 @@ struct TCPConnection {
 		Duration readTimeout = Duration.max;
 		string remoteAddressString;
 		shared(NativeEventDriver) driver;
+		int activeWaiters = 0;
 	}
 
 	private {
@@ -727,9 +728,17 @@ struct TCPConnection {
 
 	void close()
 	nothrow {
+		import vibe.core.core : yieldUninterruptible;
+
 		//logInfo("close %s", cast(int)m_fd);
 		if (m_socket != StreamSocketFD.invalid) {
+			// make any active read/write operations fail
 			eventDriver.sockets.shutdown(m_socket, true, true);
+
+			// ensure that all waiters are done before resetting the context
+			while (m_context && m_context.activeWaiters > 0)
+				yieldUninterruptible();
+
 			eventDriver.sockets.releaseRef(m_socket);
 			m_socket = StreamSocketFD.invalid;
 			m_context = null;
@@ -755,7 +764,12 @@ struct TCPConnection {
 		// ensure the socket stays alive in case close() gets called concurrently
 		auto sock = m_socket;
 		eventDriver.sockets.addRef(m_socket);
-		scope (exit) eventDriver.sockets.releaseRef(sock);
+		m_context.activeWaiters++;
+		scope (exit) {
+			assert(!!m_context, "TCPConnection got destroyed while waitForDataEx() was active");
+			m_context.activeWaiters--;
+			eventDriver.sockets.releaseRef(sock);
+		}
 
 		alias waiter = Waitable!(IOCallback,
 			cb => eventDriver.sockets.read(m_socket, m_context.readBuffer.peekDst(), mode, cb),
@@ -935,6 +949,17 @@ struct TCPConnection {
 	{
 		mixin(tracer);
 		if (bytes.length == 0) return 0;
+
+		if (!m_context) {
+			if (mode == IOMode.immediate) return 0;
+			throw new Exception("Attempt to write data to closed TCP connection");
+		}
+
+		m_context.activeWaiters++;
+		scope (exit) {
+			assert(!!m_context, "TCPConnection got destroyed while a write() was active");
+			m_context.activeWaiters--;
+		}
 
 		auto res = asyncAwait!(IOCallback,
 			cb => eventDriver.sockets.write(m_socket, () @trusted { return bytes; } (), mode, cb),
