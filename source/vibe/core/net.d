@@ -720,7 +720,7 @@ struct TCPConnection {
 		if (res == WaitForDataStatus.timeout)
 			throw new ReadTimeoutException("Read operation timed out");
 
-		return m_context.readBuffer.length;
+		return m_context ? m_context.readBuffer.length : 0;
 	}
 
 	@property bool dataAvailableForRead() { return waitForData(0.seconds); }
